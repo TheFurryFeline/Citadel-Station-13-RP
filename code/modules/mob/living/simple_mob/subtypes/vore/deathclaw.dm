@@ -17,53 +17,25 @@
 
 	attacktext = list("mauled")
 
-	faction = "deathclaw"
+	iff_factions = MOB_IFF_FACTION_MUTANT
 
 	maxHealth = 200
 	health = 200
 
-	melee_damage_lower = 5
-	melee_damage_upper = 30
+	legacy_melee_damage_lower = 5
+	legacy_melee_damage_upper = 30
 
-	old_x = -16
-	old_y = 0
-	default_pixel_x = -16
-	pixel_x = -16
-	pixel_y = 0
-
-	max_buckled_mobs = 1 //Yeehaw
-	can_buckle = TRUE
-	buckle_movable = TRUE
-	buckle_lying = FALSE
-	mount_offset_x = 5
-	mount_offset_y = 30
+	base_pixel_x = -16
 
 	randomized = TRUE
 	mod_min = 90
 	mod_max = 140
 
-	ai_holder_type = /datum/ai_holder/simple_mob/melee/deathclaw
+	ai_holder_type = /datum/ai_holder/polaris/simple_mob/melee/deathclaw
 
 // Activate Noms!
 /mob/living/simple_mob/vore/aggressive/deathclaw
-	vore_active = 1
-	vore_capacity = 2
-	vore_max_size = RESIZE_HUGE
-	vore_min_size = RESIZE_SMALL
-	vore_pounce_chance = 0 // Beat them into crit before eating.
-	vore_icons = SA_ICON_LIVING
 
-/* //VOREStation AI Temporary Removal
-/mob/living/simple_animal/hostile/deathclaw/Login()
-	. = ..()
-	if(!riding_datum)
-		riding_datum = new /datum/riding/simple_animal(src)
-	verbs |= /mob/living/simple_animal/proc/animal_mount
-
-/mob/living/simple_animal/hostile/deathclaw/MouseDrop_T(mob/living/M, mob/living/user)
-	return
-*/
-
-/datum/ai_holder/simple_mob/melee/deathclaw
+/datum/ai_holder/polaris/simple_mob/melee/deathclaw
 	can_breakthrough = TRUE
 	violent_breakthrough = TRUE

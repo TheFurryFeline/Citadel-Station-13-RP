@@ -22,14 +22,14 @@
 	icon = 'icons/mob/vore64x32.dmi'
 	has_eye_glow = TRUE
 
-	faction = "corrupt"
+	iff_factions = MOB_IFF_FACTION_HIVEBOT
 
 	maxHealth = 200
 	health = 200
 	movement_sound = 'sound/effects/houndstep.ogg'
 
-	melee_damage_lower = 5
-	melee_damage_upper = 10 //makes it so 4 max dmg hits don't instakill you.
+	legacy_melee_damage_lower = 5
+	legacy_melee_damage_upper = 10 //makes it so 4 max dmg hits don't instakill you.
 	grab_resist = 100
 	taser_kill = 0 //This Mechanical Dog should probably not be harmed by tasers
 
@@ -39,11 +39,7 @@
 	attacktext = list("ravaged")
 	friendly = list("nuzzles", "slobberlicks", "noses softly at", "noseboops", "headbumps against", "leans on", "nibbles affectionately on")
 
-	old_x = -16
-	old_y = 0
-	default_pixel_x = -16
-	pixel_x = -16
-	pixel_y = 0
+	base_pixel_x = -16
 
 	min_oxy = 0
 	max_oxy = 0
@@ -57,21 +53,15 @@
 	maxbodytemp = 900
 
 	say_list_type = /datum/say_list/corrupthound
-	ai_holder_type = /datum/ai_holder/simple_mob/melee/evasive/corrupthound
+	ai_holder_type = /datum/ai_holder/polaris/simple_mob/melee/evasive/corrupthound
 
-	max_buckled_mobs = 1 //Yeehaw
-	can_buckle = TRUE
-	buckle_movable = TRUE
+	buckle_max_mobs = 1 //Yeehaw
+	buckle_allowed = TRUE
+	buckle_flags = BUCKLING_NO_USER_BUCKLE_OTHER_TO_SELF
 	buckle_lying = FALSE
 
-	vore_active = TRUE
-	vore_capacity = 1
-	vore_pounce_chance = 15
-	vore_icons = SA_ICON_LIVING | SA_ICON_REST
-	vore_stomach_name = "fuel processor"
-	vore_stomach_flavor = "You have ended up in the fuel processor of this corrupted machine. This place was definitely not designed with safety and comfort in mind. The heated and cramped surroundings oozing potent fluids all over your form, eager to do nothing less than breaking you apart to fuel its rampage for the next few days... hours... minutes? Oh dear..."
 
-	loot_list = list(/obj/item/borg/upgrade/syndicate = 6, /obj/item/borg/upgrade/vtec = 6, /obj/item/material/knife/ritual = 6, /obj/item/disk/nifsoft/compliance = 6)
+	loot_list = list(/obj/item/robot_upgrade/syndicate = 6, /obj/item/robot_upgrade/vtec = 6, /obj/item/material/knife/ritual = 6, /obj/item/disk/nifsoft/compliance = 6)
 
 /mob/living/simple_mob/vore/aggressive/corrupthound/prettyboi
 	name = "corrupt corrupt hound"
@@ -81,11 +71,78 @@
 	icon_dead = "prettyboi-dead"
 	icon_rest = "prettyboi_rest"
 
-	vore_pounce_chance = 40
-
 	attacktext = list("malsnuggled","scrunched","squeezed","assaulted","violated")
 
 	say_list_type = /datum/say_list/corrupthound_prettyboi
+
+/mob/living/simple_mob/vore/aggressive/corrupthound/sniper
+	name = "sniper hound"
+	desc = "Good boy machine broke and its got a sniper rifle built in. This is no good news for anyone in range."
+	icon_state = "sniperboi"
+	icon_living = "sniperboi"
+	icon_dead = "sniperboi-dead"
+	icon_rest = "sniperboi_rest"
+
+	base_attack_cooldown = 60
+
+	projectiletype = /obj/projectile/beam/sniper
+	projectilesound = 'sound/weapons/gauss_shoot.ogg'
+
+	ai_holder_type = /datum/ai_holder/polaris/simple_mob/ranged/sniper
+
+/mob/living/simple_mob/vore/aggressive/corrupthound/gunner
+	name = "gunner hound"
+	desc = "Good boy machine broke and its a got a machine gun!"
+	icon_state = "gunnerboi"
+	icon_living = "gunnerboi"
+	icon_dead = "gunnerboi-dead"
+	icon_rest = "gunnerboi_rest"
+
+	needs_reload = TRUE
+	base_attack_cooldown = 2.5
+	reload_max = 6
+	reload_time = 15
+
+	projectiletype = /obj/projectile/bullet/rifle/a556
+	projectilesound = 'sound/weapons/Gunshot_light.ogg'
+
+	ai_holder_type = /datum/ai_holder/polaris/simple_mob/ranged/kiting
+
+/mob/living/simple_mob/vore/aggressive/corrupthound/sword
+	name = "fencer hound"
+	desc = "Good boy machine broke. Who thought it was a good idea to install an energy sword in his tail?"
+	icon_state = "fencerboi"
+	icon_living = "fencerboi"
+	icon_dead = "fencerboi-dead"
+	icon_rest = "fencerboi_rest"
+
+	legacy_melee_damage_lower = 30
+	legacy_melee_damage_upper = 30
+	attack_armor_pen = 50
+	attack_sharp = 1
+	attack_edge = 1
+	attacktext = list("slashed")
+
+/mob/living/simple_mob/vore/aggressive/corrupthound/sword/attackby(var/obj/item/O as obj, var/mob/user as mob)
+	if(O.damage_force)
+		if(prob(20))
+			visible_message("<span class='danger'>\The [src] swats \the [O] with its sword tail!</span>")
+			if(user)
+				ai_holder.react_to_attack_polaris(user)
+			return
+		else
+			..()
+	else
+		to_chat(user, "<span class='warning'>This weapon is ineffective, it does no damage.</span>")
+		visible_message("<span class='warning'>\The [user] gently taps [src] with \the [O].</span>")
+
+/mob/living/simple_mob/vore/aggressive/corrupthound/sword/on_bullet_act(obj/projectile/proj, impact_flags, list/bullet_act_args)
+	if(prob(35))
+		visible_message("<span class='warning'>[src] deflects [proj] with its sword tail!</span>")
+		if(proj.firer)
+			ai_holder.react_to_attack_polaris(proj.firer)
+		return PROJECTILE_IMPACT_BLOCKED
+	return ..()
 
 /mob/living/simple_mob/vore/aggressive/corrupthound/isSynthetic()
 	return TRUE
@@ -109,11 +166,13 @@
 
 /mob/living/simple_mob/vore/aggressive/corrupthound/Login()
 	. = ..()
-	if(!riding_datum)
-		riding_datum = new /datum/riding/simple_mob(src)
-	verbs |= /mob/living/simple_mob/proc/animal_mount
+	AddComponent(/datum/component/riding_filter/mob/animal)
 
-/mob/living/simple_mob/vore/aggressive/corrupthound/MouseDrop_T(mob/living/M, mob/living/user)
+/mob/living/simple_mob/vore/aggressive/corrupthound/Logout()
+	. = ..()
+	DelComponent(/datum/component/riding_filter, /datum/component/riding_filter/mob/animal)
+
+/mob/living/simple_mob/vore/aggressive/corrupthound/MouseDroppedOnLegacy(mob/living/M, mob/living/user)
 	return
 
 /datum/say_list/corrupthound
@@ -130,7 +189,7 @@
 	say_maybe_target = list("MEAT?", "NEW FRIEND?", "WHAT!", "Not again. NOT AGAIN!", "FRIEND?")
 	say_got_target = list("HERE COMES BIG MEAN HUG MACHINE!", "I'LL BE GENTLE!", "FUEL ME FRIEND!", "I*M SO SORRY!", "YUMMY TREAT DETECTED!", "LOVE ME!", "Not again. NOT AGAIN!")
 
-/datum/ai_holder/simple_mob/melee/evasive/corrupthound
+/datum/ai_holder/polaris/simple_mob/melee/evasive/corrupthound
 	violent_breakthrough = TRUE
 	can_breakthrough = TRUE
 

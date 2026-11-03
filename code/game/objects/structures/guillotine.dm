@@ -1,13 +1,19 @@
-#define GUILLOTINE_BLADE_MAX_SHARP  10 // This is maxiumum sharpness and will decapitate without failure
-#define GUILLOTINE_DECAP_MIN_SHARP  7  // Minimum amount of sharpness for decapitation. Any less and it will just do severe brute damage
-#define GUILLOTINE_ANIMATION_LENGTH 9 // How many deciseconds the animation is
+/// This is maxiumum sharpness and will decapitate without failure
+#define GUILLOTINE_BLADE_MAX_SHARP  10
+/// Minimum amount of sharpness for decapitation. Any less and it will just do severe brute damage
+#define GUILLOTINE_DECAP_MIN_SHARP  7
+/// How many deciseconds the animation is
+#define GUILLOTINE_ANIMATION_LENGTH 9
 #define GUILLOTINE_BLADE_RAISED     1
 #define GUILLOTINE_BLADE_MOVING     2
 #define GUILLOTINE_BLADE_DROPPED    3
 #define GUILLOTINE_BLADE_SHARPENING 4
-#define GUILLOTINE_HEAD_OFFSET      16 // How much we need to move the player to center their head
-#define GUILLOTINE_LAYER_DIFF       1.2 // How much to increase/decrease a head when it's buckled/unbuckled
-#define GUILLOTINE_ACTIVATE_DELAY   30 // Delay for executing someone
+/// How much we need to move the player to center their head
+#define GUILLOTINE_HEAD_OFFSET      16
+/// How much to increase/decrease a head when it's buckled/unbuckled
+#define GUILLOTINE_LAYER_DIFF       1.2
+/// Delay for executing someone
+#define GUILLOTINE_ACTIVATE_DELAY   30
 #define GUILLOTINE_WRENCH_DELAY     10
 #define GUILLOTINE_ACTION_INUSE      5
 #define GUILLOTINE_ACTION_WRENCH     6
@@ -20,7 +26,7 @@
 	can_buckle = TRUE
 	anchored = TRUE
 	density = TRUE
-	max_buckled_mobs = 1
+	buckle_max_mobs = 1
 	buckle_lying = FALSE
 	buckle_prevents_pull = TRUE
 	layer = ABOVE_MOB_LAYER
@@ -29,11 +35,11 @@
 	var/kill_count = 0
 	var/current_action = 0 // What's currently happening to the guillotine
 
-/obj/structure/guillotine/Initialize()
+/obj/structure/guillotine/Initialize(mapload)
 	LAZYINITLIST(buckled_mobs)
 	. = ..()
 
-/obj/structure/guillotine/examine(mob/user)
+/obj/structure/guillotine/examine(mob/user, dist)
 	. = ..()
 
 	. += "It is [anchored ? "wrenched to the floor." : "unsecured. A wrench should fix that."]"
@@ -64,7 +70,7 @@
 		if (GUILLOTINE_BLADE_DROPPED)
 			blade_status = GUILLOTINE_BLADE_MOVING
 			icon_state = "guillotine_raise"
-			addtimer(CALLBACK(src, .proc/raise_blade), GUILLOTINE_ANIMATION_LENGTH)
+			addtimer(CALLBACK(src, PROC_REF(raise_blade)), GUILLOTINE_ANIMATION_LENGTH)
 			return
 		if (GUILLOTINE_BLADE_RAISED)
 			if (LAZYLEN(buckled_mobs))
@@ -77,7 +83,7 @@
 						current_action = 0
 						blade_status = GUILLOTINE_BLADE_MOVING
 						icon_state = "guillotine_drop"
-						addtimer(CALLBACK(src, .proc/drop_blade, user), GUILLOTINE_ANIMATION_LENGTH - 2) // Minus two so we play the sound and decap faster
+						addtimer(CALLBACK(src, PROC_REF(drop_blade), user), GUILLOTINE_ANIMATION_LENGTH - 2) // Minus two so we play the sound and decap faster
 					else
 						current_action = 0
 				else
@@ -90,7 +96,7 @@
 			else
 				blade_status = GUILLOTINE_BLADE_MOVING
 				icon_state = "guillotine_drop"
-				addtimer(CALLBACK(src, .proc/drop_blade), GUILLOTINE_ANIMATION_LENGTH)
+				addtimer(CALLBACK(src, PROC_REF(drop_blade)), GUILLOTINE_ANIMATION_LENGTH)
 
 /obj/structure/guillotine/proc/raise_blade()
 	blade_status = GUILLOTINE_BLADE_RAISED
@@ -133,12 +139,12 @@
 			for(var/mob/M in fov_viewers(world.view, src))
 				var/mob/living/carbon/human/C = M
 				if (ishuman(M))
-					addtimer(CALLBACK(C, /mob/.proc/emote, "clap"), delay_offset * 0.3)
+					addtimer(CALLBACK(C, TYPE_PROC_REF(/mob, emote), "clap"), delay_offset * 0.3)
 					delay_offset++
 		else
-			H.apply_damage(15 * blade_sharpness, BRUTE, head)
+			H.apply_damage(15 * blade_sharpness, DAMAGE_TYPE_BRUTE, head)
 			log_combat(user, H, "dropped the blade on", src, " non-fatally")
-			H.emote("scream")
+			H.emote_nosleep("scream")
 
 		if (blade_sharpness > 1)
 			blade_sharpness -= 1

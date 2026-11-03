@@ -5,7 +5,7 @@
 	icon_state = "cabinet_closed"
 	density = 1
 
-/obj/structure/undies_wardrobe/attack_hand(var/mob/user)
+/obj/structure/undies_wardrobe/attack_hand(mob/user, datum/event_args/actor/clickchain/e_args)
 	if(!human_who_can_use_underwear(user))
 		to_chat(user, "<span class='warning'>Sadly there's nothing in here for you to wear.</span>")
 		return
@@ -19,14 +19,14 @@
 		var/item_name = UWI ? UWI.name : "None"
 		dat += "[UWC.name]: <a href='?src=\ref[src];change_underwear=[UWC.name]'>[item_name]</a>"
 		if(UWI)
-			for(var/datum/gear_tweak/gt in UWI.tweaks)
+			for(var/datum/loadout_tweak/gt in UWI.tweaks)
 				dat += " <a href='?src=\ref[src];underwear=[UWC.name];tweak=\ref[gt]'>[gt.get_contents(get_metadata(H, UWC.name, gt))]</a>"
 		dat += " <a href='?src=\ref[src];remove_underwear=[UWC.name]'>(Remove)</a><br>"
 
 	dat = jointext(dat,null)
-	H << browse(dat, "window=wardrobe;size=400x200")
+	H << browse(HTML_SKELETON(dat), "window=wardrobe;size=400x200")
 
-/obj/structure/undies_wardrobe/proc/get_metadata(var/mob/living/carbon/human/H, var/underwear_category, var/datum/gear_tweak/gt)
+/obj/structure/undies_wardrobe/proc/get_metadata(var/mob/living/carbon/human/H, var/underwear_category, var/datum/loadout_tweak/gt)
 	var/metadata = H.all_underwear_metadata[underwear_category]
 	if(!metadata)
 		metadata = list()
@@ -38,12 +38,12 @@
 		metadata["[gt]"] = tweak_data
 	return tweak_data
 
-/obj/structure/undies_wardrobe/proc/set_metadata(var/mob/living/carbon/human/H, var/underwear_category, var/datum/gear_tweak/gt, var/new_metadata)
+/obj/structure/undies_wardrobe/proc/set_metadata(var/mob/living/carbon/human/H, var/underwear_category, var/datum/loadout_tweak/gt, var/new_metadata)
 	var/list/metadata = H.all_underwear_metadata[underwear_category]
 	metadata["[gt]"] = new_metadata
 
 /obj/structure/undies_wardrobe/proc/human_who_can_use_underwear(var/mob/living/carbon/human/H)
-	if(!istype(H) || !H.species || !(H.species.appearance_flags & HAS_UNDERWEAR))
+	if(!istype(H) || !H.species || !(H.species.species_appearance_flags & HAS_UNDERWEAR))
 		return FALSE
 	return TRUE
 
@@ -75,7 +75,7 @@
 		var/underwear = href_list["underwear"]
 		if(!(underwear in H.all_underwear))
 			return
-		var/datum/gear_tweak/gt = locate(href_list["tweak"])
+		var/datum/loadout_tweak/gt = locate(href_list["tweak"])
 		if(!gt)
 			return
 		var/new_metadata = gt.get_metadata(usr, get_metadata(H, underwear, gt), "Wardrobe Underwear Selection")

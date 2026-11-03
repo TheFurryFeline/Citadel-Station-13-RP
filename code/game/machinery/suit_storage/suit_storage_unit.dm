@@ -2,6 +2,7 @@
 // suit_stored STORAGE UNIT /////////////////
 //////////////////////////////////////
 
+// TODO: UNIFY WITH CYCLERS
 /obj/machinery/suit_storage_unit
 	name = "Suit Storage Unit"
 	desc = "An industrial U-Stor-It Storage unit designed to accomodate all kinds of space suits. Its on-board equipment also allows the user to decontaminate the contents through a UV-ray purging cycle. There's a warning label dangling from the control pad, reading \"STRICTLY NO BIOLOGICALS IN THE CONFINES OF THE UNIT\"."
@@ -41,7 +42,7 @@
 	if(boots_stored_TYPE)
 		boots_stored = new boots_stored_TYPE(src)
 
-/obj/machinery/suit_storage_unit/update_icon()
+/obj/machinery/suit_storage_unit/update_icon_state()
 	var/hashelmet = 0
 	var/hassuit = 0
 	var/hashuman = 0
@@ -51,11 +52,12 @@
 		hassuit = 1
 	if(occupant)
 		hashuman = 1
-	icon_state = text("suitstorage[][][][][][][][][]", hashelmet, hassuit, hashuman, isopen, islocked, isUV, ispowered, isbroken, issuperUV)
+	icon_state = "suitstorage[hashelmet][hassuit][hashuman][isopen][islocked][isUV][ispowered][isbroken][issuperUV]"
+	return ..()
 
 /obj/machinery/suit_storage_unit/power_change()
 	..()
-	if(!(stat & NOPOWER))
+	if(!(machine_stat & NOPOWER))
 		ispowered = 1
 		update_icon()
 	else
@@ -66,7 +68,7 @@
 			dump_everything()
 			update_icon()
 
-/obj/machinery/suit_storage_unit/ex_act(severity)
+/obj/machinery/suit_storage_unit/legacy_ex_act(severity)
 	switch(severity)
 		if(1.0)
 			if(prob(50))
@@ -77,16 +79,16 @@
 				dump_everything()
 				qdel(src)
 
-/obj/machinery/suit_storage_unit/attack_hand(mob/user as mob)
+/obj/machinery/suit_storage_unit/attack_hand(mob/user, datum/event_args/actor/clickchain/e_args)
 	if(..())
 		return
-	if(stat & NOPOWER)
+	if(machine_stat & NOPOWER)
 		return
 	if(!user.IsAdvancedToolUser())
 		return 0
 	ui_interact(user)
 
-/obj/machinery/suit_storage_unit/ui_state(mob/user)
+/obj/machinery/suit_storage_unit/ui_state()
 	return GLOB.notcontained_state
 
 /obj/machinery/suit_storage_unit/ui_interact(mob/user, datum/tgui/ui)
@@ -95,7 +97,7 @@
 		ui = new(user, src, "SuitStorageUnit", name)
 		ui.open()
 
-/obj/machinery/suit_storage_unit/ui_data()
+/obj/machinery/suit_storage_unit/ui_data(mob/user, datum/tgui/ui)
 	var/list/data = list()
 
 	data["broken"] = isbroken
@@ -129,7 +131,7 @@
 		data["occupied"] = FALSE
 	return data
 
-/obj/machinery/suit_storage_unit/ui_act(action, params) //I fucking HATE this proc
+/obj/machinery/suit_storage_unit/ui_act(action, list/params, datum/tgui/ui, datum/ui_state/state, datum/event_args/actor/actor)
 	if(..() || isUV || isbroken)
 		return TRUE
 
@@ -183,7 +185,7 @@
 				protected = 1
 
 	if(!protected)
-		playsound(src.loc, "sparks", 75, 1, -1)
+		playsound(src.loc, /datum/soundbyte/sparks, 75, 1, -1)
 		to_chat(user, "<font color='red'>You try to touch the controls but you get zapped. There must be a short circuit somewhere.</font>")
 		return*/
 	else  //welp, the guy is protected, we can continue
@@ -209,7 +211,7 @@
 				protected = 1
 
 	if(!protected)
-		playsound(src.loc, "sparks", 75, 1, -1)
+		playsound(src.loc, /datum/soundbyte/sparks, 75, 1, -1)
 		to_chat(user, "<font color='red'>You try to touch the controls but you get zapped. There must be a short circuit somewhere.</font>")
 		return*/
 	else
@@ -312,17 +314,17 @@
 	for(i=0,i<4,i++)
 		sleep(50)
 		if(occupant)
-			occupant.apply_effect(50, IRRADIATE)
+			occupant.afflict_radiation(200)
 			var/obj/item/organ/internal/diona/nutrients/rad_organ = locate() in occupant.internal_organs
 			if(!rad_organ)
 				if(occupant.can_feel_pain())
-					occupant.emote("scream")
+					occupant.emote_nosleep("scream")
 				if(issuperUV)
 					var/burndamage = rand(28,35)
-					occupant.take_organ_damage(0,burndamage)
+					occupant.take_random_targeted_damage(brute = 0, brute = burndamage)
 				else
 					var/burndamage = rand(6,10)
-					occupant.take_organ_damage(0,burndamage)
+					occupant.take_random_targeted_damage(brute = 0, brute = burndamage)
 		if(i==3) //End of the cycle
 			if(!issuperUV)
 				if(helmet_stored)
@@ -368,10 +370,10 @@
 		spawn(50)
 			if(occupant)
 				if(issuperUV)
-					occupant.take_organ_damage(0,40)
+					occupant.take_random_targeted_damage(brute = 0, burn = 40)
 					to_chat(user, "Test. You gave him 40 damage")
 				else
-					occupant.take_organ_damage(0,8)
+					occupant.take_random_targeted_damage(brute = 0, burn = 8)
 					to_chat(user, "Test. You gave him 8 damage")
 	return*/
 
@@ -408,7 +410,7 @@
 
 /obj/machinery/suit_storage_unit/verb/get_out()
 	set name = "Eject Suit Storage Unit"
-	set category = "Object"
+	set category = VERB_CATEGORY_OBJECT
 	set src in oview(1)
 
 	if(usr.stat != 0)
@@ -422,7 +424,7 @@
 
 /obj/machinery/suit_storage_unit/verb/move_inside()
 	set name = "Hide in Suit Storage Unit"
-	set category = "Object"
+	set category = VERB_CATEGORY_OBJECT
 	set src in oview(1)
 
 	if(usr.stat != 0)
@@ -462,7 +464,7 @@
 		return
 	if(I.is_screwdriver())
 		panelopen = !panelopen
-		playsound(src, I.usesound, 100, 1)
+		playsound(src, I.tool_sound, 100, 1)
 		to_chat(user, "<font color=#4F49AF>You [panelopen ? "open up" : "close"] the unit's maintenance panel.</font>")
 		updateUsrDialog()
 		return
@@ -503,9 +505,9 @@
 		if(suit_stored)
 			to_chat(user, "<font color=#4F49AF>The unit already contains a suit.</font>")
 			return
+		if(!user.attempt_insert_item_for_installation(S, src))
+			return
 		to_chat(user, "You load the [S.name] into the storage compartment.")
-		user.drop_item()
-		S.loc = src
 		suit_stored = S
 		update_icon()
 		updateUsrDialog()
@@ -517,9 +519,9 @@
 		if(helmet_stored)
 			to_chat(user, "<font color=#4F49AF>The unit already contains a helmet.</font>")
 			return
+		if(!user.attempt_insert_item_for_installation(H, src))
+			return
 		to_chat(user, "You load the [H.name] into the storage compartment.")
-		user.drop_item()
-		H.loc = src
 		helmet_stored = H
 		update_icon()
 		updateUsrDialog()
@@ -531,9 +533,9 @@
 		if(mask_stored)
 			to_chat(user, "<font color=#4F49AF>[src] already contains [mask_stored].</font>")
 			return
+		if(!user.attempt_insert_item_for_installation(M, src))
+			return
 		to_chat(user, "You load the [M.name] into the storage compartment.")
-		user.drop_item()
-		M.loc = src
 		mask_stored = M
 		update_icon()
 		updateUsrDialog()
@@ -545,16 +547,14 @@
 		if(boots_stored)
 			to_chat(user, "<font color=#4F49AF>The unit already contains [boots_stored].</font>")
 			return
-		user.drop_item()
-		B.loc = src
+		if(!user.attempt_insert_item_for_installation(B, src))
+			return
 		boots_stored = B
 		update_icon()
 		updateUsrDialog()
 		return
 	update_icon()
 	updateUsrDialog()
-	return
-
 
 /obj/machinery/suit_storage_unit/attack_ai(mob/user as mob)
 	return attack_hand(user)

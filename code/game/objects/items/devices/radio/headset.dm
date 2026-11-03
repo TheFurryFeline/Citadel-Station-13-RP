@@ -4,14 +4,11 @@
 	var/radio_desc = ""
 	icon_state = "headset"
 	item_state = null	// To remove the radio's state
-	matter = list(MAT_STEEL = 75)
+	materials_base = list(MAT_STEEL = 75)
 	subspace_transmission = 1
 	canhear_range = 0	// Can't hear headsets from very far away
 	slot_flags = SLOT_EARS
-	sprite_sheets = list(
-		SPECIES_TESHARI = 'icons/mob/species/teshari/ears.dmi',
-		SPECIES_VOX = 'icons/mob/species/vox/ears.dmi'
-		)
+	belt_storage_class = BELT_CLASS_SMALL
 
 	var/translate_binary = 0
 	var/translate_hive = 0
@@ -43,7 +40,7 @@
 /obj/item/radio/headset/list_channels(var/mob/user)
 	return list_secure_channels()
 
-/obj/item/radio/headset/examine(mob/user)
+/obj/item/radio/headset/examine(mob/user, dist)
 	. = ..()
 	if(!radio_desc)
 		return
@@ -54,10 +51,10 @@
 /obj/item/radio/headset/handle_message_mode(mob/living/M as mob, message, channel)
 	if (channel == "special")
 		if (translate_binary)
-			var/datum/language/binary = GLOB.all_languages["Robot Talk"]
+			var/datum/prototype/language/binary = RSlanguages.fetch(LANGUAGE_ID_SILICON_BINARY)
 			binary.broadcast(M, message)
 		if (translate_hive)
-			var/datum/language/hivemind = GLOB.all_languages["Hivemind"]
+			var/datum/prototype/language/hivemind = RSlanguages.legacy_resolve_language_name("Hivemind")
 			hivemind.broadcast(M, message)
 		return null
 
@@ -70,20 +67,11 @@
 		var/mob/living/carbon/human/H = src.loc
 		if(H.l_ear == src || H.r_ear == src)
 			return ..(freq, level)
+	else if(ismob(loc))
+		return ..(freq, level)
 	return -1
 
-/obj/item/radio/headset/get_worn_icon_state(var/slot_name)
-	var/append = ""
-	if(icon_override)
-		switch(slot_name)
-			if(slot_l_ear_str)
-				append = "_l"
-			if(slot_r_ear_str)
-				append = "_r"
-
-	return "[..()][append]"
-
-/obj/item/radio/headset/ui_state(mob/user)
+/obj/item/radio/headset/ui_state()
 	return GLOB.inventory_state
 
 /obj/item/radio/headset/syndicate
@@ -99,28 +87,33 @@
 	ks1type = /obj/item/encryptionkey/syndicate
 
 /obj/item/radio/headset/raider
-	origin_tech = list(TECH_ILLEGAL = 2)
-	syndie = 1
-	ks1type = /obj/item/encryptionkey/raider
+	icon_state = "pirate_headset"
+	adhoc_fallback = TRUE
+	ks2type = /obj/item/encryptionkey/raider
 
 /obj/item/radio/headset/raider/Initialize(mapload)
 	. = ..()
-	set_frequency(RAID_FREQ)
+	set_frequency(FREQ_RAIDER)
 
 /obj/item/radio/headset/trader
 	name = "trade headset"
 	origin_tech = list(TECH_ILLEGAL = 2)
-	syndie = 1
+	syndie = 0
 	adhoc_fallback = TRUE
 	ks1type = /obj/item/encryptionkey/trader
 
 /obj/item/radio/headset/trader/Initialize(mapload)
 	. = ..()
-	set_frequency(TRADE_FREQ)
+	set_frequency(FREQ_TRADER)
 
 /obj/item/radio/headset/binary
 	origin_tech = list(TECH_ILLEGAL = 3)
 	ks1type = /obj/item/encryptionkey/binary
+
+/obj/item/radio/headset/trader/outsider
+	name = "Traveler headset"
+	desc = "While being a normal headset, it was upgraded with a shortwave frenquency... Altho the upgrade was done with just duck taping circuits of a shortwave radio to the headset"
+	adhoc_fallback = TRUE
 
 /obj/item/radio/headset/headset_sec
 	name = "security radio headset"
@@ -257,6 +250,19 @@
 	ear_protection = 2
 	ks2type = /obj/item/encryptionkey/heads/hos
 
+/obj/item/radio/headset/heads/blueshield
+	name = "blueshield's headset"
+	desc = "The headset of the person who protects command's valuable lives."
+	icon_state = "com_headset"
+	ks2type = /obj/item/encryptionkey/heads/hos
+
+/obj/item/radio/headset/heads/blueshield/alt
+	name = "blueshield's bowman headset"
+	desc = "The headset of the person who protects command's valuable lives."
+	icon_state = "com_headset_alt"
+	ear_protection = 2
+	ks2type = /obj/item/encryptionkey/heads/hos
+
 /obj/item/radio/headset/heads/ce
 	name = "chief engineer's headset"
 	desc = "The headset of the guy who is in charge of morons"
@@ -325,7 +331,7 @@
 	name = "emergency response team radio headset"
 	desc = "The headset of the boss's boss."
 	icon_state = "com_headset"
-	centComm = 1
+	centcom = 1
 //	freerange = 1
 	ks2type = /obj/item/encryptionkey/ert
 
@@ -378,7 +384,7 @@
 			if(keyslot1)
 				var/turf/T = get_turf(user)
 				if(T)
-					keyslot1.loc = T
+					keyslot1.forceMove(T)
 					keyslot1 = null
 
 
@@ -386,12 +392,12 @@
 			if(keyslot2)
 				var/turf/T = get_turf(user)
 				if(T)
-					keyslot2.loc = T
+					keyslot2.forceMove(T)
 					keyslot2 = null
 
 			recalculateChannels()
 			to_chat(user, "You pop out the encryption keys in the headset!")
-			playsound(src, W.usesound, 50, 1)
+			playsound(src, W.tool_sound, 50, 1)
 
 		else
 			to_chat(user, "This headset doesn't have any encryption keys!  How useless...")
@@ -400,22 +406,14 @@
 		if(keyslot1 && keyslot2)
 			to_chat(user, "The headset can't hold another key!")
 			return
-
+		if(!user.attempt_insert_item_for_installation(W, src))
+			return
 		if(!keyslot1)
-			user.drop_item()
-			W.loc = src
 			keyslot1 = W
-
 		else
-			user.drop_item()
-			W.loc = src
 			keyslot2 = W
 
-
 		recalculateChannels()
-
-	return
-
 
 /obj/item/radio/headset/recalculateChannels(var/setDescription = 0)
 	src.channels = list()
@@ -479,7 +477,7 @@
 	desc = "The headset of the boss's boss."
 	icon_state = "cent_headset"
 	item_state = "headset"
-	centComm = 1
+	centcom = 1
 	ks2type = /obj/item/encryptionkey/ert
 
 /obj/item/radio/headset/centcom/alt
@@ -491,13 +489,8 @@
 	name = "\improper NT radio headset"
 	desc = "The headset of a Nanotrasen corporate employee."
 	icon_state = "nt_headset"
-	centComm = 1
+	centcom = 1
 	ks2type = /obj/item/encryptionkey/ert
-
-/obj/item/radio/headset
-	sprite_sheets = list(SPECIES_TESHARI = 'icons/mob/species/teshari/ears.dmi',
-						SPECIES_WEREBEAST = 'icons/mob/species/werebeast/ears.dmi',
-						SPECIES_VOX = 'icons/mob/species/vox/ears.dmi')
 
 /obj/item/radio/headset/mob_headset	//Adminbus headset for simplemob shenanigans.
 	name = "nonhuman radio implant"
@@ -511,8 +504,8 @@
 	ui = new(user, src, ui_key, "radio_basic.tmpl", "[name]", 400, 430, state = interactive_state)
 	..()
 
-/obj/item/radio/headset/mob_headset/afterattack(var/atom/movable/target, mob/living/user, proximity)
-	if(!proximity)
+/obj/item/radio/headset/mob_headset/afterattack(atom/target, mob/user, clickchain_flags, list/params)
+	if(!(clickchain_flags & CLICKCHAIN_HAS_PROXIMITY))
 		return
 	if(istype(target,/mob/living/simple_mob))
 		var/mob/living/simple_mob/M = target
@@ -590,3 +583,10 @@
 	adhoc_fallback = TRUE
 	icon_state = "pilot_headset"
 	ks2type = /obj/item/encryptionkey/talon
+
+/obj/item/radio/headset/sdf
+	name = "sdf headset"
+	desc = "A headset for communication for the SDF."
+	adhoc_fallback = TRUE
+	icon_state = "pilot_headset"
+	ks2type = /obj/item/encryptionkey/sdf

@@ -1,10 +1,10 @@
 // At minimum every mob has a hear_say proc.
 
-/mob/proc/hear_say(var/message, var/verb = "says", var/datum/language/language = null, var/alt_name = "",var/italics = 0, var/mob/speaker = null, var/sound/speech_sound, var/sound_vol)
+/mob/proc/hear_say(var/message, var/verb = "says", var/datum/prototype/language/language = null, var/alt_name = "",var/italics = 0, var/mob/speaker = null, var/sound/speech_sound, var/sound_vol)
 	if(!client && !teleop)
 		return
 
-	if(speaker && !speaker.client && istype(src,/mob/observer/dead) && is_preference_enabled(/datum/client_preference/ghost_ears) && !(speaker in view(src)))
+	if(speaker && !speaker.client && istype(src,/mob/observer/dead) && get_preference_toggle(/datum/game_preference_toggle/observer/ghost_ears) && !(speaker in view(src)))
 			//Does the speaker have a client?  It's either random stuff that observers won't care about (Experiment 97B says, 'EHEHEHEHEHEHEHE')
 			//Or someone snoring.  So we make it where they won't hear it.
 		return
@@ -20,19 +20,20 @@
 			italics = 1
 			sound_vol *= 0.5 //muffle the sound a bit, so it's like we're actually talking through contact
 
-	if(sleeping || stat == 1)
+	if(IS_ALIVE_BUT_UNCONSCIOUS(src))
 		hear_sleep(message)
 		return
 
 	//non-verbal languages are garbled if you can't see the speaker. Yes, this includes if they are inside a closet.
-	if (language && (language.flags & NONVERBAL))
-		if (!speaker || (src.sdisabilities & BLIND || src.blinded) || !(speaker in view(src)))
+	if (language && (language.language_flags & LANGUAGE_NONVERBAL))
+		if (!speaker || src.has_status_effect(/datum/status_effect/sight/blindness) || !(speaker in view(src)))
 			message = stars(message)
 
-	if(!(language && (language.flags & INNATE))) // skip understanding checks for INNATE languages
+
+	if(!(language && (language.language_flags & LANGUAGE_INNATE))) // skip understanding checks for LANGUAGE_INNATE languages
 		if(!say_understands(speaker,language))
 			if(language)
-				message = language.scramble(message, languages)
+				message = language_scramble(language, message)
 			else
 				message = stars(message)
 
@@ -48,16 +49,14 @@
 
 	var/track = null
 	if(istype(src, /mob/observer/dead))
-		if(italics && is_preference_enabled(/datum/client_preference/ghost_radio))
-			return
 		if(speaker_name != speaker.real_name && speaker.real_name)
 			speaker_name = "[speaker.real_name] ([speaker_name])"
 		track = "([ghost_follow_link(speaker, src)]) "
-		if(is_preference_enabled(/datum/client_preference/ghost_ears) && (speaker in view(src)))
+		if(get_preference_toggle(/datum/game_preference_toggle/observer/ghost_ears) && (speaker in view(src)))
 			message = "<b>[message]</b>"
 
 	if(is_deaf())
-		if(!language || !(language.flags & INNATE)) // INNATE is the flag for audible-emote-language, so we don't want to show an "x talks but you cannot hear them" message if it's set
+		if(!language || !(language.language_flags & LANGUAGE_INNATE)) // LANGUAGE_INNATE is the flag for audible-emote-language, so we don't want to show an "x talks but you cannot hear them" message if it's set
 			if(speaker == src)
 				to_chat(src, "<span class='warning'>You cannot hear yourself speak!</span>")
 			else
@@ -65,11 +64,15 @@
 	else
 		var/message_to_send = null
 		if(language)
+			//Hivemind languages already say their names. Also, no indicator if you don't know the language.
+			if(client && !(language.language_flags & LANGUAGE_HIVEMIND) && say_understands(speaker, language) && language.shorthand && client.get_preference_toggle(/datum/game_preference_toggle/chat/language_indicators))
+				verb += " ([language.shorthand])"
 			message_to_send = "<span class='game say'><span class='name'>[speaker_name]</span>[alt_name] [track][language.format_message(message, verb)]</span>"
 		else
 			message_to_send = "<span class='game say'><span class='name'>[speaker_name]</span>[alt_name] [track][verb], <span class='message'><span class='body'>\"[message]\"</span></span></span>"
-		if(check_mentioned(message) && is_preference_enabled(/datum/client_preference/check_mention))
+		if(check_mentioned(message) && get_preference_toggle(/datum/game_preference_toggle/game/legacy_name_highlight))
 			message_to_send = "<font size='3'><b>[message_to_send]</b></font>"
+
 
 		on_hear_say(message_to_send)
 
@@ -78,10 +81,22 @@
 			src.playsound_local(source, speech_sound, sound_vol, 1)
 
 // Done here instead of on_hear_say() since that is NOT called if the mob is clientless (which includes most AI mobs).
-/mob/living/hear_say(var/message, var/verb = "says", var/datum/language/language = null, var/alt_name = "",var/italics = 0, var/mob/speaker = null, var/sound/speech_sound, var/sound_vol)
+/mob/living/hear_say(var/message, var/verb = "says", var/datum/prototype/language/language = null, var/alt_name = "",var/italics = 0, var/mob/speaker = null, var/sound/speech_sound, var/sound_vol)
 	..()
-	if(has_AI()) // Won't happen if no ai_holder exists or there's a player inside w/o autopilot active.
+	if(has_polaris_AI()) // Won't happen if no ai_holder exists or there's a player inside w/o autopilot active.
+		var/datum/ai_holder/polaris/ai_holder = src.ai_holder
 		ai_holder.on_hear_say(speaker, message)
+
+/mob/proc/language_scramble(datum/prototype/language/L, str)
+	return L.scramble(str, languages)
+
+//! "silicons, why are you putting this here?"
+//? Because saycode needs a full rewrite so I'm shoving stuff in here until we do
+//? as if I don't, it's just harder to find later.
+/mob/living/silicon/language_scramble(datum/prototype/language/L, str)
+	// todo: this still does the "unknown language" highlighting potentially, oops
+	var/translated = translation_context.attempt_translation(L, msg = str)
+	return isnull(translated)? L.scramble(str, languages) : translated
 
 /mob/proc/on_hear_say(var/message)
 	to_chat(src, message)
@@ -103,7 +118,7 @@
 	valid_names += nicknames
 	valid_names += special_mentions()
 	for(var/name in valid_names)
-		if(findtext_char(message, regex("\\b[name]\\b", "i"))) // This is to stop 'ai' from triggering if someone says 'wait'.
+		if(findtext_char(message, regex("\\b[REGEX_QUOTE(name)]\\b", "i"))) // This is to stop 'ai' from triggering if someone says 'wait'.
 			return TRUE
 	return FALSE
 
@@ -115,16 +130,27 @@
 	return list("AI") // AI door!
 
 // Converts specific characters, like +, |, and _ to formatted output.
-/mob/proc/say_emphasis(input)
+/proc/say_emphasis(input)
 	var/static/regex/italics = regex("\\|(?=\\S)(.+?)(?=\\S)\\|", "g")
 	input = replacetext_char(input, italics, "<i>$1</i>")
 	var/static/regex/bold = regex("\\+(?=\\S)(.+?)(?=\\S)\\+", "g")
 	input = replacetext_char(input, bold, "<b>$1</b>")
 	var/static/regex/underline = regex("_(?=\\S)(.+?)(?=\\S)_", "g")
 	input = replacetext_char(input, underline, "<u>$1</u>")
+	var/static/regex/strikethrough = regex("~~(?=\\S)(.+?)(?=\\S)~~", "g")
+	input = replacetext_char(input, strikethrough, "<s>$1</s>")
 	return input
 
-/mob/proc/hear_radio(var/message, var/verb="says", var/datum/language/language=null, var/part_a, var/part_b, var/part_c, var/mob/speaker = null, var/hard_to_hear = 0, var/vname ="")
+/proc/say_emphasis_strip(input)
+	var/static/regex/italics = regex("\\|(?=\\S)(.*?)(?=\\S)\\|", "g")
+	input = replacetext_char(input, italics, "$1")
+	var/static/regex/bold = regex("\\+(?=\\S)(.*?)(?=\\S)\\+", "g")
+	input = replacetext_char(input, bold, "$1")
+	var/static/regex/underline = regex("_(?=\\S)(.*?)(?=\\S)_", "g")
+	input = replacetext_char(input, underline, "$1")
+	return input
+
+/mob/proc/hear_radio(var/message, var/verb="says", var/datum/prototype/language/language=null, var/part_a, var/part_b, var/part_c, var/mob/speaker = null, var/hard_to_hear = 0, var/vname ="")
 
 	if(!client)
 		return
@@ -134,21 +160,21 @@
 		playsound(loc, 'sound/effects/radiochatter.ogg', 10, 0, -1, falloff = -3)
 		last_radio_sound = world.time
 
-	if(sleeping || stat==1) //If unconscious or sleeping
+	if(IS_ALIVE_BUT_UNCONSCIOUS(src)) //If unconscious or sleeping
 		hear_sleep(message)
 		return
 
 	var/track = null
 
 	//non-verbal languages are garbled if you can't see the speaker. Yes, this includes if they are inside a closet.
-	if (language && (language.flags & NONVERBAL))
-		if (!speaker || (src.sdisabilities & BLIND || src.blinded) || !(speaker in view(src)))
+	if (language && (language.language_flags & LANGUAGE_NONVERBAL))
+		if (!speaker || src.has_status_effect(/datum/status_effect/sight/blindness) || !(speaker in view(src)))
 			message = stars(message)
 
-	if(!(language && (language.flags & INNATE))) // skip understanding checks for INNATE languages
+	if(!(language && (language.language_flags & LANGUAGE_INNATE))) // skip understanding checks for LANGUAGE_INNATE languages
 		if(!say_understands(speaker,language))
 			if(language)
-				message = language.scramble(message, languages)
+				message = language_scramble(language, message)
 			else
 				message = stars(message)
 
@@ -227,12 +253,14 @@
 
 	var/formatted
 	if(language)
+		if(client && !(language.language_flags & LANGUAGE_HIVEMIND) && say_understands(speaker, language) && language.shorthand && client.get_preference_toggle(/datum/game_preference_toggle/chat/language_indicators))
+			verb += " ([language.shorthand])"
 		formatted = "[language.format_message_radio(message, verb)][part_c]"
 	else
 		formatted = "[verb], <span class=\"body\">\"[message]\"</span>[part_c]"
 
 
-	if((sdisabilities & DEAF) || ear_deaf)
+	if((sdisabilities & SDISABILITY_DEAF) || ear_deaf)
 		if(prob(20))
 			to_chat(src, "<span class='warning'>You feel your headset vibrate but can hear nothing from it!</span>")
 	else
@@ -243,20 +271,20 @@
 
 /mob/proc/on_hear_radio(part_a, speaker_name, track, part_b, formatted)
 	var/final_message = "[part_a][speaker_name][part_b][formatted]"
-	if(check_mentioned(formatted) && is_preference_enabled(/datum/client_preference/check_mention))
+	if(check_mentioned(formatted) && get_preference_toggle(/datum/game_preference_toggle/game/legacy_name_highlight))
 		final_message = "<font size='3'><b>[final_message]</b></font>"
 	to_chat(src, final_message)
 
 /mob/observer/dead/on_hear_radio(part_a, speaker_name, track, part_b, formatted)
 	var/final_message = "[part_a][track][part_b][formatted]"
-	if(check_mentioned(formatted) && is_preference_enabled(/datum/client_preference/check_mention))
+	if(check_mentioned(formatted) && get_preference_toggle(/datum/game_preference_toggle/game/legacy_name_highlight))
 		final_message = "<font size='3'><b>[final_message]</b></font>"
 	to_chat(src, final_message)
 
 /mob/living/silicon/on_hear_radio(part_a, speaker_name, track, part_b, formatted)
 	var/time = say_timestamp()
 	var/final_message = "[part_a][speaker_name][part_b][formatted]"
-	if(check_mentioned(formatted) && is_preference_enabled(/datum/client_preference/check_mention))
+	if(check_mentioned(formatted) && get_preference_toggle(/datum/game_preference_toggle/game/legacy_name_highlight))
 		final_message = "[time]<font size='3'><b>[final_message]</b></font>"
 	else
 		final_message = "[time][final_message]"
@@ -265,13 +293,13 @@
 /mob/living/silicon/ai/on_hear_radio(part_a, speaker_name, track, part_b, formatted)
 	var/time = say_timestamp()
 	var/final_message = "[part_a][track][part_b][formatted]"
-	if(check_mentioned(formatted) && is_preference_enabled(/datum/client_preference/check_mention))
+	if(check_mentioned(formatted) && get_preference_toggle(/datum/game_preference_toggle/game/legacy_name_highlight))
 		final_message = "[time]<font size='3'><b>[final_message]</b></font>"
 	else
 		final_message = "[time][final_message]"
 	to_chat(src, final_message)
 
-/mob/proc/hear_signlang(var/message, var/verb = "gestures", var/datum/language/language, var/mob/speaker = null)
+/mob/proc/hear_signlang(var/message, var/verb = "gestures", var/datum/prototype/language/language, var/mob/speaker = null)
 	if(!client)
 		return
 

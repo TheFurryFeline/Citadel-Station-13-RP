@@ -89,7 +89,7 @@
 	name = "Catacombs"
 	desc = "In a temple like this, these doors could be booby trapped..."
 
-/obj/machinery/door/airlock/vault/temple/Initialize()
+/obj/machinery/door/airlock/vault/temple/Initialize(mapload)
 	. = ..()
 	if(prob(33))
 		safe = 0
@@ -98,7 +98,7 @@
 	if(prob(50))
 		secured_wires = 0
 
-/obj/mecha/combat/honker/cluwne // What have I done?
+/obj/vehicle/sealed/mecha/combat/honker/cluwne // What have I done?
 	desc = "Mechanized Assault Device for Juggernaughting Against Clown Killers. You've only heard legends about this exosuit..."
 	name = "M.A.D. J.A.C.K."
 	icon = 'icons/mecha/mecha_vr.dmi'
@@ -111,22 +111,22 @@
 	damage_absorption = list("brute"=1.2,"fire"=1.5,"bullet"=1,"laser"=1,"energy"=1,"bomb"=1)
 	max_temperature = 25000
 	infra_luminosity = 5
-	operation_req_access = list(access_cent_creed)
+	operation_req_access = list(ACCESS_CENTCOM_ERT_LEAD)
 	wreckage = /obj/effect/decal/mecha_wreckage/honker/cluwne
 	max_equip = 4
 
-/obj/mecha/combat/honker/cluwne/Initialize(mapload)
+/obj/vehicle/sealed/mecha/combat/honker/cluwne/Initialize(mapload)
 	. = ..()
-	var/obj/item/mecha_parts/mecha_equipment/ME = new /obj/item/mecha_parts/mecha_equipment/weapon/energy/pulse
+	var/obj/item/vehicle_module/ME = new /obj/item/vehicle_module/weapon/energy/pulse
 	ME.attach(src)
-	ME = new /obj/item/mecha_parts/mecha_equipment/weapon/ballistic/missile_rack/explosive
+	ME = new /obj/item/vehicle_module/weapon/ballistic/missile_rack/explosive
 	ME.attach(src)
-	ME = new /obj/item/mecha_parts/mecha_equipment/weapon/ballistic/missile_rack/banana_mortar
+	ME = new /obj/item/vehicle_module/weapon/ballistic/missile_rack/banana_mortar
 	ME.attach(src)
-	ME = new /obj/item/mecha_parts/mecha_equipment/weapon/honker
+	ME = new /obj/item/vehicle_module/weapon/honker
 	ME.attach(src)
 
-/obj/item/mecha_parts/mecha_equipment/weapon/ballistic/missile_rack/banana_mortar
+/obj/item/vehicle_module/weapon/ballistic/missile_rack/banana_mortar
 	name = "Banana Mortar"
 	icon = 'icons/mecha/mecha_equipment_vr.dmi'
 	icon_state = "mecha_bananamrtr"
@@ -137,12 +137,12 @@
 	projectile_energy_cost = 100
 	equip_cooldown = 20
 
-	can_attach(obj/mecha/combat/honker/M as obj)
+	can_attach(obj/vehicle/sealed/mecha/combat/honker/M as obj)
 		if(!istype(M))
 			return 0
 		return ..()
 
-/obj/item/mecha_parts/mecha_equipment/weapon/honker
+/obj/item/vehicle_module/weapon/honker
 	name = "\improper HoNkER BlAsT 5000"
 	icon = 'icons/mecha/mecha_equipment_vr.dmi'
 	icon_state = "mecha_honker"
@@ -150,7 +150,7 @@
 	equip_cooldown = 150
 	range = MELEE|RANGED
 
-	can_attach(obj/mecha/combat/honker/M as obj)
+	can_attach(obj/vehicle/sealed/mecha/combat/honker/M as obj)
 		if(!istype(M))
 			return 0
 		return ..()
@@ -174,10 +174,10 @@
 			M.sleeping = 0
 			M.stuttering += 20
 			M.ear_deaf += 30
-			M.Weaken(3)
+			M.afflict_paralyze(20 * 3)
 			if(prob(30))
-				M.Stun(10)
-				M.Paralyse(4)
+				M.afflict_stun(20 * 10)
+				M.afflict_unconscious(20 * 4)
 			else
 				M.make_jittery(500)
 		chassis.use_power(energy_drain)
@@ -185,7 +185,7 @@
 		do_after_cooldown()
 		return
 
-/atom/movable/landmark/corpse/tunnelclown
+/obj/spawner/corpse/tunnelclown
 	name = "dead tunnel clown"
 	corpseuniform = /obj/item/clothing/under/rank/clown
 	corpseshoes = /obj/item/clothing/shoes/clown_shoes
@@ -194,10 +194,10 @@
 	corpsemask = /obj/item/clothing/mask/gas/clown_hat
 	corpsepocket1 = /obj/item/bikehorn
 
-/atom/movable/landmark/corpse/tunnelclown/sentinel
+/obj/spawner/corpse/tunnelclown/sentinel
 	name = "dead clown sentinel"
 	corpsesuit = /obj/item/clothing/suit/cultrobes
-	corpsehelmet = /obj/item/clothing/head/culthood
+	corpsehelmet = /obj/item/clothing/head/cult
 
 /*
 /mob/living/simple_mob/hostile/tunnelclown
@@ -217,15 +217,15 @@
 //	emote_hear = list("honks")
 //	speak_chance = 1
 	a_intent = "harm"
-	var/corpse = /atom/movable/landmark/mobcorpse/tunnelclown
+	var/corpse = /obj/spawner/corpse/tunnelclown
 	var/weapon1 = /obj/item/twohanded/fireaxe
 	stop_when_pulled = 0
 	maxHealth = 100
 	health = 100
 	speed = 4
 	harm_intent_damage = 8
-	melee_damage_lower = 30
-	melee_damage_upper = 40
+	legacy_melee_damage_lower = 30
+	legacy_melee_damage_upper = 40
 	attacktext = "cleaved"
 	attack_sound = 'sound/weapons/bladeslice.ogg'
 	min_oxy = 5
@@ -250,12 +250,12 @@
 	icon_state = "sentinelclown"
 	icon_living = "sentinelclown"
 	icon_dead = "clown_dead"
-	corpse = /atom/movable/landmark/mobcorpse/tunnelclown/sentinel
+	corpse = /obj/spawner/corpse/tunnelclown/sentinel
 	weapon1 = /obj/item/material/twohanded/spear
 	maxHealth = 150
 	health = 150
-	melee_damage_lower = 15
-	melee_damage_upper = 20
+	legacy_melee_damage_lower = 15
+	legacy_melee_damage_upper = 20
 
 /mob/living/simple_mob/hostile/tunnelclown/death()
 	..()
@@ -288,11 +288,11 @@
 	health = 10
 	speed = 1
 	harm_intent_damage = 8
-	melee_damage_lower = 1 // Pathetic creatures.
-	melee_damage_upper = 1
+	legacy_melee_damage_lower = 1 // Pathetic creatures.
+	legacy_melee_damage_upper = 1
 	attacktext = "honked"
 	attack_sound = 'sound/items/bikehorn.ogg'
-	status_flags = CANPUSH
+	status_flags = STATUS_CAN_PUSH
 	min_oxy = 5
 	max_oxy = 0
 	min_tox = 0

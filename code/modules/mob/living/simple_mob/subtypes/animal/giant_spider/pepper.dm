@@ -22,13 +22,24 @@
 	maxHealth = 210
 	health = 210
 
-	melee_damage_lower = 8
-	melee_damage_upper = 15
+	legacy_melee_damage_lower = 8
+	legacy_melee_damage_upper = 15
 
 	poison_chance = 20
 	poison_per_bite = 5
 	poison_type = "condensedcapsaicin_v"
 
+	exotic_type = /obj/item/reagent_containers/glass/venomgland/spider/capsaicin_v
+
 /mob/living/simple_mob/animal/giant_spider/pepper/Initialize(mapload)
 	adjust_scale(1.1)
 	return ..()
+
+/obj/item/reagent_containers/glass/venomgland/spider/capsaicin_v
+	name = "Irritating Venom Gland"
+	desc = "A sac full of venom. The mere touch stings."
+
+/obj/item/reagent_containers/glass/venomgland/spider/capsaicin_v/Initialize(mapload)
+	. = ..()
+	reagents.add_reagent("condensedcapsaicin_v", 15)
+

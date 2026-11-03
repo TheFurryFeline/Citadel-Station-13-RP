@@ -1,5 +1,7 @@
 /**
  * Simple conflict checking for getting number of conflicting things on someone with the same ID.
+ *
+ * todo: this is a bit slow innit.
  */
 /datum/element/conflict_checking
 	element_flags = ELEMENT_BESPOKE | ELEMENT_DETACH
@@ -18,7 +20,7 @@
 		CRASH("Invalid ID in conflict checking element.")
 	if(isnull(src.id))
 		src.id = id
-	RegisterSignal(target, COMSIG_CONFLICT_ELEMENT_CHECK, .proc/check)
+	RegisterSignal(target, COMSIG_CONFLICT_ELEMENT_CHECK, PROC_REF(check))
 
 /datum/element/conflict_checking/proc/check(datum/source, id_to_check)
 	if(id == id_to_check)
@@ -29,8 +31,7 @@
  */
 /atom/proc/ConflictElementCount(id)
 	. = 0
-	for(var/i in GetAllContents())
+	for(var/i in get_all_contents())
 		var/atom/movable/AM = i
 		if(SEND_SIGNAL(AM, COMSIG_CONFLICT_ELEMENT_CHECK, id) & ELEMENT_CONFLICT_FOUND)
 			++.
-

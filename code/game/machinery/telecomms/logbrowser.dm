@@ -1,11 +1,10 @@
-//This file was auto-corrected by findeclaration.exe on 25.5.2012 20:42:31
 
 /obj/machinery/computer/telecomms
 	icon_keyboard = "tech_key"
 
 /obj/machinery/computer/telecomms/server
 	name = "Telecommunications Server Monitor"
-	desc = "View communication logs here. Translation not guaranteed."
+	desc = "View communication logs and operate triangulation systems here. Translation not guaranteed."
 	icon_screen = "comm_logs"
 
 	var/list/servers = list()	// the servers located by the computer
@@ -17,9 +16,9 @@
 
 	var/universal_translate = 0 // set to 1 if it can translate nonhuman speech
 
-	req_access = list(access_tcomsat)
+	req_access = list(ACCESS_ENGINEERING_TELECOMMS)
 
-/obj/machinery/computer/telecomms/server/ui_data(mob/user)
+/obj/machinery/computer/telecomms/server/ui_data(mob/user, datum/tgui/ui)
 	var/list/data = list()
 
 	data["universal_translate"] = universal_translate
@@ -38,7 +37,9 @@
 		data["selectedServer"] = list(
 			"id" = SelectedServer.id,
 			"totalTraffic" = SelectedServer.totaltraffic,
-			"logs" = list()
+			"logs" = list(),
+			"triangulating" = SelectedServer.triangulating,
+			"triangulation" = SelectedServer.triangulation_data(),
 		)
 
 		var/i = 0
@@ -61,8 +62,8 @@
 
 	return data
 
-/obj/machinery/computer/telecomms/server/attack_hand(mob/user)
-	if(stat & (BROKEN|NOPOWER))
+/obj/machinery/computer/telecomms/server/attack_hand(mob/user, datum/event_args/actor/clickchain/e_args)
+	if(machine_stat & (BROKEN|NOPOWER))
 		return
 	ui_interact(user)
 
@@ -72,7 +73,7 @@
 		ui = new(user, src, "TelecommsLogBrowser", name)
 		ui.open()
 
-/obj/machinery/computer/telecomms/server/ui_act(action, params)
+/obj/machinery/computer/telecomms/server/ui_act(action, list/params, datum/tgui/ui, datum/ui_state/state, datum/event_args/actor/actor)
 	if(..())
 		return TRUE
 
@@ -125,7 +126,7 @@
 		if("network")
 			var/newnet = input(usr, "Which network do you want to view?", "Comm Monitor", network) as null|text
 
-			if(newnet && ((usr in range(1, src) || issilicon(usr))))
+			if(newnet && (((usr in range(1, src)) || issilicon(usr))))
 				if(length(newnet) > 15)
 					set_temp("FAILED: NETWORK TAG STRING TOO LENGTHY", "bad")
 					return TRUE
@@ -139,9 +140,13 @@
 			temp = null
 			. = TRUE
 
+		if("toggle_triangulation")
+			SelectedServer.set_triangulating(!SelectedServer.triangulating)
+			return TRUE
+
 /obj/machinery/computer/telecomms/server/emag_act(var/remaining_charges, var/mob/user)
 	if(!emagged)
-		playsound(src, 'sound/effects/sparks4.ogg', 75, 1)
+		playsound(src, /datum/soundbyte/sparks, 75, 1)
 		emagged = 1
 		to_chat(user, "<span class='notice'>You you disable the security protocols</span>")
 		src.updateUsrDialog()

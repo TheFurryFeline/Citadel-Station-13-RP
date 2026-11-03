@@ -1,7 +1,7 @@
 ///SCI TELEPAD///
 /obj/machinery/telepad
 	name = "telepad"
-	desc = "A bluespace telepad used for teleporting objects to and from a location."
+	desc = "A bluespace telepad used for teleporting objects to and from a location.\n <span class='notice'>\[Accepts Upgrades\]</span>"
 	icon = 'icons/obj/telescience.dmi'
 	icon_state = "pad-idle"
 	anchored = TRUE
@@ -13,8 +13,6 @@
 
 /obj/machinery/telepad/Initialize(mapload)
 	. = ..()
-	default_apply_parts()
-	RefreshParts()
 	update_icon()
 
 /obj/machinery/telepad/RefreshParts()

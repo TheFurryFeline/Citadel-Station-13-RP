@@ -2,16 +2,13 @@
 Contains helper procs for airflow, handled in /connection_group.
 */
 
-/mob
-	var/tmp/last_airflow_stun = 0
-
 /mob/proc/airflow_stun()
 	if(stat == 2)
 		return 0
 	CACHE_VSC_PROP(atmos_vsc, /atmos/airflow/stun_cooldown, stuncd)
 	if(last_airflow_stun > world.time - stuncd)	return 0
 
-	if(!(status_flags & CANSTUN) && !(status_flags & CANWEAKEN))
+	if(!(status_flags & STATUS_CAN_STUN) && !(status_flags & STATUS_CAN_PARALYZE))
 		to_chat(src, "<span class='notice'>You stay upright as the air rushes past you.</span>")
 		return 0
 	if(buckled)
@@ -19,21 +16,21 @@ Contains helper procs for airflow, handled in /connection_group.
 		return 0
 	if(!lying)
 		to_chat(src, "<span class='warning'>The sudden rush of air knocks you over!</span>")
-	Weaken(2)
+	afflict_paralyze(20 * 2)
 	last_airflow_stun = world.time
 
 /mob/living/silicon/airflow_stun()
 	return
 
 /mob/living/carbon/human/airflow_stun()
-	if(shoes && (shoes.item_flags & NOSLIP))
+	if(shoes && (shoes.clothing_flags & NOSLIP))
 		to_chat(src, "<span class='notice'>Air suddenly rushes past you!</span>")
 		return 0
 	..()
 
 /atom/movable/proc/check_airflow_movable(n)
 	CACHE_VSC_PROP(atmos_vsc, /atmos/airflow/dense_pressure, dense_pressure)
-	if(!simulated)
+	if(atom_flags & ATOM_ABSTRACT)
 		return 0
 
 	if(anchored && !ismob(src))
@@ -66,11 +63,11 @@ Contains helper procs for airflow, handled in /connection_group.
 	if(isnull(w_class))
 		if(n < dense_pressure) return 0 //most non-item objs don't have a w_class yet
 	switch(w_class)
-		if(ITEMSIZE_TINY,ITEMSIZE_SMALL)
+		if(WEIGHT_CLASS_TINY,WEIGHT_CLASS_SMALL)
 			if(n < lightest_pressure) return 0
-		if(ITEMSIZE_NORMAL)
+		if(WEIGHT_CLASS_NORMAL)
 			if(n < light_pressure) return 0
-		if(ITEMSIZE_LARGE,ITEMSIZE_HUGE)
+		if(WEIGHT_CLASS_BULKY,WEIGHT_CLASS_HUGE)
 			if(n < medium_pressure) return 0
 		else
 			if(n < dense_pressure) return 0
@@ -85,12 +82,12 @@ Contains helper procs for airflow, handled in /connection_group.
 	return 1
 
 /mob/AirflowCanMove(n)
-	if(status_flags & GODMODE)
+	if(status_flags & STATUS_GODMODE)
 		return 0
 	if(buckled)
 		return 0
-	var/obj/item/shoes = get_equipped_item(slot_shoes)
-	if(istype(shoes) && (shoes.item_flags & NOSLIP))
+	var/obj/item/shoes = item_by_slot_id(SLOT_ID_SHOES)
+	if(istype(shoes) && (shoes.clothing_flags & NOSLIP))
 		return 0
 	return 1
 
@@ -111,7 +108,7 @@ Contains helper procs for airflow, handled in /connection_group.
 		M.show_message("<span class='danger'>\The [src] slams into \a [A]!</span>",1,"<span class='danger'>You hear a loud slam!</span>",2)
 	playsound(src.loc, "smash.ogg", 25, 1, -1)
 	var/weak_amt = istype(A,/obj/item) ? A:w_class : rand(1,5) //Heheheh
-	Weaken(weak_amt)
+	afflict_paralyze(20 * weak_amt)
 	return ..()
 
 /obj/airflow_hit(atom/A)
@@ -136,29 +133,29 @@ Contains helper procs for airflow, handled in /connection_group.
 
 	var/blocked = run_armor_check(BP_HEAD,"melee")
 	var/soaked = get_armor_soak(BP_HEAD,"melee")
-	apply_damage(b_loss/3, BRUTE, BP_HEAD, blocked, soaked, 0, "Airflow")
+	apply_damage(b_loss/3, DAMAGE_TYPE_BRUTE, BP_HEAD, blocked, soaked, 0, "Airflow")
 
 	blocked = run_armor_check(BP_TORSO,"melee")
 	soaked = get_armor_soak(BP_TORSO,"melee")
-	apply_damage(b_loss/3, BRUTE, BP_TORSO, blocked, soaked, 0, "Airflow")
+	apply_damage(b_loss/3, DAMAGE_TYPE_BRUTE, BP_TORSO, blocked, soaked, 0, "Airflow")
 
 	blocked = run_armor_check(BP_GROIN,"melee")
 	soaked = get_armor_soak(BP_GROIN,"melee")
-	apply_damage(b_loss/3, BRUTE, BP_GROIN, blocked, soaked, 0, "Airflow")
+	apply_damage(b_loss/3, DAMAGE_TYPE_BRUTE, BP_GROIN, blocked, soaked, 0, "Airflow")
 
 	GET_VSC_PROP(atmos_vsc, /atmos/airflow/impact_stun, impact_stun)
 
 	if(airflow_speed > 10)
-		Paralyse(round(airflow_speed * impact_stun))
-		Stun(paralysis + 3)
+		afflict_unconscious(20 * round(airflow_speed * impact_stun))
+		afflict_stun(20 * (round(airflow_speed * impact_stun) + 3))
 	else
-		Stun(round(airflow_speed * impact_stun/2))
+		afflict_stun(20 * round(airflow_speed * impact_stun/2))
 	return ..()
 
 /datum/zas_zone/proc/movables()
 	. = list()
 	for(var/turf/T in contents)
 		for(var/atom/movable/A in T)
-			if(!A.simulated || A.anchored || istype(A, /obj/effect) || istype(A, /mob/observer))
+			if((A.atom_flags & ATOM_ABSTRACT) || A.anchored || istype(A, /obj/effect) || istype(A, /mob/observer))
 				continue
 			. += A

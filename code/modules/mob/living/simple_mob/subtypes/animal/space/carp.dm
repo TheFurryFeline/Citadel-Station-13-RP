@@ -34,19 +34,20 @@
 	icon_dead = "carp_dead"
 	icon_gib = "carp_gib"
 
-	faction = "carp"
+	iff_factions = MOB_IFF_FACTION_CARP
+
 	maxHealth = 25
 	health = 25
 	randomized = TRUE
-	movement_cooldown = 0 // Carp go fast
+	movement_base_speed = 6.66 // Carp go fast
 	hovering = TRUE
 
 	response_help = "pets the"
 	response_disarm = "gently pushes aside the"
 	response_harm = "hits the"
 
-	melee_damage_lower = 7 // About 14 DPS.
-	melee_damage_upper = 7
+	legacy_melee_damage_lower = 7 // About 14 DPS.
+	legacy_melee_damage_upper = 7
 	base_attack_cooldown = 10 // One attack a second.
 	attack_sharp = TRUE
 	attack_sound = 'sound/weapons/bite.ogg'
@@ -56,23 +57,22 @@
 	meat_type = /obj/item/reagent_containers/food/snacks/carpmeat
 	bone_amount = 3
 
-	ai_holder_type = /datum/ai_holder/simple_mob/melee
-
+	ai_holder_type = /datum/ai_holder/polaris/simple_mob/melee
+/* //Commenting out for now
 	var/knockdown_chance = 15
 
 /mob/living/simple_mob/animal/space/carp/apply_melee_effects(var/atom/A)
 	if(isliving(A))
 		var/mob/living/L = A
 		if(prob(knockdown_chance))
-			L.Weaken(3)
+			L.afflict_paralyze(20 * 3)
 			L.visible_message(SPAN_DANGER("\The [src] knocks down \the [L]!"))
-
+*/
 // Subtypes.
 
 // Won't wander away.
 /mob/living/simple_mob/animal/space/carp/event
-	ai_holder_type = /datum/ai_holder/simple_mob/event
-
+	ai_holder_type = /datum/ai_holder/polaris/simple_mob/event
 
 /mob/living/simple_mob/animal/space/carp/large
 	name = "elder carp"
@@ -84,13 +84,11 @@
 
 	maxHealth = 50
 	health = 50
-	movement_cooldown = 5 // Slower than the younger carp.
+	movement_base_speed = 10 / 5 // Slower than the younger carp.
 	mob_size = MOB_LARGE
 
-	pixel_x = -16
-	default_pixel_x = -16
-	icon_expected_width = 64
-	icon_expected_height = 32
+	base_pixel_x = -16
+	icon_x_dimension = 64
 
 	meat_amount = 5
 	bone_amount = 4
@@ -109,15 +107,15 @@
 
 	maxHealth = 230
 	health = 230
-	movement_cooldown = 10
+	movement_base_speed = 10 / 10
 
-	melee_damage_lower = 15 // About 20 DPS.
-	melee_damage_upper = 25
+	legacy_melee_damage_lower = 15 // About 20 DPS.
+	legacy_melee_damage_upper = 25
 
 	pixel_y = -16
-	default_pixel_y = -16
-	icon_expected_width = 64
-	icon_expected_height = 64
+	base_pixel_y = -16
+	icon_x_dimension = 64
+	icon_y_dimension = 64
 
 	meat_amount = 10
 	bone_amount = 7
@@ -145,7 +143,8 @@
 // Presumably the holodeck emag code requires this.
 // Pass TRUE to make safe. Pass FALSE to make unsafe.
 /mob/living/simple_mob/animal/space/carp/holographic/proc/set_safety(safe)
-	if(!isnull(get_AI_stance())) // Will return null if lacking an AI holder or a player is controlling it w/o autopilot var.
+	if(!isnull(get_polaris_AI_stance())) // Will return null if lacking an AI holder or a player is controlling it w/o autopilot var.
+		var/datum/ai_holder/polaris/ai_holder = src.ai_holder
 		ai_holder.hostile = !safe // Inverted so safe = TRUE means hostility = FALSE.
 		ai_holder.forget_everything() // Reset state so it'll stop chewing on its target.
 

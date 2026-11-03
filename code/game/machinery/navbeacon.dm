@@ -8,15 +8,23 @@ var/global/list/navbeacons = list()	// no I don't like putting this in, but it w
 	icon_state = "navbeacon0-f"
 	name = "navigation beacon"
 	desc = "A beacon used for bot navigation."
-	plane = PLATING_PLANE
-	anchored = 1
-	var/open = 0		// true if cover is open
-	var/locked = 1		// true if controls are locked
-	var/freq = null		// DEPRECATED we don't use radios anymore!
-	var/location = ""	// location response text
-	var/codes_txt		// DEPRECATED codes as set on map: "tag1;tag2" or "tag1=value;tag2=value"
-	var/list/codes = list()	// assoc. list of transponder codes
-	req_access = list(access_engine)
+	plane = TURF_PLANE
+	hides_underfloor = OBJ_UNDERFLOOR_UNLESS_PLACED_ONTOP
+	hides_underfloor_update_icon = TRUE
+	anchored = TRUE
+	/// TRUE if cover is open.
+	var/open = FALSE
+	/// TRUE if controls are locked.
+	var/locked = TRUE
+	/// DEPRECATED we don't use radios anymore! //TODO: Remove
+	var/freq = null
+	/// Location response text.
+	var/location = ""
+	/// DEPRECATED codes as set on map: "tag1;tag2" or "tag1=value;tag2=value" //TODO: Remove
+	var/codes_txt
+	/// assoc. list of transponder codes.
+	var/list/codes = list()
+	req_access = list(ACCESS_ENGINEERING_MAIN)
 
 /obj/machinery/navbeacon/Initialize(mapload)
 	. = ..()
@@ -24,8 +32,6 @@ var/global/list/navbeacons = list()	// no I don't like putting this in, but it w
 	if(freq)
 		warning("[src] at [x],[y],[z] has deprecated var freq=[freq].  Replace it with proper type.")
 
-	var/turf/T = loc
-	hide(!T.is_plating())
 	navbeacons += src
 
 // set the transponder codes assoc list from codes_txt
@@ -48,17 +54,8 @@ var/global/list/navbeacons = list()	// no I don't like putting this in, but it w
 		else
 			codes[e] = "1"
 
-/obj/machinery/navbeacon/hides_under_flooring()
-	return 1
-
-// called when turf state changes
-// hide the object if turf is intact
-/obj/machinery/navbeacon/hide(var/intact)
-	invisibility = intact ? 101 : 0
-	updateicon()
-
 // update the icon_state
-/obj/machinery/navbeacon/proc/updateicon()
+/obj/machinery/navbeacon/update_icon_state()
 	var/state="navbeacon[open]"
 
 	if(invisibility)
@@ -66,18 +63,19 @@ var/global/list/navbeacons = list()	// no I don't like putting this in, but it w
 									// in case revealed by T-scanner
 	else
 		icon_state = "[state]"
+	return ..()
 
-/obj/machinery/navbeacon/attackby(var/obj/item/I, var/mob/user)
+/obj/machinery/navbeacon/attackby(obj/item/I, mob/user)
 	var/turf/T = loc
 	if(!T.is_plating())
 		return		// prevent intraction when T-scanner revealed
 
 	if(I.is_screwdriver())
 		open = !open
-		playsound(src, I.usesound, 50, 1)
+		playsound(src, I.tool_sound, 50, 1)
 		user.visible_message("[user] [open ? "opens" : "closes"] the beacon's cover.", "You [open ? "open" : "close"] the beacon's cover.")
 
-		updateicon()
+		update_icon()
 
 	else if(I.GetID())
 		if(open)
@@ -85,7 +83,7 @@ var/global/list/navbeacons = list()	// no I don't like putting this in, but it w
 				locked = !locked
 				to_chat(user, "Controls are now [locked ? "locked." : "unlocked."]")
 			else
-				to_chat(user, "<span class='warning'>Access denied.</span>")
+				to_chat(user, SPAN_WARNING("Access denied."))
 			updateDialog()
 		else
 			to_chat(user, "You must open the cover first!")
@@ -94,14 +92,14 @@ var/global/list/navbeacons = list()	// no I don't like putting this in, but it w
 /obj/machinery/navbeacon/attack_ai(var/mob/user)
 	interact(user, 1)
 
-/obj/machinery/navbeacon/attack_hand(var/mob/user)
+/obj/machinery/navbeacon/attack_hand(mob/user, datum/event_args/actor/clickchain/e_args)
 
 	if(!user.IsAdvancedToolUser())
-		return 0
+		return FALSE
 
-	interact(user, 0)
+	interact(user, FALSE)
 
-/obj/machinery/navbeacon/interact(var/mob/user, var/ai = 0)
+/obj/machinery/navbeacon/interact(mob/user, ai = FALSE)
 	var/turf/T = loc
 	if(!T.is_plating())
 		return		// prevent intraction when T-scanner revealed

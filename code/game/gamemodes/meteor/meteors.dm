@@ -19,7 +19,7 @@
 ///////////////////////////////
 
 /proc/spawn_meteors(var/number = 10, var/list/meteortypes, var/startSide, var/zlevel)
-	log_debug("Spawning [number] meteors on the [dir2text(startSide)] of [zlevel]")
+	log_debug(SPAN_DEBUG("Spawning [number] meteors on the [dir2text(startSide)] of [zlevel]"))
 	for(var/i = 0; i < number; i++)
 		spawn_meteor(meteortypes, startSide, zlevel)
 
@@ -27,7 +27,7 @@
 	if(isnull(startSide))
 		startSide = pick(GLOB.cardinal)
 	if(isnull(startLevel))
-		startLevel = pick(GLOB.using_map.station_levels - GLOB.using_map.sealed_levels)
+		startLevel = pick((LEGACY_MAP_DATUM).station_levels)
 
 	var/turf/pickedstart = spaceDebrisStartLoc(startSide, startLevel)
 	var/turf/pickedgoal = spaceDebrisFinishLoc(startSide, startLevel)
@@ -93,13 +93,13 @@
 	density = 1
 	anchored = 1
 	var/hits = 4
-	var/hitpwr = 2 //Level of ex_act to be called on hit.
+	var/hitpwr = 2 //Level of legacy_ex_act to be called on hit.
 	var/dest
-	pass_flags = PASSTABLE
+	pass_flags = ATOM_PASS_TABLE
 	var/heavy = 0
 	var/z_original
 
-	var/meteordrop = /obj/item/ore/iron
+	var/meteordrop = /obj/item/stack/ore/iron
 	var/dropamt = 2
 
 	// How much damage it does to walls, using take_damage().
@@ -138,7 +138,7 @@
 	SpinAnimation()
 
 /obj/effect/meteor/Bump(atom/A)
-	if(attempt_vr(src,"Bump_vr",list(A))) return //VOREStation Edit - allows meteors to be deflected by baseball bats
+	if(attempt_vr(src,"Bump_vr",list(A))) return // Allows meteors to be deflected by baseball bats
 	if(A)
 		if(A.handle_meteor_impact(src)) // Used for special behaviour when getting hit specifically by a meteor, like a shield.
 			ram_turf(get_turf(A))
@@ -156,13 +156,13 @@
 			continue
 		if(isturf(A)) // Don't hit floors. We'll deal with walls later.
 			continue
-		A.ex_act(hitpwr)
+		LEGACY_EX_ACT(A, hitpwr, null)
 
 	//then, ram the turf if it still exists
 	if(T)
 		if(istype(T, /turf/simulated/wall))
 			var/turf/simulated/wall/W = T
-			W.take_damage(wall_power) // Stronger walls can halt asteroids.
+			W.inflict_atom_damage(wall_power, damage_flag = ARMOR_BOMB) // Stronger walls can halt asteroids.
 
 /obj/effect/meteor/proc/get_shield_damage()
 	return max(((max(hits, 2)) * (heavy + 1) * rand(6, 12)) / hitpwr , 0)
@@ -179,22 +179,22 @@
 	meteor_effect(explode)
 	qdel(src)
 
-/obj/effect/meteor/ex_act()
+/obj/effect/meteor/legacy_ex_act()
 	return
 
-/obj/effect/meteor/attackby(obj/item/W as obj, mob/user as mob, params)
-	if(istype(W, /obj/item/pickaxe))
+/obj/effect/meteor/using_item_on(obj/item/using, datum/event_args/actor/clickchain/clickchain, clickchain_flags)
+	. = ..()
+	if(istype(using, /obj/item/pickaxe))
 		qdel(src)
-		return
-	..()
+		return CLICKCHAIN_DO_NOT_PROPAGATE | CLICKCHAIN_DID_SOMETHING
 
 /obj/effect/meteor/proc/make_debris()
 	for(var/throws = dropamt, throws > 0, throws--)
 		var/obj/item/O = new meteordrop(get_turf(src))
-		O.throw_at(dest, 5, 10)
+		O.throw_at_old(dest, 5, 10)
 
 /obj/effect/meteor/proc/shake_players()
-	for(var/mob/M in player_list)
+	for(var/mob/M in GLOB.player_list)
 		var/turf/T = get_turf(M)
 		if(!T || T.z != src.z)
 			continue
@@ -214,10 +214,10 @@
 /obj/effect/meteor/dust
 	name = "space dust"
 	icon_state = "dust"
-	pass_flags = PASSTABLE | PASSGRILLE
+	pass_flags = ATOM_PASS_TABLE | ATOM_PASS_GRILLE
 	hits = 1
 	hitpwr = 3
-	meteordrop = /obj/item/ore/glass
+	meteordrop = /obj/item/stack/ore/glass
 	wall_power = 50
 
 // Medium-sized meteors aren't very special and can be stopped easily by r-walls.
@@ -250,7 +250,7 @@
 	icon_state = "flaming"
 	hits = 5
 	heavy = 1
-	meteordrop = /obj/item/ore/phoron
+	meteordrop = /obj/item/stack/ore/phoron
 	wall_power = 100
 
 /obj/effect/meteor/flaming/meteor_effect(var/explode)
@@ -263,7 +263,7 @@
 	name = "glowing meteor"
 	icon_state = "glowing"
 	heavy = 1
-	meteordrop = /obj/item/ore/uranium
+	meteordrop = /obj/item/stack/ore/uranium
 	wall_power = 75
 
 
@@ -271,15 +271,15 @@
 	..()
 	if(explode)
 		explosion(src.loc, devastation_range = 0, heavy_impact_range = 0, light_impact_range = 4, flash_range = 6, adminlog = 0)
-	new /obj/effect/decal/cleanable/greenglow(get_turf(src))
-	SSradiation.radiate(src, 50)
+	new /obj/effect/debris/cleanable/greenglow(get_turf(src))
+	radiation_pulse(src, RAD_INTENSITY_RADIOACTIVE_METEOR)
 
 // This meteor fries toasters.
 /obj/effect/meteor/emp
 	name = "conducting meteor"
 	icon_state = "glowing_blue"
 	desc = "Hide your floppies!"
-	meteordrop = /obj/item/ore/osmium
+	meteordrop = /obj/item/stack/ore/osmium
 	dropamt = 3
 	wall_power = 80
 
@@ -296,11 +296,11 @@
 /obj/effect/meteor/tunguska
 	name = "tunguska meteor"
 	icon_state = "flaming"
-	desc = "Your life briefly passes before your eyes the moment you lay them on this monstruosity"
+	desc = "Your life briefly passes before your eyes the moment you lay them on this monstrosity"
 	hits = 30
 	hitpwr = 1
 	heavy = 1
-	meteordrop = /obj/item/ore/phoron
+	meteordrop = /obj/item/stack/ore/phoron
 	wall_power = 150
 
 /obj/effect/meteor/tunguska/meteor_effect(var/explode)

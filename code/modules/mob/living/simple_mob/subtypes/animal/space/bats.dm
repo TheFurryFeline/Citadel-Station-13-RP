@@ -17,7 +17,7 @@
 	icon_gib = "bat_dead"
 	catalogue_data = list(/datum/category_item/catalogue/fauna/bats)
 
-	faction = "scarybat"
+	iff_factions = MOB_IFF_FACTION_BIND_TO_MAP
 
 	maxHealth = 20
 	health = 20
@@ -32,11 +32,11 @@
 
 	harm_intent_damage = 10
 
-	melee_damage_lower = 5
-	melee_damage_upper = 5
+	legacy_melee_damage_lower = 5
+	legacy_melee_damage_upper = 5
 	attack_sharp = TRUE
 
-	ai_holder_type = /datum/ai_holder/simple_mob/melee/evasive
+	ai_holder_type = /datum/ai_holder/polaris/simple_mob/melee/evasive
 
 	has_langs = list("Mouse")
 
@@ -52,12 +52,12 @@
 	if(isliving(A))
 		var/mob/living/L = A
 		if(prob(scare_chance))
-			L.Stun(1)
+			L.afflict_stun(20 * 1)
 			L.visible_message("<span class='danger'>\the [src] scares \the [L]!</span>")
 
 // Spookiest of bats
 /mob/living/simple_mob/animal/space/bats/cult
-	faction = "cult"
+	iff_factions = MOB_IFF_FACTION_SANGUINE_CULT
 	supernatural = TRUE
 
 /mob/living/simple_mob/animal/space/bats/cult/cultify()

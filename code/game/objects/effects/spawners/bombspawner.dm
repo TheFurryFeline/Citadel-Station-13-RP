@@ -63,7 +63,7 @@
 
 			if(src.active)
 				R.part1.secured = 1
-				R.part1.icon_state = text("motion[]", 1)
+				R.part1.icon_state = "motion1"
 				R.c_state(1, src)
 
 		// timer
@@ -151,10 +151,13 @@
 	name = "TTV bomb - proximity"
 	assembly_type = /obj/item/assembly/prox_sensor
 
-/obj/effect/spawner/newbomb/radio/custom/Initialize(newloc, ph, ox, co)
-	if(ph != null) phoron_amt = ph
-	if(ox != null) oxygen_amt = ox
-	if(co != null) carbon_amt = co
+/obj/effect/spawner/newbomb/radio/custom/Initialize(mapload, ph, ox, co)
+	if(ph != null)
+		phoron_amt = ph
+	if(ox != null)
+		oxygen_amt = ox
+	if(co != null)
+		carbon_amt = co
 	return ..()
 
 /obj/effect/spawner/newbomb/Initialize(mapload)
@@ -170,14 +173,14 @@
 	OT.master = V
 
 	PT.valve_welded = 1
-	PT.air_contents.gas[/datum/gas/phoron] = phoron_amt
-	PT.air_contents.gas[/datum/gas/carbon_dioxide] = carbon_amt
+	PT.air_contents.gas[GAS_ID_PHORON] = phoron_amt
+	PT.air_contents.gas[GAS_ID_CARBON_DIOXIDE] = carbon_amt
 	PT.air_contents.total_moles = phoron_amt + carbon_amt
 	PT.air_contents.temperature = PHORON_MINIMUM_BURN_TEMPERATURE+1
 	PT.air_contents.update_values()
 
 	OT.valve_welded = 1
-	OT.air_contents.gas[/datum/gas/oxygen] = oxygen_amt
+	OT.air_contents.gas[GAS_ID_OXYGEN] = oxygen_amt
 	OT.air_contents.total_moles = oxygen_amt
 	OT.air_contents.temperature = PHORON_MINIMUM_BURN_TEMPERATURE+1
 	OT.air_contents.update_values()

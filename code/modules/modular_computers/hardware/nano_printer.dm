@@ -38,7 +38,7 @@
 	return 1
 
 /obj/item/computer_hardware/nano_printer/proc/count_fields(var/info)
-//Count the fields. This is taken directly from paper.dm, /obj/item/paper/proc/parsepencode(). -Hawk_v3
+//Count the fields. This is taken directly from paper.dm, TYPE_PROC_REF(/obj/item/paper, parsepencode)(). -Hawk_v3
 	var/fields = 0
 	var/t = info
 	var/laststart = 1
@@ -55,10 +55,11 @@
 		if(stored_paper >= max_paper)
 			to_chat(user, "You try to add \the [W] into \the [src], but its paper bin is full.")
 			return
-
-		to_chat(user, "You insert \the [W] into [src].")
-		qdel(W)
-		stored_paper++
+		var/confirm=input(user, "Are you certain you want to insert \the [W] into [src]? The contents will be lost.","Nano Printer") in list("Yes","No")
+		if(confirm=="Yes")
+			to_chat(user, "You insert \the [W] into [src].")
+			qdel(W)
+			stored_paper++
 	else if(istype(W, /obj/item/paper_bundle))
 		var/obj/item/paper_bundle/B = W
 		var/num_of_pages_added = 0
@@ -77,9 +78,9 @@
 		if(B.pages.len == 0) //if all its papers have been put into the printer, delete bundle
 			qdel(W)
 		else if(B.pages.len == 1) //if only one item left, extract item and delete the one-item bundle
-			user.drop_from_inventory(B)
-			user.put_in_hands(B[1])
-			qdel(B)
+			if(!user.attempt_consume_item_for_construction(B))
+				return
+			user.put_in_hands(B.pages[1])
 		else //if at least two items remain, just update the bundle icon
 			B.update_icon()
 		to_chat(user, "You add [num_of_pages_added] papers from \the [W] into \the [src].")

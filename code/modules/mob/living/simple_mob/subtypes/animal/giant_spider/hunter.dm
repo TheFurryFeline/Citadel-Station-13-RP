@@ -27,12 +27,12 @@
 	health = 120
 
 	poison_per_bite = 5
-	melee_damage_lower = 9
-	melee_damage_upper = 15
+	legacy_melee_damage_lower = 9
+	legacy_melee_damage_upper = 15
 
-	movement_cooldown = 0 // Hunters are FAST.
+	movement_base_speed = 7 // Hunters are FAST.
 
-	ai_holder_type = /datum/ai_holder/simple_mob/melee/hunter_spider
+	ai_holder_type = /datum/ai_holder/polaris/simple_mob/melee/hunter_spider
 
 	player_msg = "You are very fast, and <b>can perform a leaping attack</b> by clicking on someone from a short distance away.<br>\
 	If the leap succeeds, the target will be knocked down briefly and you will be on top of them.<br>\
@@ -67,15 +67,15 @@
 	sleep(leap_warmup) // For the telegraphing.
 
 	// Do the actual leap.
-	status_flags |= LEAPING // Lets us pass over everything.
+	status_flags |= STATUS_LEAPING // Lets us pass over everything.
 	visible_message(SPAN_DANGER("\The [src] leaps at \the [A]!"))
-	throw_at(get_step(get_turf(A), get_turf(src)), special_attack_max_range+1, 1, src)
+	throw_at_old(get_step(get_turf(A), get_turf(src)), special_attack_max_range+1, 1, src)
 	playsound(src, leap_sound, 75, 1)
 
 	sleep(5) // For the throw to complete. It won't hold up the AI SSticker due to waitfor being false.
 
-	if(status_flags & LEAPING)
-		status_flags &= ~LEAPING // Revert special passage ability.
+	if(status_flags & STATUS_LEAPING)
+		status_flags &= ~STATUS_LEAPING // Revert special passage ability.
 
 	var/turf/T = get_turf(src) // Where we landed. This might be different than A's turf.
 
@@ -87,21 +87,32 @@
 		if(L == src)
 			continue
 
-		if(ishuman(L))
-			var/mob/living/carbon/human/H = L
-			if(H.check_shields(damage = 0, damage_source = src, attacker = src, def_zone = null, attack_text = "the leap"))
-				continue // We were blocked.
+		var/list/shieldcall_result = L.atom_shieldcall(
+			40,
+			DAMAGE_TYPE_BRUTE,
+			3,
+			ARMOR_MELEE,
+			NONE,
+			ATTACK_TYPE_MELEE,
+		)
+		if(shieldcall_result[SHIELDCALL_ARG_FLAGS] & SHIELDCALL_FLAGS_BLOCK_ATTACK)
+			continue
 
 		victim = L
 		break
 
 	if(victim)
-		victim.Weaken(2)
+		victim.afflict_paralyze(20 * 2)
 		victim.visible_message(SPAN_DANGER("\The [src] knocks down \the [victim]!"))
 		to_chat(victim, SPAN_CRITICAL("\The [src] jumps on you!"))
 		. = TRUE
 
 	set_AI_busy(FALSE)
+
+
+
+
+
 
 //		var/obj/item/grab/G = new(src, victim)
 //		put_in_active_hand(G)
@@ -115,15 +126,15 @@
 
 
 // This AI would've isolated people it stuns with its 'leap' attack, by dragging them away.
-/datum/ai_holder/simple_mob/melee/hunter_spider
+/datum/ai_holder/polaris/simple_mob/melee/hunter_spider
 
 /*
 
-/datum/ai_holder/simple_mob/melee/hunter_spider/post_special_attack(mob/living/L)
+/datum/ai_holder/polaris/simple_mob/melee/hunter_spider/post_special_attack(mob/living/L)
 	drag_away(L)
 
 // Called after a successful leap.
-/datum/ai_holder/simple_mob/melee/hunter_spider/proc/drag_away(mob/living/L)
+/datum/ai_holder/polaris/simple_mob/melee/hunter_spider/proc/drag_away(mob/living/L)
 	to_chat(world, "Doing drag_away attack on [L]")
 	if(!istype(L))
 		to_chat(world, "Invalid type.")

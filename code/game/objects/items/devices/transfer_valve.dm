@@ -8,6 +8,7 @@
 	//lefthand_file = 'icons/mob/inhands/weapons/bombs_lefthand.dmi'
 	//righthand_file = 'icons/mob/inhands/weapons/bombs_righthand.dmi'
 	w_class = WEIGHT_CLASS_BULKY
+	worth_intrinsic = 250
 
 	var/obj/item/tank/tank_one
 	var/obj/item/tank/tank_two
@@ -15,8 +16,6 @@
 	var/mob/attacher = null
 	var/valve_open = FALSE
 	var/toggle = TRUE
-	flags = PROXMOVE
-
 
 /obj/item/transfer_valve/Destroy()
 	attached_device = null
@@ -25,18 +24,19 @@
 /obj/item/transfer_valve/attackby(obj/item/item, mob/user, params)
 	var/turf/location = get_turf(src) // For admin logs
 	if(istype(item, /obj/item/tank))
+		. = CLICKCHAIN_DO_NOT_PROPAGATE
 		if(tank_one && tank_two)
 			to_chat(user, SPAN_WARNING("There are already two tanks attached, remove one first!"))
 			return
 
 		if(!tank_one)
-			if(!user.transferItemToLoc(item, src))
+			if(!user.attempt_insert_item_for_installation(item, src))
 				return
 			tank_one = item
 			to_chat(user, SPAN_NOTICE("You attach the tank to the transfer valve."))
 
 		else if(!tank_two)
-			if(!user.transferItemToLoc(item, src))
+			if(!user.attempt_insert_item_for_installation(item, src))
 				return
 			tank_two = item
 			to_chat(user, SPAN_NOTICE("You attach the tank to the transfer valve."))
@@ -48,6 +48,7 @@
 		SStgui.update_uis(src) // update all UIs attached to src
 //TODO: Have this take an assemblyholder
 	else if(isassembly(item))
+		. = CLICKCHAIN_DO_NOT_PROPAGATE
 		var/obj/item/assembly/A = item
 		if(A.secured)
 			to_chat(user, SPAN_NOTICE("The device is secured."))
@@ -55,7 +56,7 @@
 		if(attached_device)
 			to_chat(user, SPAN_WARNING("There is already a device attached to the valve, remove it first!"))
 			return
-		if(!user.transferItemToLoc(item, src))
+		if(!user.attempt_insert_item_for_installation(item, src))
 			return
 		attached_device = A
 		to_chat(user, SPAN_NOTICE("You attach the [item] to the valve controls and secure it."))
@@ -68,18 +69,15 @@
 		log_game("[key_name_admin(user)] attached a [item] to a transfer valve.")
 		attacher = user
 		SStgui.update_uis(src) //Update all UIs attached to src
-	return
+	return ..()
 
-
-/obj/item/transfer_valve/HasProximity(atom/movable/AM as mob|obj)
-	if(!attached_device)	return
-	attached_device.HasProximity(AM)
-	return
-
-/obj/item/transfer_valve/attack_self(mob/user)
+/obj/item/transfer_valve/attack_self(mob/user, datum/event_args/actor/actor)
+	. = ..()
+	if(.)
+		return
 	ui_interact(user)
 
-/obj/item/transfer_valve/ui_state(mob/user)
+/obj/item/transfer_valve/ui_state()
 	return GLOB.inventory_state
 
 /obj/item/transfer_valve/ui_interact(mob/user, datum/tgui/ui = null)
@@ -88,7 +86,7 @@
 		ui = new(user, src, "TransferValve", name) // 460, 320
 		ui.open()
 
-/obj/item/transfer_valve/ui_data(mob/user)
+/obj/item/transfer_valve/ui_data(mob/user, datum/tgui/ui)
 	var/list/data = list()
 	data["tank_one"] = tank_one ? tank_one.name : null
 	data["tank_two"] = tank_two ? tank_two.name : null
@@ -96,7 +94,7 @@
 	data["valve"] = valve_open
 	return data
 
-/obj/item/transfer_valve/ui_act(action, params)
+/obj/item/transfer_valve/ui_act(action, list/params, datum/tgui/ui, datum/ui_state/state, datum/event_args/actor/actor)
 	if(..())
 		return
 	. = TRUE

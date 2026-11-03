@@ -1,16 +1,12 @@
+/**
+ * A very fast-ticking subsystem that runs projectiles.
+ */
 PROCESSING_SUBSYSTEM_DEF(projectiles)
 	name = "Projectiles"
-	wait = 1
-	stat_tag = "PP"
+	wait = (1 / 20) SECONDS
+	stat_tag = "P_PROJ"
 	priority = FIRE_PRIORITY_PROJECTILES
-	flags = SS_NO_INIT|SS_TICKER
-	var/global_max_tick_moves = 10
-	var/global_pixel_speed = 2
-	var/global_iterations_per_move = 16
+	subsystem_flags = SS_NO_INIT | SS_KEEP_TIMING
 
-/datum/controller/subsystem/processing/projectiles/proc/set_pixel_speed(new_speed)
-	global_pixel_speed = new_speed
-	for(var/i in processing)
-		var/obj/item/projectile/P = i
-		if(istype(P))			//there's non projectiles on this too.
-			P.set_pixel_speed(new_speed)
+	/// global projectile speed multiplier
+	var/global_projectile_speed_multiplier = 1

@@ -4,13 +4,12 @@
 	name = "illusion"
 	desc = "If you can read me, the game broke. Please report this to a coder."
 
-	resistance = 1000 // Holograms are tough.
 	heat_resist = 1
 	cold_resist = 1
 	shock_resist = 1
 	poison_resist = 1
 
-	movement_cooldown = 0
+	movement_base_speed = 6.66
 	mob_bump_flag = 0 // If the illusion can't be swapped it will be obvious.
 
 	response_help   = "pushes a hand through"
@@ -19,7 +18,7 @@
 
 	mob_class = MOB_CLASS_ILLUSION
 
-	ai_holder_type = /datum/ai_holder/simple_mob/inert/astar // Gets controlled manually by technomancers/admins, with AI pathfinding assistance.
+	ai_holder_type = /datum/ai_holder/polaris/simple_mob/inert/astar // Gets controlled manually by technomancers/admins, with AI pathfinding assistance.
 
 	var/atom/movable/copying = null // The thing we're trying to look like.
 	var/realistic = FALSE // If true, things like bullets and weapons will hit it, to be a bit more convincing from a distance.
@@ -39,22 +38,18 @@
 
 // Because we can't perfectly duplicate some examine() output, we directly examine the AM it is copying.  It's messy but
 // this is to prevent easy checks from the opposing force.
-/mob/living/simple_mob/illusion/examine(mob/user)
-	if(copying)
-		copying.examine(user)
-		return
+/mob/living/simple_mob/illusion/examine(mob/user, dist)
+	return copying?.examine(user) || ..() // ugh
 
-
-/mob/living/simple_mob/illusion/bullet_act(obj/item/projectile/P)
-	if(!P)
-		return
-
+/mob/living/simple_mob/illusion/on_bullet_act(obj/projectile/proj, impact_flags, list/bullet_act_args)
 	if(realistic)
 		return ..()
+	return PROJECTILE_IMPACT_PHASE
 
-	return PROJECTILE_FORCE_MISS
-
-/mob/living/simple_mob/illusion/attack_hand(mob/living/carbon/human/M)
+/mob/living/simple_mob/illusion/attack_hand(mob/user, datum/event_args/actor/clickchain/e_args)
+	var/mob/living/M = user
+	if(!istype(M))
+		return
 	if(!realistic)
 		playsound(loc, 'sound/weapons/punchmiss.ogg', 25, 1, -1)
 		visible_message(SPAN_WARNING( "\The [M]'s hand goes through \the [src]!"))
@@ -62,7 +57,7 @@
 	else
 		switch(M.a_intent)
 			if(INTENT_HELP)
-				var/datum/gender/T = gender_datums[src.get_visible_gender()]
+				var/datum/gender/T = GLOB.gender_datums[src.get_visible_gender()]
 				M.visible_message(
 					SPAN_NOTICE("\The [M] hugs [src] to make [T.him] feel better!"), \
 					SPAN_NOTICE("You hug [src] to make [T.him] feel better!")
@@ -82,15 +77,16 @@
 				M.visible_message(SPAN_DANGER("\The [M] [response_harm] \the [src]"))
 				M.do_attack_animation(src)
 
-/mob/living/simple_mob/illusion/hit_with_weapon(obj/item/I, mob/living/user, effective_force, hit_zone)
+/mob/living/simple_mob/illusion/melee_act(mob/attacker, obj/item/weapon, datum/melee_attack/weapon/style, target_zone, datum/event_args/actor/clickchain/clickchain, clickchain_flags)
 	if(realistic)
 		return ..()
+	// TODO: proper feedback procs
+	attacker?.visible_message(
+		SPAN_WARNING("[attacker]'s [weapon] passes right through [src]!"),
+	)
+	return clickchain_flags | CLICKCHAIN_ATTACK_MISSED
 
-	playsound(loc, 'sound/weapons/punchmiss.ogg', 25, 1, -1)
-	visible_message(SPAN_WARNING( "\The [user]'s [I] goes through \the [src]!"))
-	return FALSE
-
-/mob/living/simple_mob/illusion/ex_act()
+/mob/living/simple_mob/illusion/legacy_ex_act()
 	return
 
 // Try to have the same tooltip, or else it becomes really obvious which one is fake.

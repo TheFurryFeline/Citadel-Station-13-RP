@@ -9,7 +9,7 @@
 	..()
 	//spawn them at the same place as carp
 	var/list/possible_spawns = list()
-	for(var/atom/movable/landmark/C in GLOB.landmarks_list)
+	for(var/obj/landmark/C in GLOB.landmarks_list)
 		if(C.name == "carpspawn")
 			possible_spawns.Add(C)
 
@@ -48,7 +48,7 @@
 		var/datum/effect_system/spark_spread/sparks = new /datum/effect_system/spark_spread()
 		sparks.set_up(3, 0, D.loc)
 		sparks.start()
-		D.z = GLOB.using_map.admin_levels[1]
+		D.z = (LEGACY_MAP_DATUM).admin_levels[1]
 		D.loot_list = list()
 
 		qdel(D)

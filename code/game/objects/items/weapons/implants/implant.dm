@@ -1,12 +1,16 @@
 #define MALFUNCTION_TEMPORARY 1
 #define MALFUNCTION_PERMANENT 2
 
-
+/**
+ * Implants that (ideally) go in organs.
+ * * Organ/external allows for implanting.. a lot of things. The difference is that
+ *   /obj/item/implant tracks lifecycle for you.
+ */
 /obj/item/implant
 	name = "implant"
 	icon = 'icons/obj/device.dmi'
 	icon_state = "implant"
-	w_class = ITEMSIZE_TINY
+	w_class = WEIGHT_CLASS_TINY
 	var/implanted = null
 	var/mob/imp_in = null
 	var/obj/item/organ/external/part
@@ -21,6 +25,22 @@
 
 /obj/item/implant/proc/activate()
 	return
+
+/**
+ * Called on insertion to a bodypart.
+ */
+// TODO: implement these, replace 'post_implant' with this
+// /obj/item/implant/proc/on_inserted(obj/item/organ/external/bodypart)
+// 	SHOULD_CALL_PARENT(TRUE)
+// 	SHOULD_NOT_SLEEP(TRUE)
+
+/**
+ * Called on removal from a bodypart.
+ */
+// TODO: implement these, replace 'post_implant' with this
+// /obj/item/implant/proc/on_removed(obj/item/organ/external/bodypart)
+// 	SHOULD_CALL_PARENT(TRUE)
+// 	SHOULD_NOT_SLEEP(TRUE)
 
 // Moves the implant where it needs to go, and tells it if there's more to be done in post_implant
 /obj/item/implant/proc/handle_implant(var/mob/source, var/target_zone = BP_TORSO)
@@ -55,10 +75,13 @@
 /obj/item/implant/proc/meltdown()	//breaks it down, making implant unrecongizible
 	to_chat(imp_in, "<span class='warning'>You feel something melting inside [part ? "your [part.name]" : "you"]!</span>")
 	if (part)
-		part.take_damage(burn = 15, used_weapon = "Electronics meltdown")
+		part.inflict_bodypart_damage(
+			burn = 15,
+			weapon_descriptor = "component meltdown",
+		)
 	else
 		var/mob/living/M = imp_in
-		M.apply_damage(15,BURN)
+		M.apply_damage(15,DAMAGE_TYPE_BURN)
 	name = "melted implant"
 	desc = "Charred circuit in melted plastic case. Wonder what that used to be..."
 	icon_state = "implant_melted"
@@ -67,7 +90,6 @@
 /obj/item/implant/proc/implant_loadout(var/mob/living/carbon/human/H)
 	if(H)
 		if(handle_implant(H, initialize_loc))
-			invisibility = initial(invisibility)
 			post_implant(H)
 
 /obj/item/implant/Destroy()
@@ -83,15 +105,17 @@
 		var/obj/item/implanter/implanter = I
 		if(implanter.imp)
 			return // It's full.
-		user.drop_from_inventory(src)
-		forceMove(implanter)
+		if(!user.attempt_insert_item_for_installation(src, implanter))
+			return
 		implanter.imp = src
 		implanter.update()
 	else
 		..()
 
-
-
+/obj/item/implant/surgically_remove(mob/living/carbon/human/target, obj/item/organ/external/chest/removing_from)
+	. = ..()
+	imp_in = null
+	implanted = 0
 //////////////////////////////
 //	Tracking Implant
 //////////////////////////////
@@ -156,7 +180,7 @@ Implant Specifics:<BR>"}
 	switch(severity)
 		if(1)
 			if(prob(60))
-				meltdown()
+				INVOKE_ASYNC(src, TYPE_PROC_REF(/obj/item/implant, meltdown))
 		if(2)
 			delay = rand(5*60*10,15*60*10)	//from 5 to 15 minutes of free time
 		if(3)
@@ -256,7 +280,7 @@ Implant Specifics:<BR>"}
 					if (istype(part,/obj/item/organ/external/chest) ||	\
 						istype(part,/obj/item/organ/external/groin) ||	\
 						istype(part,/obj/item/organ/external/head))
-						part.createwound(BRUISE, 80)	//mangle them instead
+						part.create_wound(WOUND_TYPE_BRUISE, 80)	//mangle them instead
 						explosion(get_turf(imp_in), -1, -1, 1, 3)
 						qdel(src)
 					else
@@ -290,31 +314,32 @@ Implant Specifics:<BR>"}
 	if (malfunction)
 		return
 	malfunction = MALFUNCTION_TEMPORARY
-	switch (severity)
-		if (4)	//Weak EMP will make implant tear limbs off.
-			if (prob(25))
-				small_boom()
-		if (3)	//Weak EMP will make implant tear limbs off.
-			if (prob(50))
-				small_boom()
-		if (2)	//strong EMP will melt implant either making it go off, or disarming it
-			if (prob(70))
-				if (prob(75))
+	spawn(-1)
+		switch (severity)
+			if (4)	//Weak EMP will make implant tear limbs off.
+				if (prob(25))
 					small_boom()
-				else
-					if (prob(13))
-						activate()		//chance of bye bye
-					else
-						meltdown()		//chance of implant disarming
-		if (1)	//strong EMP will melt implant either making it go off, or disarming it
-			if (prob(70))
+			if (3)	//Weak EMP will make implant tear limbs off.
 				if (prob(50))
 					small_boom()
-				else
-					if (prob(50))
-						activate()		//50% chance of bye bye
+			if (2)	//strong EMP will melt implant either making it go off, or disarming it
+				if (prob(70))
+					if (prob(75))
+						small_boom()
 					else
-						meltdown()		//50% chance of implant disarming
+						if (prob(13))
+							activate()		//chance of bye bye
+						else
+							meltdown()		//chance of implant disarming
+			if (1)	//strong EMP will melt implant either making it go off, or disarming it
+				if (prob(70))
+					if (prob(50))
+						small_boom()
+					else
+						if (prob(50))
+							activate()		//50% chance of bye bye
+						else
+							meltdown()		//50% chance of implant disarming
 	spawn (20)
 		malfunction--
 
@@ -332,7 +357,7 @@ Implant Specifics:<BR>"}
 				if (istype(part,/obj/item/organ/external/chest) ||	\
 					istype(part,/obj/item/organ/external/groin) ||	\
 					istype(part,/obj/item/organ/external/head))
-					part.createwound(BRUISE, 80)	//mangle them instead
+					part.create_wound(WOUND_TYPE_BRUISE, 80)	//mangle them instead
 				else
 					part.droplimb(0,DROPLIMB_BLUNT)
 			explosion(get_turf(imp_in), -1, -1, 1, 3)
@@ -378,7 +403,7 @@ the implant may become unstable and either pre-maturely inject the subject or si
 /obj/item/implant/chem/activate(var/cause)
 	if((!cause) || (!src.imp_in))	return 0
 	var/mob/living/carbon/R = src.imp_in
-	src.reagents.trans_to_mob(R, cause, CHEM_BLOOD)
+	src.reagents.trans_to_mob(R, cause, CHEM_INJECT)
 	to_chat(R, "You hear a faint *beep*.")
 	if(!src.reagents.total_volume)
 		to_chat(R, "You hear a faint click from your chest.")
@@ -419,7 +444,7 @@ the implant may become unstable and either pre-maturely inject the subject or si
 /obj/item/implant/loyalty/get_data()
 	var/dat = {"
 <b>Implant Specifications:</b><BR>
-<b>Name:</b> [GLOB.using_map.company_name] Employee Management Implant<BR>
+<b>Name:</b> [(LEGACY_MAP_DATUM).company_name] Employee Management Implant<BR>
 <b>Life:</b> Ten years.<BR>
 <b>Important Notes:</b> Personnel injected with this device tend to be much more loyal to the company.<BR>
 <HR>
@@ -436,13 +461,13 @@ the implant may become unstable and either pre-maturely inject the subject or si
 	var/mob/living/carbon/human/H = M
 	var/datum/antagonist/antag_data = get_antag_data(H.mind.special_role)
 	if(antag_data && (antag_data.flags & ANTAG_IMPLANT_IMMUNE))
-		H.visible_message("[H] seems to resist the implant!", "You feel the corporate tendrils of [GLOB.using_map.company_name] try to invade your mind!")
+		H.visible_message("[H] seems to resist the implant!", "You feel the corporate tendrils of [(LEGACY_MAP_DATUM).company_name] try to invade your mind!")
 		. = FALSE
 
 /obj/item/implant/loyalty/post_implant(mob/M)
 	var/mob/living/carbon/human/H = M
 	clear_antag_roles(H.mind, 1)
-	to_chat(H, "<span class='notice'>You feel a surge of loyalty towards [GLOB.using_map.company_name].</span>")
+	to_chat(H, "<span class='notice'>You feel a surge of loyalty towards [(LEGACY_MAP_DATUM).company_name].</span>")
 
 //////////////////////////////
 //	Adrenaline Implant
@@ -471,9 +496,9 @@ the implant may become unstable and either pre-maturely inject the subject or si
 	if (emote == "pale")
 		src.uses--
 		to_chat(source, "<span class='notice'>You feel a sudden surge of energy!</span>")
-		source.SetStunned(0)
-		source.SetWeakened(0)
-		source.SetParalysis(0)
+		source.set_stunned(0)
+		source.set_paralyzed(0)
+		source.set_unconscious(0)
 
 	return
 
@@ -493,7 +518,7 @@ the implant may become unstable and either pre-maturely inject the subject or si
 /obj/item/implant/death_alarm/get_data()
 	var/dat = {"
 <b>Implant Specifications:</b><BR>
-<b>Name:</b> [GLOB.using_map.company_name] \"Profit Margin\" Class Employee Lifesign Sensor<BR>
+<b>Name:</b> [(LEGACY_MAP_DATUM).company_name] \"Profit Margin\" Class Employee Lifesign Sensor<BR>
 <b>Life:</b> Activates upon death.<BR>
 <b>Important Notes:</b> Alerts crew to crewmember death.<BR>
 <HR>
@@ -517,45 +542,31 @@ the implant may become unstable and either pre-maturely inject the subject or si
 	var/area/t = get_area(M)
 	switch (cause)
 		if("death")
-			var/obj/item/radio/headset/a = new /obj/item/radio/headset/heads/captain(null)
 			if(istype(t, /area/syndicate_station) || istype(t, /area/syndicate_mothership) || istype(t, /area/shuttle/syndicate_elite) )
 				//give the syndies a bit of stealth
-				a.autosay("[mobname] has died in Space!", "[mobname]'s Death Alarm")
-//				a.autosay("[mobname] has died in Space!", "[mobname]'s Death Alarm", "Security")
-//				a.autosay("[mobname] has died in Space!", "[mobname]'s Death Alarm", "Medical")
+				GLOB.global_announcer.autosay("[mobname] has died in Space!", "[mobname]'s Death Alarm")
 			else
-				a.autosay("[mobname] has died in [t.name]!", "[mobname]'s Death Alarm")
-//				a.autosay("[mobname] has died in [t.name]!", "[mobname]'s Death Alarm", "Security")
-//				a.autosay("[mobname] has died in [t.name]!", "[mobname]'s Death Alarm", "Medical")
-			qdel(a)
-			STOP_PROCESSING(SSobj, src)
+				GLOB.global_announcer.autosay("[mobname] has died in [t.name]!", "[mobname]'s Death Alarm")
 		if ("emp")
-			var/obj/item/radio/headset/a = new /obj/item/radio/headset/heads/captain(null)
 			var/name = prob(50) ? t.name : pick(teleportlocs)
-			a.autosay("[mobname] has died in [name]!", "[mobname]'s Death Alarm")
-//			a.autosay("[mobname] has died in [name]!", "[mobname]'s Death Alarm", "Security")
-//			a.autosay("[mobname] has died in [name]!", "[mobname]'s Death Alarm", "Medical")
-			qdel(a)
+			GLOB.global_announcer.autosay("[mobname] has died in [name]!", "[mobname]'s Death Alarm")
 		else
-			var/obj/item/radio/headset/a = new /obj/item/radio/headset/heads/captain(null)
-			a.autosay("[mobname] has died-zzzzt in-in-in...", "[mobname]'s Death Alarm")
-//			a.autosay("[mobname] has died-zzzzt in-in-in...", "[mobname]'s Death Alarm", "Security")
-//			a.autosay("[mobname] has died-zzzzt in-in-in...", "[mobname]'s Death Alarm", "Medical")
-			qdel(a)
-			STOP_PROCESSING(SSobj, src)
+			GLOB.global_announcer.autosay("[mobname] has died-zzzzt in-in-in...", "[mobname]'s Death Alarm")
+	STOP_PROCESSING(SSobj, src)
 
 /obj/item/implant/death_alarm/emp_act(severity)			//for some reason alarms stop going off in case they are emp'd, even without this
 	if (malfunction)		//so I'm just going to add a meltdown chance here
 		return
 	malfunction = MALFUNCTION_TEMPORARY
 
-	activate("emp")	//let's shout that this dude is dead
-	if(severity == 1)
-		if(prob(40))	//small chance of obvious meltdown
-			meltdown()
-		else if (prob(60))	//but more likely it will just quietly die
-			malfunction = MALFUNCTION_PERMANENT
-		STOP_PROCESSING(SSobj, src)
+	spawn(-1)
+		activate("emp")	//let's shout that this dude is dead
+		if(severity == 1)
+			if(prob(40))	//small chance of obvious meltdown
+				meltdown()
+			else if (prob(60))	//but more likely it will just quietly die
+				malfunction = MALFUNCTION_PERMANENT
+			STOP_PROCESSING(SSobj, src)
 
 	spawn(20)
 		malfunction--
@@ -578,7 +589,7 @@ the implant may become unstable and either pre-maturely inject the subject or si
 /obj/item/implant/compressed/get_data()
 	var/dat = {"
 <b>Implant Specifications:</b><BR>
-<b>Name:</b> [GLOB.using_map.company_name] \"Profit Margin\" Class Employee Lifesign Sensor<BR>
+<b>Name:</b> [(LEGACY_MAP_DATUM).company_name] \"Profit Margin\" Class Employee Lifesign Sensor<BR>
 <b>Life:</b> Activates upon death.<BR>
 <b>Important Notes:</b> Alerts crew to crewmember death.<BR>
 <HR>
@@ -614,13 +625,13 @@ the implant may become unstable and either pre-maturely inject the subject or si
 /obj/item/implant/compressed/islegal()
 	return 0
 
-//VR FILE MERGE
-/obj/item/implant/vrlanguage
+//! ## VR FILE MERGE ## !//
+/obj/item/implant/uni_translator
 	name = "language"
 	desc = "Allows the user to understand and speak almost all known languages.."
 	var/uses = 1
 
-/obj/item/implant/vrlanguage/get_data()
+/obj/item/implant/uni_translator/get_data()
 	var/dat = {"
 		<b>Implant Specifications:</b><BR>
 		<b>Name:</b> Language Implant<BR>
@@ -633,7 +644,7 @@ the implant may become unstable and either pre-maturely inject the subject or si
 		<b>Integrity:</b> Implant can only be used once before the nanobots are depleted."}
 	return dat
 
-/obj/item/implant/vrlanguage/trigger(emote, mob/source as mob)
+/obj/item/implant/uni_translator/trigger(emote, mob/source as mob)
 	if (src.uses < 1)
 		return 0
 	if (emote == "smile")
@@ -653,7 +664,7 @@ the implant may become unstable and either pre-maturely inject the subject or si
 		source.add_language(LANGUAGE_SLAVIC)
 		source.add_language(LANGUAGE_SOL_COMMON) //In case they're giving a xenomorph an implant or something.
 
-/obj/item/implant/vrlanguage/post_implant(mob/source)
+/obj/item/implant/uni_translator/post_implant(mob/source)
 	source.mind.store_memory("A implant can be activated by using the smile emote, <B>say *smile</B> to attempt to activate.", 0, 0)
 	to_chat(source,"The implanted language implant can be activated by using the smile emote, <B>say *smile</B> to attempt to activate.")
 	return 1

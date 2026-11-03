@@ -8,7 +8,7 @@
 	possible."
 	value = CATALOGUER_REWARD_TRIVIAL
 
-/mob/living/simple_mob/vore/horse
+/mob/living/simple_mob/horse
 	name = "horse"
 	desc = "Don't look it in the mouth."
 	tt_desc = "Equus ferus caballus"
@@ -17,24 +17,25 @@
 	icon_state = "horse"
 	icon_living = "horse"
 	icon_dead = "horse-dead"
-	icon = 'icons/mob/vore.dmi'
+	icon = 'icons/mob/animal.dmi'
 
-	faction = "horse"
+	iff_factions = MOB_IFF_FACTION_FARM_ANIMAL
+
 	maxHealth = 60
 	health = 60
 	randomized = TRUE
 	mod_min = 100
 	mod_max = 130
 
-	movement_cooldown = 4 //horses are fast mkay.
+	movement_base_speed = 10 / 4 //horses are fast mkay.
 	see_in_dark = 6
 
 	response_help  = "pets"
 	response_disarm = "gently pushes aside"
 	response_harm   = "kicks"
 
-	melee_damage_lower = 1
-	melee_damage_upper = 5
+	legacy_melee_damage_lower = 1
+	legacy_melee_damage_upper = 5
 	attacktext = list("kicked")
 
 	meat_amount = 4
@@ -43,30 +44,63 @@
 	hide_amount = 4
 	exotic_amount = 2
 
-	max_buckled_mobs = 1 //Yeehaw
-	can_buckle = TRUE
-	buckle_movable = TRUE
 	buckle_lying = FALSE
-	mount_offset_x = 0
+	buckle_max_mobs = 2
+	buckle_allowed = TRUE
+	buckle_flags = BUCKLING_NO_USER_BUCKLE_OTHER_TO_SELF
 
 	say_list_type = /datum/say_list/horse
-	ai_holder_type = /datum/ai_holder/simple_mob/retaliate
+	ai_holder_type = /datum/ai_holder/polaris/simple_mob/retaliate
 
-// Activate Noms!
-/mob/living/simple_mob/vore/horse
-	vore_active = 1
-	vore_icons = SA_ICON_LIVING
+	var/obj/item/saddle/saddled = null
 
-/* //VOREStation AI Temporary Removal
-/mob/living/simple_animal/horse/Login()
+/mob/living/simple_mob/horse/Initialize(mapload)
 	. = ..()
-	if(!riding_datum)
-		riding_datum = new /datum/riding/simple_animal(src)
-	verbs |= /mob/living/simple_animal/proc/animal_mount
+	AddComponent(/datum/component/riding_filter/mob/animal/horse)
 
-/mob/living/simple_animal/horse/MouseDrop_T(mob/living/M, mob/living/user)
-	return
-*/
+/datum/component/riding_filter/mob/animal/horse
+
+/datum/component/riding_handler/horse
+	rider_offsets = list(
+		list(
+			list(0, 8, 0.1, null),
+			list(0, 8, 0.1, null),
+			list(0, 8, -0.1, null),
+			list(0, 8, 0.1, null)
+		),
+		list(
+			list(0, 8, 0.2, null),
+			list(-7, 8, 0.2, null),
+			list(0, 8, -0.2, null),
+			list(7, 8, 0.2, null)
+		)
+	)
+	rider_offset_format = CF_RIDING_OFFSETS_ENUMERATED
+	riding_handler_flags = CF_RIDING_HANDLER_IS_CONTROLLABLE
+
+/mob/living/simple_mob/horse/attackby(var/obj/item/O as obj, var/mob/user as mob)
+	if(istype(O, /obj/item/saddle/horse) && !saddled)
+		to_chat(user, "<span class='danger'>You sling the [O] onto the [src]! It may now be ridden safely!</span>")
+		saddled = O
+		var/datum/component/riding_filter/mob/animal/horse/filter_component = LoadComponent(/datum/component/riding_filter/mob/animal/horse)
+		filter_component.handler_typepath = /datum/component/riding_handler/horse
+		DelComponent(/datum/component/riding_handler) //Delete to let it recreate as required
+		saddled.forceMove(src)
+	if(O.is_wirecutter() && saddled)
+		to_chat(user, "<span class='danger'>You nip the straps of the [saddled]! It falls off of the [src].</span>")
+		var/datum/component/riding_filter/mob/animal/horse/filter_component = LoadComponent(/datum/component/riding_filter/mob/animal/horse)
+		filter_component.handler_typepath = initial(filter_component.handler_typepath)
+		DelComponent(/datum/component/riding_handler)
+		var/turf/T = get_turf(src)
+		saddled.forceMove(T)
+		saddled = null
+	update_icon()
+
+/mob/living/simple_mob/horse/update_icon()
+	if(saddled)
+		add_overlay("horse_saddled")
+	else if(!saddled)
+		cut_overlays()
 
 /datum/say_list/horse
 	speak = list("NEHEHEHEHEH","Neh?")

@@ -6,7 +6,7 @@
 	hotkey_keys = list("CtrlW", "CtrlNorth")
 	name = "face_north"
 	full_name = "Face North"
-	description = ""
+	description = "No description provided."
 
 /datum/keybinding/mob/face_north/down(client/user)
 	var/mob/M = user.mob
@@ -17,7 +17,7 @@
 	hotkey_keys = list("CtrlD", "CtrlEast")
 	name = "face_east"
 	full_name = "Face East"
-	description = ""
+	description = "No description provided."
 
 /datum/keybinding/mob/face_east/down(client/user)
 	var/mob/M = user.mob
@@ -28,7 +28,7 @@
 	hotkey_keys = list("CtrlS", "CtrlSouth")
 	name = "face_south"
 	full_name = "Face South"
-	description = ""
+	description = "No description provided."
 
 /datum/keybinding/mob/face_south/down(client/user)
 	var/mob/M = user.mob
@@ -39,7 +39,7 @@
 	hotkey_keys = list("CtrlA", "CtrlWest")
 	name = "face_west"
 	full_name = "Face West"
-	description = ""
+	description = "No description provided."
 
 /datum/keybinding/mob/face_west/down(client/user)
 	var/mob/M = user.mob
@@ -50,7 +50,7 @@
 	hotkey_keys = list("J", "Delete")
 	name = "stop_pulling"
 	full_name = "Stop pulling"
-	description = ""
+	description = "No description provided."
 
 /datum/keybinding/mob/stop_pulling/down(client/user)
 	var/mob/M = user.mob
@@ -64,7 +64,7 @@
 	hotkey_keys = list("Northwest", "F") // HOME
 	name = "cycle_intent_right"
 	full_name = "cycle intent right"
-	description = ""
+	description = "No description provided."
 
 /datum/keybinding/mob/cycle_intent_right/down(client/user)
 	var/mob/M = user.mob
@@ -75,7 +75,7 @@
 	hotkey_keys = list("Insert", "G")
 	name = "cycle_intent_left"
 	full_name = "cycle intent left"
-	description = ""
+	description = "No description provided."
 
 /datum/keybinding/mob/cycle_intent_left/down(client/user)
 	var/mob/M = user.mob
@@ -86,22 +86,11 @@
 	hotkey_keys = list("X", "Northeast") // PAGEUP
 	name = "swap_hands"
 	full_name = "Swap hands"
-	description = ""
+	description = "No description provided."
 
 /datum/keybinding/mob/swap_hands/down(client/user)
 	var/mob/M = user.mob
 	M.swap_hand()
-	return TRUE
-
-/datum/keybinding/mob/activate_inhand
-	hotkey_keys = list("Z", "Southeast") // PAGEDOWN
-	name = "activate_inhand"
-	full_name = "Activate in-hand"
-	description = "Uses whatever item you have inhand"
-
-/datum/keybinding/mob/activate_inhand/down(client/user)
-	var/mob/M = user.mob
-	M.mode()
 	return TRUE
 
 /datum/keybinding/mob/say
@@ -164,28 +153,101 @@
 	user.mob.subtle_wrapper()
 	return TRUE
 
+/datum/keybinding/mob/subtler
+	hotkey_keys = list("7")
+	name = "Subtler Anti Ghost"
+	full_name = "Subtler Anti-Ghost"
+	description = "Does a subtle emote that's invisible to ghosts."
+
+/datum/keybinding/mob/subtler/down(client/user)
+	user.mob.subtler_anti_ghost_wrapper()
+	return TRUE
+
 /datum/keybinding/mob/drop_item
 	hotkey_keys = list("Q")
 	name = "drop_item"
 	full_name = "Drop Item"
-	description = ""
+	description = "No description provided."
 
 /datum/keybinding/mob/drop_item/down(client/user)
 	if(isrobot(user.mob)) //cyborgs can't drop items
 		return FALSE
 	var/mob/M = user.mob
-	var/obj/item/I = M.get_active_hand()
+	var/obj/item/I = M.get_active_held_item()
 	if(!I)
 		to_chat(user, "<span class='warning'>You have nothing to drop in your hand!</span>")
-	else
-		M.drop_item(M.drop_location())
+		return FALSE
+	M.drop_item_to_ground(I)
+	return TRUE
+
+/datum/keybinding/mob/drop_item_precisely
+	hotkey_keys = list("CtrlQ")
+	name = "drop_item_precisely"
+	full_name = "Drop Item Precisely"
+	description = "No description provided."
+
+/datum/keybinding/mob/drop_item_precisely/down(client/user)
+	if(isrobot(user.mob)) //cyborgs can't drop items
+		return FALSE
+	var/mob/M = user.mob
+	var/obj/item/I = M.get_active_held_item()
+	if(!I)
+		to_chat(user, "<span class='warning'>You have nothing to drop in your hand!</span>")
+		return FALSE
+	// WELCOME TO THE IF PYRAMID OF DOOM
+	// check if they're over a valid object
+	if(!(user.mouse_predicted_last_atom?.atom_flags & (ATOM_ABSTRACT | ATOM_NONWORLD)) && \
+		(user.mouse_predicted_last_atom != I))
+		// attempt to resolve current mouse params
+		var/list/maybe_mouse_params
+		var/turf/maybe_last_turf
+		if((maybe_last_turf = get_turf(user.mouse_predicted_last_atom)) && \
+			(maybe_mouse_params = user.get_mouse_params()))
+			// we can attempt to resolve
+			// JUST DECODE IT FOR US WHEN, BYOND??????
+			// TODO: neither of these fully works, because byond is fucking insane
+			//       and dealing with mouse handling in it is honestly just a fucking
+			//       exercise in masochism at this point
+			// if(maybe_mouse_params["icon-x"] && maybe_mouse_params["icon-y"])
+			// 	var/rpx = text2num(maybe_mouse_params["icon-x"])
+			// 	var/rpy = text2num(maybe_mouse_params["icon-y"])
+			// 	var/px = rpx - (WORLD_ICON_SIZE * 0.5)
+			// 	var/py = rpy - (WORLD_ICON_SIZE * 0.5)
+			// 	M.drop_item_to_ground_precisely(I, target_loc = maybe_last_turf, target_px = px, target_py = py)
+			// 	return TRUE
+			var/list/decoded = splittext(maybe_mouse_params["screen-loc"], ",")
+			if(length(decoded) == 2)
+				var/list/dpx = splittext(decoded[1], ":")
+				var/list/dpy = splittext(decoded[2], ":")
+				var/rpx = text2num(dpx[2])
+				var/rpy = text2num(dpy[2])
+				// if it's 1 or WORLD_ICON_SIZE, shit gets wacky
+				// don't ask why, it just does and i don't know why
+				// TODO: Found out why. This fixes tables but breaks tiles. It's because
+				//       things bigger than one exact tile or clipping onto others
+				//       causes problems. There's absolutely nothing I can do
+				//       about this until client/proc/predict_mouse_tile_from_screen_loc
+				//       is done, so deal with it. Sorry.
+				// if(rpx == 1)
+				// 	maybe_last_turf = get_step(maybe_last_turf, EAST)
+				// else if(rpx == WORLD_ICON_SIZE)
+				// 	maybe_last_turf = get_step(maybe_last_turf, WEST)
+				// if(rpy == 1)
+				// 	maybe_last_turf = get_step(maybe_last_turf, NORTH)
+				// else if(rpy == WORLD_ICON_SIZE)
+				// 	maybe_last_turf = get_step(maybe_last_turf, SOUTH)
+				var/px = rpx - (WORLD_ICON_SIZE * 0.5)
+				var/py = rpy - (WORLD_ICON_SIZE * 0.5)
+				M.drop_item_to_ground_precisely(I, target_loc = maybe_last_turf, target_px = px, target_py = py)
+				return TRUE
+	to_chat(user, SPAN_WARNING("Your mouse isn't hovering in a place [I] can be dropped to!"))
 	return TRUE
 
 /datum/keybinding/mob/toggle_gun_mode
 	hotkey_keys = list("J")
 	name = "toggle_gun_mode"
-	full_name = "Toggle gun mode between aiming/hostage-taking and immediate fire."
-	description = ""
+	full_name = "Aim / Fire Toggle"
+	description = "Toggle your gun between taking aim at someone/taking hostages, and immediately firing on click."
 
 /datum/keybinding/mob/toggle_gun_mode/down(client/user)
 	user.mob.toggle_gun_mode()
@@ -199,22 +261,31 @@
 
 /datum/keybinding/mob/toggle_move_intent/down(client/user)
 	var/mob/M = user.mob
+	// no accidental move intent toggles for ghosts
+	if(isobserver(M))
+		return
 	M.toggle_move_intent()
 	return TRUE
 
 /datum/keybinding/mob/toggle_move_intent/up(client/user)
 	var/mob/M = user.mob
+	// no accidental move intent toggles for ghosts
+	if(isobserver(M))
+		return
 	M.toggle_move_intent()
 	return TRUE
 
 /datum/keybinding/mob/toggle_move_intent_alternative
-	hotkey_keys = list("Unbound")
+	hotkey_keys = list()
 	name = "toggle_move_intent_alt"
 	full_name = "press to cycle move intent"
 	description = "Pressing this cycle to the opposite move intent, does not cycle back"
 
 /datum/keybinding/mob/toggle_move_intent_alternative/down(client/user)
 	var/mob/M = user.mob
+	// no accidental move intent toggles for ghosts
+	if(isobserver(M))
+		return
 	M.toggle_move_intent()
 	return TRUE
 
@@ -222,7 +293,7 @@
 	hotkey_keys = list("Numpad8")
 	name = "target_head_cycle"
 	full_name = "Target: Cycle head"
-	description = ""
+	description = "No description provided."
 
 /datum/keybinding/mob/target_head_cycle/down(client/user)
 	user.body_toggle_head()
@@ -232,7 +303,7 @@
 	hotkey_keys = list("Numpad4")
 	name = "target_r_arm"
 	full_name = "Target: right arm"
-	description = ""
+	description = "No description provided."
 
 /datum/keybinding/mob/target_r_arm/down(client/user)
 	user.body_r_arm()
@@ -242,7 +313,7 @@
 	hotkey_keys = list("Numpad5")
 	name = "target_body_chest"
 	full_name = "Target: Body"
-	description = ""
+	description = "No description provided."
 
 /datum/keybinding/mob/target_body_chest/down(client/user)
 	user.body_chest()
@@ -252,7 +323,7 @@
 	hotkey_keys = list("Numpad6")
 	name = "target_left_arm"
 	full_name = "Target: left arm"
-	description = ""
+	description = "No description provided."
 
 /datum/keybinding/mob/target_left_arm/down(client/user)
 	user.body_l_arm()
@@ -262,7 +333,7 @@
 	hotkey_keys = list("Numpad1")
 	name = "target_right_leg"
 	full_name = "Target: Right leg"
-	description = ""
+	description = "No description provided."
 
 /datum/keybinding/mob/target_right_leg/down(client/user)
 	user.body_r_leg()
@@ -272,7 +343,7 @@
 	hotkey_keys = list("Numpad2")
 	name = "target_body_groin"
 	full_name = "Target: Groin"
-	description = ""
+	description = "No description provided."
 
 /datum/keybinding/mob/target_body_groin/down(client/user)
 	user.body_groin()
@@ -282,7 +353,7 @@
 	hotkey_keys = list("Numpad3")
 	name = "target_left_leg"
 	full_name = "Target: left leg"
-	description = ""
+	description = "No description provided."
 
 /datum/keybinding/mob/target_left_leg/down(client/user)
 	user.body_l_leg()

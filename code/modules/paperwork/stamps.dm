@@ -4,12 +4,12 @@
 	icon = 'icons/obj/bureaucracy.dmi'
 	icon_state = "stamp-qm"
 	item_state = "stamp"
-	throwforce = 0
-	w_class = ITEMSIZE_TINY
+	throw_force = 0
+	w_class = WEIGHT_CLASS_TINY
 	slot_flags = SLOT_HOLSTER
 	throw_speed = 7
 	throw_range = 15
-	matter = list(MAT_STEEL = 60)
+	materials_base = list(MAT_STEEL = 60)
 	pressure_resistance = 2
 	attack_verb = list("stamped")
 
@@ -19,9 +19,9 @@
 		'sound/items/stamp3.ogg'
 		)
 
-/obj/item/stamp/attack(mob/living/carbon/M as mob, mob/living/carbon/user as mob)
+/obj/item/stamp/legacy_mob_melee_hook(mob/target, mob/user, clickchain_flags, list/params, mult, target_zone, intent)
 	. = ..()
-	playsound(M, pick(stamp_sounds), 30, 1, -1)
+	playsound(target, pick(stamp_sounds), 30, 1, -1)
 
 /obj/item/stamp/captain
 	name = "Facility Director's rubber stamp"
@@ -63,7 +63,7 @@
 	name = "internal affairs rubber stamp"
 	icon_state = "stamp-intaff"
 
-/obj/item/stamp/centcomm
+/obj/item/stamp/centcom
 	name = "\improper CentCom rubber stamp"
 	icon_state = "stamp-cent"
 
@@ -81,7 +81,10 @@
 
 
 // Syndicate stamp to forge documents.
-/obj/item/stamp/chameleon/attack_self(mob/user as mob)
+/obj/item/stamp/chameleon/attack_self(mob/user, datum/event_args/actor/actor)
+	. = ..()
+	if(.)
+		return
 
 	var/list/stamp_types = typesof(/obj/item/stamp) - src.type // Get all stamp types except our own
 	var/list/stamps = list()

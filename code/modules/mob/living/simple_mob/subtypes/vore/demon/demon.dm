@@ -1,3 +1,6 @@
+/datum/vision/baseline/demon
+	hard_darksight = 0
+
 /mob/living/simple_mob/vore/demon
 	name = "Rift Walker"
 	desc = "A large bipedal creature, body a mix of dark fur and scales. Marks on the creatures body pulse slowly with red light"
@@ -8,13 +11,13 @@
 	icon_rest = "boxfox_rest"
 	icon = 'icons/mob/demon_vr.dmi'
 
-	faction = "demon"
-	maxHealth = 30
-	health = 30
-	movement_cooldown = 0
+	iff_factions = MOB_IFF_FACTION_SANGUINE_CULT
 
-	see_in_dark = 10
-	seedarkness = FALSE
+	maxHealth = 300
+	health = 300
+	movement_base_speed = 6.66
+
+	vision_innate = /datum/vision/baseline/demon
 
 	min_oxy = 0
 	max_oxy = 0
@@ -31,23 +34,15 @@
 	response_disarm = "pushes"
 	response_harm = "hits"
 
-	melee_damage_lower = 3
-	melee_damage_upper = 1
+	legacy_melee_damage_lower = 10
+	legacy_melee_damage_upper = 20
 	attacktext = list("clawed")
 
-	vore_active = TRUE
-	vore_icons = SA_ICON_LIVING
 
 	var/shifted_out = FALSE
 	var/shift_state = AB_SHIFT_NONE
 	var/last_shift = 0
 	var/is_shifting = FALSE
-
-/mob/living/simple_mob/vore/demon/init_vore()
-	..()
-	var/obj/belly/B = vore_selected
-	B.name = "Stomach"
-	B.desc = "You slide down the slick, slippery gullet of the creature. It's warm, and the air is thick. You can feel the doughy walls of the creatures gut push and knead into your form! Slimy juices coat your form stinging against your flesh as they waste no time to start digesting you. The creature's heartbeat and the gurgling of their stomach are all you can hear as your jostled about, treated like nothing but food."
 
 /mob/living/simple_mob/vore/demon/UnarmedAttack()
 	if(shifted_out)
@@ -63,15 +58,17 @@
 
 /mob/living/simple_mob/vore/demon/zMove(direction)
 	if(shifted_out)
-		var/turf/destination = (direction == UP) ? GetAbove(src) : GetBelow(src)
+		var/turf/destination = get_step_multiz(src, direction)
 		if(destination)
 			forceMove(destination)
 		return TRUE
 
 	return ..()
 
-/mob/living/simple_mob/vore/demon/Life()
-	. = ..()
+/mob/living/simple_mob/vore/demon/Life(seconds, times_fired)
+	if((. = ..()))
+		return
+
 	if(shifted_out)
 		density = FALSE
 
@@ -81,9 +78,8 @@
 	else
 		return .=..()
 
-/mob/living/simple_mob/vore/demon/update_canmove()
+// todo: better way
+/mob/living/simple_mob/vore/demon/update_mobility()
 	if(is_shifting)
-		canmove = FALSE
-		return canmove
-	else
-		return ..()
+		return (mobility_flags = MOBILITY_CAN_MOVE)
+	return ..()

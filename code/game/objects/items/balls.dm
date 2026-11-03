@@ -6,14 +6,14 @@
 	icon = 'icons/obj/balls.dmi'
 	icon_state = "tennis_classic"
 	item_icons = list(
-		slot_l_hand_str = 'icons/mob/inhands/balls_left.dmi',
-		slot_r_hand_str = 'icons/mob/inhands/balls_right.dmi',
-		slot_wear_mask_str = 'icons/mob/mouthball.dmi'
+		SLOT_ID_LEFT_HAND = 'icons/mob/inhands/balls_left.dmi',
+		SLOT_ID_RIGHT_HAND = 'icons/mob/inhands/balls_right.dmi',
+		SLOT_ID_MASK = 'icons/mob/mouthball.dmi'
 		)
 	item_state = "tennis_classic"
 	slot_flags = SLOT_MASK
 	throw_range = 14
-	w_class = ITEMSIZE_SMALL
+	w_class = WEIGHT_CLASS_SMALL
 
 /obj/item/toy/tennis/rainbow
 	name = "pseudo-euclidean interdimensional tennis sphere"
@@ -27,7 +27,10 @@
 		'sound/items/toysqueak3.ogg'
 		)
 
-/obj/item/toy/tennis/rainbow/attack_self(mob/user as mob)
+/obj/item/toy/tennis/rainbow/attack_self(mob/user, datum/event_args/actor/actor)
+	. = ..()
+	if(.)
+		return
 	playsound(src.loc, pick(squeak_sounds), 50, 1,)
 
 /obj/item/toy/tennis/red

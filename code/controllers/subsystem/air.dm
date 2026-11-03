@@ -11,12 +11,19 @@ SUBSYSTEM_DEF(air)
 	init_order = INIT_ORDER_AIR
 	priority = FIRE_PRIORITY_AIR
 	wait = 2 SECONDS // seconds (We probably can speed this up actually)
-	flags = SS_BACKGROUND // TODO - Should this really be background? It might be important.
+	subsystem_flags = SS_BACKGROUND // TODO - Should this really be background? It might be important.
 	runlevels = RUNLEVEL_GAME | RUNLEVEL_POSTGAME
 	var/static/list/part_names = list("turfs", "edges", "fire zones", "hotspots", "zones")
 
 	/// Associative id = datum list of generated /datum/atmosphere's.
 	var/list/generated_atmospheres
+	/// cached lists of unpacked gas-strings
+	var/list/cached_strings
+	/// scrubber defaults
+	var/list/scrubber_defaults = list(
+		SCRUBBER_DEFAULT_STATION = list(/datum/gas/carbon_dioxide, /datum/gas/phoron),
+		SCRUBBER_DEFAULT_ATLAS_VIROLOGY = list(/datum/gas/carbon_dioxide, /datum/gas/phoron, /datum/gas/chlorine),
+	)
 
 	var/cost_turfs = 0
 	var/cost_edges = 0
@@ -28,16 +35,63 @@ SUBSYSTEM_DEF(air)
 	var/current_step = null
 
 	// Updating zone tiles requires temporary storage location of self-zone-blocked turfs across resumes. Used only by process_tiles_to_update.
-	var/list/selfblock_deferred = null
+	var/list/selfblock_deferred = list()
 
 	// This is used to tell Travis WHERE the edges are.
 	var/list/startup_active_edge_log = list()
 
-/datum/controller/subsystem/air/PreInit()
-	air_master = src
+/datum/controller/subsystem/air/stat_entry()
+	var/list/msg = list()
+	msg += "S:[current_step ? part_names[current_step] : ""] "
+	msg += "C:{"
+	msg += "T [round(cost_turfs, 1)] | "
+	msg += "E [round(cost_edges, 1)] | "
+	msg += "F [round(cost_firezones, 1)] | "
+	msg += "H [round(cost_hotspots, 1)] | "
+	msg += "Z [round(cost_zones, 1)] "
+	msg += "}"
+	msg += "Z: [zones.len] "
+	msg += "E: [edges.len] "
+	msg += "Cycle: [current_cycle] {"
+	msg += "T [tiles_to_update.len] | "
+	msg += "E [active_edges.len] | "
+	msg += "F [active_fire_zones.len] | "
+	msg += "H [active_hotspots.len] | "
+	msg += "Z [zones_to_update.len] "
+	msg += "}"
+	return ..() + " [msg.Join()]"
 
-/datum/controller/subsystem/air/Initialize(timeofday)
-	report_progress("Processing Geometry...")
+/datum/controller/subsystem/air/PreInit(recovering)
+	// resolve scrubber defaults
+	for(var/key in scrubber_defaults)
+		var/list/values = scrubber_defaults[key]
+		if(isnull(values))
+			scrubber_defaults -= key
+			stack_trace("invalid default [key] in scrubber_defaults")
+			continue
+		for(var/i in 1 to length(values))
+			if(ispath(values[i]))
+				var/datum/gas/casted = values[i]
+				if(!ispath(casted, /datum/gas))
+					stack_trace("invalid path [casted] in scrubber_defaults")
+					casted = /datum/gas/oxygen
+				values[i] = initial(casted.id)
+
+/datum/controller/subsystem/air/Preload(recovering)
+	cached_strings = list()
+	generate_atmospheres()
+
+/datum/controller/subsystem/air/Recover()
+	// Preload() already generated stock ones
+	if(islist(SSair?.generated_atmospheres))
+		for(var/id in SSair.generated_atmospheres)
+			if(generated_atmospheres[id])
+				continue
+			generated_atmospheres[id] = SSair.generated_atmospheres[id]
+
+/datum/controller/subsystem/air/Initialize()
+#ifndef FASTBOOT_DISABLE_ZONES
+	report_progress("Initializing [name] subsystem...")
 
 	current_cycle = 0
 	var/simulated_turf_count = 0
@@ -46,51 +100,61 @@ SUBSYSTEM_DEF(air)
 		S.update_air_properties()
 		CHECK_TICK
 
-	admin_notice({"<span class='danger'>Geometry initialized in [round(0.1*(REALTIMEOFDAY-timeofday),0.1)] seconds.</span>
-<span class='info'>
-Total Simulated Turfs: [simulated_turf_count]
-Total Zones: [zones.len]
-Total Edges: [edges.len]
-Total Active Edges: [active_edges.len ? "<span class='danger'>[active_edges.len]</span>" : "None"]
-Total Unsimulated Turfs: [world.maxx*world.maxy*world.maxz - simulated_turf_count]
-</span>"}, R_DEBUG)
-
 	// Note - Baystation settles the air by running for one tick.  We prefer to not have active edges.
 	// Maps should not have active edges on boot.  If we've got some, log it so it can get fixed.
 	if(active_edges.len)
 		var/list/edge_log = list()
+		var/count = 0
 		for(var/datum/zas_edge/E in active_edges)
-			edge_log += "Active Edge [E] ([E.type])"
+			++count
+			edge_log += "Active Edge  I:[count] [E] ([E.type])"
 			for(var/turf/T in E.connecting_turfs)
 				edge_log += "+--- Connecting Turf [T] ([T.type]) @ [T.x], [T.y], [T.z] ([T.loc])"
 		subsystem_log("Active Edges on ZAS Startup\n" + edge_log.Join("\n"))
 		startup_active_edge_log = edge_log.Copy()
 
-	..()
+	//! Fancy blockquote of data.
+	var/list/blockquote_data = list(
+		SPAN_DEBUGINFO("<b>Total Zones:</b> [zones.len]"),
+		SPAN_DEBUGINFO("\n<b>Total Edges:</b> [edges.len]"),
+		SPAN_DEBUGINFO("\n<b>Total Active Edges:</b> [active_edges.len ? SPAN_DANGER("[active_edges.len]") : "None"]"),
+		SPAN_DEBUGINFO("\n<b>Total Simulated Turfs:</b> [simulated_turf_count]"),
+		SPAN_DEBUGINFO("\n<b>Total Unsimulated Turfs:</b> [world.maxx*world.maxy*world.maxz - simulated_turf_count]")
+	)
 
-/datum/controller/subsystem/air/fire(resumed = 0)
+	to_chat(
+		target = world,
+		html   = SPAN_BLOCKQUOTE(JOINTEXT(blockquote_data), "info"),
+		type   = MESSAGE_TYPE_DEBUG,
+	)
+
+#endif
+
+	return SS_INIT_SUCCESS
+
+/datum/controller/subsystem/air/fire(resumed = FALSE)
 	var/timer
 	if(!resumed)
 		if(LAZYLEN(currentrun) != 0)
-			stack_trace("Currentrun not empty when it should be. [english_list(currentrun)]")
+			stack_trace("Currentrun not empty before processing cycle when it should be. [english_list(currentrun, limit = 5)]")
 		currentrun = list()
 		if(current_step != null)
-			stack_trace("current_step was [current_step] instead of null")
+			stack_trace("current_step before processing cycle was [current_step] instead of null")
 		current_step = SSAIR_TURFS
 		current_cycle++
 
-	INTERNAL_PROCESS_STEP(SSAIR_TURFS, TRUE, process_tiles_to_update, cost_turfs, SSAIR_EDGES)
-	INTERNAL_PROCESS_STEP(SSAIR_EDGES, FALSE, process_active_edges, cost_edges, SSAIR_FIREZONES)
-	INTERNAL_PROCESS_STEP(SSAIR_FIREZONES, FALSE, process_active_fire_zones, cost_firezones, SSAIR_HOTSPOTS)
-	INTERNAL_PROCESS_STEP(SSAIR_HOTSPOTS, FALSE, process_active_hotspots, cost_hotspots, SSAIR_ZONES)
-	INTERNAL_PROCESS_STEP(SSAIR_ZONES, FALSE, process_zones_to_update, cost_zones, SSAIR_DONE)
+	INTERNAL_SUBSYSTEM_PROCESS_STEP(SSAIR_TURFS, TRUE, process_tiles_to_update, cost_turfs, SSAIR_EDGES)
+	INTERNAL_SUBSYSTEM_PROCESS_STEP(SSAIR_EDGES, FALSE, process_active_edges, cost_edges, SSAIR_FIREZONES)
+	INTERNAL_SUBSYSTEM_PROCESS_STEP(SSAIR_FIREZONES, FALSE, process_active_fire_zones, cost_firezones, SSAIR_HOTSPOTS)
+	INTERNAL_SUBSYSTEM_PROCESS_STEP(SSAIR_HOTSPOTS, FALSE, process_active_hotspots, cost_hotspots, SSAIR_ZONES)
+	INTERNAL_SUBSYSTEM_PROCESS_STEP(SSAIR_ZONES, FALSE, process_zones_to_update, cost_zones, SSAIR_DONE)
 
-	// Okay, we're done! Woo! Got thru a whole air_master cycle!
+	// Okay, we're done! Woo! Got thru a whole SSair cycle!
 	if(LAZYLEN(currentrun) != 0)
-		stack_trace("Currentrun not empty when it should be. [english_list(currentrun)]")
+		stack_trace("Currentrun not empty after processing cycle when it should be. [english_list(currentrun, limit = 5)]")
 	currentrun = null
 	if(current_step != SSAIR_DONE)
-		stack_trace("current_step was [current_step] instead of [SSAIR_DONE]")
+		stack_trace("current_step after processing cycle was [current_step] instead of [SSAIR_DONE]")
 	current_step = null
 
 /datum/controller/subsystem/air/proc/process_tiles_to_update(resumed = 0)
@@ -105,8 +169,8 @@ Total Unsimulated Turfs: [world.maxx*world.maxy*world.maxz - simulated_turf_coun
 		//have valid zones when the self-zone-blocked turfs update.
 		//This ensures that doorways don't form their own single-turf zones, since doorways are self-zone-blocked and
 		//can merge with an adjacent zone, whereas zones that are formed on adjacent turfs cannot merge with the doorway.
-		if(src.selfblock_deferred != null) // Sanity check to make sure it was not remaining from last cycle somehow.
-			stack_trace("WARNING: SELFBLOCK_DEFFERED WAS NOT NULL. Something went wrong.")
+		if(src.selfblock_deferred.len) // Sanity check to make sure it was not remaining from last cycle somehow.
+			stack_trace("WARNING: SELFBLOCK_DEFFERED WAS NOT EMPTY. Something went wrong.")
 		src.selfblock_deferred = list()
 
 	//cache for sanic speed (lists are references anyways)
@@ -118,41 +182,40 @@ Total Unsimulated Turfs: [world.maxx*world.maxy*world.maxz - simulated_turf_coun
 		var/turf/T = currentrun[currentrun.len]
 		currentrun.len--
 		//check if the turf is self-zone-blocked
-		if(T.c_airblock(T) & ZONE_BLOCKED)
+		if(T.CheckAirBlock(T) == ATMOS_PASS_ZONE_BLOCKED)
 			selfblock_deferred += T
 			if(MC_TICK_CHECK)
 				return
 			else
 				continue
+		T.turf_flags &= ~TURF_ZONE_REBUILD_QUEUED
 		T.update_air_properties()
 		T.post_update_air_properties()
-		T.needs_air_update = 0
-		#ifdef ZASDBG
-		T.overlays -= mark
+		#ifdef ZAS_DEBUG_GRAPHICS
+		T.cut_overlay(mark)
 		#endif
 		if(MC_TICK_CHECK)
 			return
 
 	if(LAZYLEN(currentrun) != 0)
-		stack_trace("WARNING: Currentrun was not empty when it should be.")
-	currentrun = list()
+		stack_trace("WARNING: Currentrun was not empty after tiles process when it should be.")
+		currentrun = list()
 
 	// Run thru the deferred list and processing them
 	while(selfblock_deferred.len)
 		var/turf/T = selfblock_deferred[selfblock_deferred.len]
 		selfblock_deferred.len--
+		T.turf_flags &= ~TURF_ZONE_REBUILD_QUEUED
 		T.update_air_properties()
 		T.post_update_air_properties()
-		T.needs_air_update = 0
-		#ifdef ZASDBG
-		T.overlays -= mark
+		#ifdef ZAS_DEBUG_GRAPHICS
+		T.cut_overlay(mark)
 		#endif
 		if(MC_TICK_CHECK)
 			return
 
-	if(LAZYLEN(selfblock_deferred) != 0)
-		stack_trace("WARNING: selfblock_deffered was not empty (length [LAZYLEN(selfblock_deferred)])")
-	src.selfblock_deferred = null
+	if(selfblock_deferred.len != 0)
+		stack_trace("WARNING: selfblock_defered was not empty after selfblock tiles process (length [LAZYLEN(selfblock_deferred)])")
 
 /datum/controller/subsystem/air/proc/process_active_edges(resumed = 0)
 	if (!resumed)
@@ -185,7 +248,7 @@ Total Unsimulated Turfs: [world.maxx*world.maxy*world.maxz - simulated_turf_coun
 		src.currentrun = active_hotspots.Copy()
 	//cache for sanic speed (lists are references anyways)
 	var/list/currentrun = src.currentrun
-	var/dt = (flags & SS_TICKER)? (wait * world.tick_lag * 0.1) : (wait * 0.1)
+	var/dt = nominal_dt_s
 	while(currentrun.len)
 		var/atom/movable/fire/fire = currentrun[currentrun.len]
 		currentrun.len--
@@ -216,27 +279,6 @@ Total Unsimulated Turfs: [world.maxx*world.maxy*world.maxz - simulated_turf_coun
 			zone.needs_update = 0
 		if(MC_TICK_CHECK)
 			return
-
-/datum/controller/subsystem/air/stat_entry(msg_prefix)
-	var/list/msg = list(msg_prefix)
-	msg += "S:[current_step ? part_names[current_step] : ""] "
-	msg += "C:{"
-	msg += "T [round(cost_turfs, 1)] | "
-	msg += "E [round(cost_edges, 1)] | "
-	msg += "F [round(cost_firezones, 1)] | "
-	msg += "H [round(cost_hotspots, 1)] | "
-	msg += "Z [round(cost_zones, 1)] "
-	msg += "}"
-	msg += "Z: [zones.len] "
-	msg += "E: [edges.len] "
-	msg += "Cycle: [current_cycle] {"
-	msg += "T [tiles_to_update.len] | "
-	msg += "E [active_edges.len] | "
-	msg += "F [active_fire_zones.len] | "
-	msg += "H [active_hotspots.len] | "
-	msg += "Z [zones_to_update.len] "
-	msg += "}"
-	..(msg.Join())
 
 // ZAS might displace objects as the map loads if an air tick is processed mid-load.
 /datum/controller/subsystem/air/StartLoadingMap(var/quiet = TRUE)
@@ -287,27 +329,75 @@ Total Unsimulated Turfs: [world.maxx*world.maxy*world.maxz - simulated_turf_coun
   * Initializes all subtypes of /datum/atmosphere and indexes them by key.
   */
 /datum/controller/subsystem/air/proc/generate_atmospheres()
+	// todo: pretty world init progress reporter for everyone
+	report_progress("SSair: Generating atmospheres...")
 	generated_atmospheres = list()
 	for(var/T in subtypesof(/datum/atmosphere))
 		var/datum/atmosphere/A = T
 		if(initial(A.abstract_type) == T)
 			continue
 		A = new T
+		// register normal id
 		generated_atmospheres[A.id] = A
+		// register type too - for faster lookup
+		generated_atmospheres[A.type] = A
 
 /**
-  * Preprocess a gas string, replacing it with a specific atmosphere's if necessary.
-  */
-/datum/controller/subsystem/air/proc/preprocess_gas_string(gas_string, turf/T)
-	if(!generated_atmospheres)
-		generate_atmospheres()
-	if(gas_string == ATMOSPHERE_ID_USE_ZTRAIT)
-		gas_string = SSmapping.level_trait(T.z, ZTRAIT_DEFAULT_ATMOS) || GAS_STRING_VACUUM
-	gas_string = "[gas_string]"
-	if(!generated_atmospheres[gas_string])
-		return gas_string
-	var/datum/atmosphere/mix = generated_atmospheres[gas_string]
-	return mix.gas_string
+ * parses a gas string
+ * returns list(gas list, temp); gas list is cached, make sure to copy it!!!
+ *
+ * @params
+ * - gas_string - gas string
+ * - turf_context - turf location
+ */
+/datum/controller/subsystem/air/proc/_parse_gas_string(gas_string, turf/turf_context)
+	// 1. check if area
+	if(gas_string == ATMOSPHERE_USE_AREA)
+		var/area/A = turf_context.loc
+		gas_string = A.initial_gas_mix
+	// 2. check if it's special and should look up the level's defaults
+	switch(gas_string)
+		if(ATMOSPHERE_USE_OUTDOORS)
+			gas_string = SSmapping.level_get_outdoors_air(turf_context.z)
+		if(ATMOSPHERE_USE_INDOORS)
+			gas_string = SSmapping.level_get_indoors_air(turf_context.z)
+	// 3: process atmosphere
+	if(generated_atmospheres[gas_string])
+		var/datum/atmosphere/A = generated_atmospheres[gas_string]
+		gas_string = A.gas_string
+	. = cached_strings[gas_string]
+	if(.)
+		return
+	return (cached_strings[gas_string] = unpack_gas_string(gas_string))
+
+/**
+ * Validates a gas string.
+ * * Unlike parsing, this is considered absolute and doesn't accept a turf for context.
+ * * 'use area', 'use outdoors', 'use indoors' are allowed if allow_turf_contextual
+ */
+/datum/controller/subsystem/air/proc/validate_gas_string(gas_string, allow_turf_contextual)
+	// these are only valid if we allow contextual
+	if(
+		gas_string == ATMOSPHERE_USE_AREA || \
+		gas_string == ATMOSPHERE_USE_OUTDOORS || \
+		gas_string == ATMOSPHERE_USE_INDOORS
+	)
+		return allow_turf_contextual
+	// requires it to already be generated
+	if(generated_atmospheres[gas_string])
+		return TRUE
+	// we, at the moment, don't validate anything else
+	return TRUE
+
+/datum/controller/subsystem/air/proc/unpack_gas_string(gas_string)
+	var/list/built = new /list(2)
+	var/list/unpacked = params2list(gas_string)
+	built[2] = text2num(unpacked["TEMP"])	// null allowed
+	unpacked -= "TEMP"
+	for(var/id in unpacked)
+		unpacked[id] = text2num(unpacked[id])
+	built[1] = unpacked
+	return built
 
 #undef SSAIR_TURFS
 #undef SSAIR_EDGES

@@ -5,7 +5,7 @@
 /datum/event/gravity/setup()
 	endWhen = rand(15, 60)
 	// Setup which levels we will disrupt gravit on.
-	zLevels = GLOB.using_map.station_levels.Copy()
+	zLevels = (LEGACY_MAP_DATUM).station_levels.Copy()
 	for(var/datum/planet/P in SSplanets.planets)
 		zLevels -= P.expected_z_levels
 
@@ -34,4 +34,4 @@
 			if(A.z in zLevels)
 				A.gravitychange(gravity_is_on, A)
 
-		command_announcement.Announce("Gravity generators are again functioning within normal parameters. Sorry for any inconvenience.", "Gravity Restored")
+		command_announcement.Announce("Gravity generators are again functioning within normal parameters. We apologize for the inconvenience.", "Gravity Restored")

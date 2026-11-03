@@ -170,7 +170,7 @@
 	display_name = "blood tomato plant"
 	mutants = list("killer")
 	chems = list("nutriment" = list(1,10), "blood" = list(1,5))
-	splat_type = /obj/effect/decal/cleanable/blood/splatter
+	splat_type = /obj/effect/debris/cleanable/blood/splatter
 
 /datum/seed/tomato/blood/New()
 	..()
@@ -317,13 +317,35 @@
 	seed_name = "ambrosia deus"
 	display_name = "ambrosia deus"
 	kitchen_tag = "ambrosiadeus"
-	mutants = null
+	mutants = list("ambrosiagaia")
 	chems = list("nutriment" = list(1), "bicaridine" = list(1,8), "synaptizine" = list(1,8,1), "hyperzine" = list(1,10,1), "space_drugs" = list(1,10))
 
 /datum/seed/ambrosia/deus/New()
 	..()
 	set_trait(TRAIT_PRODUCT_COLOUR,"#A3F0AD")
 	set_trait(TRAIT_PLANT_COLOUR,"#2A9C61")
+
+/datum/seed/ambrosia/gaia
+	name = "ambrosiagaia"
+	seed_name = "ambrosia gaia"
+	display_name = "ambrosia gaia"
+	kitchen_tag = "ambrosiagaia"
+	mutants = null
+	chems = list ("earthsblood" = list(3,5), "nutriment" = list(1,3))
+
+/datum/seed/ambrosia/gaia/New()
+	..()
+	set_trait(TRAIT_HARVEST_REPEAT,0)
+	set_trait(TRAIT_MATURATION,10)
+	set_trait(TRAIT_WATER_CONSUMPTION,6)
+	set_trait(TRAIT_NUTRIENT_CONSUMPTION,6)
+	set_trait(TRAIT_WEED_TOLERANCE,1)
+	set_trait(TRAIT_TOXINS_TOLERANCE,1)
+	set_trait(TRAIT_PEST_TOLERANCE,1)
+	set_trait(TRAIT_BIOLUM,1)
+	set_trait(TRAIT_BIOLUM_COLOUR,"#ffb500")
+	set_trait(TRAIT_PRODUCT_COLOUR, "#ffee00")
+	set_trait(TRAIT_PLANT_COLOUR,"#f3ba2b")
 
 //Mushrooms/varieties.
 /datum/seed/mushroom
@@ -333,7 +355,7 @@
 	display_name = "chanterelle mushrooms"
 	mutants = list("reishi","amanita","plumphelmet")
 	chems = list("nutriment" = list(1,25))
-	splat_type = /obj/effect/plant
+	splat_type = /obj/structure/plant
 	kitchen_tag = "mushroom"
 
 /datum/seed/mushroom/New()
@@ -959,6 +981,44 @@
 	set_trait(TRAIT_PLANT_ICON,"carrot")
 	set_trait(TRAIT_WATER_CONSUMPTION, 6)
 
+/datum/seed/taro
+	name = "taro"
+	seed_name = "taro"
+	display_name = "taro root"
+	kitchen_tag = "taro"
+	chems = list("nutriment" = list(1,20), "taropowder" = list(10,20))
+
+/datum/seed/taro/New()
+	..()
+	set_trait(TRAIT_MATURATION,10)
+	set_trait(TRAIT_PRODUCTION,1)
+	set_trait(TRAIT_YIELD,5)
+	set_trait(TRAIT_POTENCY,10)
+	set_trait(TRAIT_PRODUCT_ICON,"carrot")
+	set_trait(TRAIT_PRODUCT_COLOUR,"#858070")
+	set_trait(TRAIT_PLANT_ICON,"carrot")
+	set_trait(TRAIT_WATER_CONSUMPTION, 6)
+
+/datum/seed/coconut
+	name = "coconut"
+	seed_name = "coconut"
+	display_name = "palm tree"
+	kitchen_tag = "coconut"
+	chems = list("nutriment" = list(1,20), "coconutwater" = list(10,20), "coconutmilk" = list(10,20))
+
+/datum/seed/coconut/New()
+	..()
+	set_trait(TRAIT_HARVEST_REPEAT,1)
+	set_trait(TRAIT_MATURATION,6)
+	set_trait(TRAIT_PRODUCTION,6)
+	set_trait(TRAIT_YIELD,3)
+	set_trait(TRAIT_PRODUCT_ICON,"coconut")
+	set_trait(TRAIT_PRODUCT_COLOUR,"#814d08")
+	set_trait(TRAIT_PLANT_COLOUR,"#69AD50")
+	set_trait(TRAIT_PLANT_ICON,"tree4")
+	set_trait(TRAIT_IDEAL_HEAT, 298)
+	set_trait(TRAIT_IDEAL_LIGHT, 7)
+	set_trait(TRAIT_WATER_CONSUMPTION, 6)
 /datum/seed/weeds
 	name = "weeds"
 	seed_name = "weed"
@@ -1073,6 +1133,26 @@
 	set_trait(TRAIT_IDEAL_LIGHT, 4)
 	set_trait(TRAIT_WATER_CONSUMPTION, 8)
 	set_trait(TRAIT_STINGS,1)
+
+/datum/seed/peas
+	name = "peas"
+	seed_name = "peas"
+	display_name = "loose peas"
+	kitchen_tag = "peas"
+	chems = list("nutriment" = list(1,10))
+
+/datum/seed/peas/New()
+	..()
+	set_trait(TRAIT_MATURATION,8)
+	set_trait(TRAIT_PRODUCTION,6)
+	set_trait(TRAIT_YIELD,3)
+	set_trait(TRAIT_POTENCY,20)
+	set_trait(TRAIT_PRODUCT_ICON,"berry")
+	set_trait(TRAIT_PRODUCT_COLOUR,"#0e9415")
+	set_trait(TRAIT_PLANT_COLOUR,"#87C969")
+	set_trait(TRAIT_PLANT_ICON,"bush")
+	set_trait(TRAIT_IDEAL_LIGHT, 6)
+	set_trait(TRAIT_WATER_CONSUMPTION, 6)
 
 /datum/seed/durian
 	name = "durian"
@@ -1192,6 +1272,7 @@
 	seed_name = "grass"
 	display_name = "grass"
 	kitchen_tag = "grass"
+	mutants = list("carpet")
 	chems = list("nutriment" = list(1,20))
 
 /datum/seed/grass/New()
@@ -1206,6 +1287,22 @@
 	set_trait(TRAIT_PLANT_ICON,"grass")
 	set_trait(TRAIT_WATER_CONSUMPTION, 0.5)
 	set_trait(TRAIT_NUTRIENT_CONSUMPTION, 0.15)
+
+/datum/seed/grass/carpet
+	name = "carpet"
+	seed_name = "carpet"
+	display_name = "carpet"
+	kitchen_tag = "carpet"
+	mutants = null
+	chems = list("liquidcarpet" = list(5,10))
+
+/datum/seed/grass/carpet/New()
+	..()
+	set_trait(TRAIT_YIELD,7)
+	set_trait(TRAIT_PRODUCT_ICON,"grass")
+	set_trait(TRAIT_PRODUCT_COLOUR,"#9e2500")
+	set_trait(TRAIT_PLANT_COLOUR,"#ee4401")
+	set_trait(TRAIT_PLANT_ICON,"grass")
 
 /datum/seed/cocoa
 	name = "cocoa"
@@ -1247,6 +1344,25 @@
 	set_trait(TRAIT_PRODUCT_COLOUR,"#A80000")
 	set_trait(TRAIT_PLANT_ICON,"tree2")
 	set_trait(TRAIT_PLANT_COLOUR,"#2F7D2D")
+
+/datum/seed/tobacco
+	name = "tobacco"
+	seed_name = "tobacco"
+	display_name = "tobacco"
+	kitchen_tag = "tobacco"
+	chems = list("nicotine" = list(5,10))
+
+/datum/seed/tobacco/New()
+	..()
+	set_trait(TRAIT_HARVEST_REPEAT,2)
+	set_trait(TRAIT_MATURATION,5)
+	set_trait(TRAIT_PRODUCTION,5)
+	set_trait(TRAIT_YIELD,5)
+	set_trait(TRAIT_POTENCY,10)
+	set_trait(TRAIT_PRODUCT_ICON,"nettles")
+	set_trait(TRAIT_PRODUCT_COLOUR,"#3b2008")
+	set_trait(TRAIT_PLANT_COLOUR,"#124b04")
+	set_trait(TRAIT_PLANT_ICON,"bush2")
 
 /datum/seed/kudzu
 	name = "kudzu"
@@ -1464,45 +1580,6 @@
 	set_trait(TRAIT_SPREAD,2)
 	set_trait(TRAIT_POTENCY,50)
 
-/datum/seed/size
-	name = "microm"
-	seed_name = "Shrinking Mushroom"
-	display_name = "Shrinking mushroom trees"
-	mutants = list("megam")
-	kitchen_tag = "microm"
-	chems = list("microcillin" = list(1,20))
-
-/datum/seed/size/New()
-	..()
-	set_trait(TRAIT_HARVEST_REPEAT,1)
-	set_trait(TRAIT_MATURATION,6)
-	set_trait(TRAIT_PRODUCTION,6)
-	set_trait(TRAIT_YIELD,3)
-	set_trait(TRAIT_POTENCY,15)
-	set_trait(TRAIT_PRODUCT_ICON,"mushroom3")
-	set_trait(TRAIT_PRODUCT_COLOUR,"#DA00DA")
-	set_trait(TRAIT_PLANT_ICON,"tree")
-
-
-/datum/seed/size/megam
-	name = "megam"
-	seed_name = "Mega Mushroom"
-	display_name = "Mega mushroom trees"
-	mutants = list("microm")
-	kitchen_tag = "megam"
-	chems = list("macrocillin" = list(1,20))
-
-/datum/seed/size/megam/New()
-	..()
-	set_trait(TRAIT_HARVEST_REPEAT,1)
-	set_trait(TRAIT_MATURATION,6)
-	set_trait(TRAIT_PRODUCTION,6)
-	set_trait(TRAIT_YIELD,3)
-	set_trait(TRAIT_POTENCY,15)
-	set_trait(TRAIT_PRODUCT_ICON,"mushroom6")
-	set_trait(TRAIT_PLANT_ICON,"tree")
-	set_trait(TRAIT_PRODUCT_COLOUR,"#DADA00")
-
 // Disho.
 /datum/seed/disho
 	name = "disho"
@@ -1582,3 +1659,228 @@
 	set_trait(TRAIT_PLANT_ICON,"carrot")
 	set_trait(TRAIT_IDEAL_HEAT, 334)
 	set_trait(TRAIT_IDEAL_LIGHT, 10)
+
+//Ashlander Plants
+/datum/seed/flower/pyrrhlea
+	name = "pyrrhlea"
+	seed_name = "pyrrhlea"
+	display_name = "pyrrhlea"
+	kitchen_tag = "pyrrhlea"
+	chems = list("nutriment" = list(1,5), "pyrrhleanectar" = list(1,10), "inaprovaline" = list(1,10)) // tried to make the nectar replace both medicines but I don't think reactions can have two outcomes for splitting it later
+
+/datum/seed/flower/pyrrhlea/New()
+	..()
+	set_trait(TRAIT_HARVEST_REPEAT,2)
+	set_trait(TRAIT_MATURATION,10)
+	set_trait(TRAIT_PRODUCTION,3)
+	set_trait(TRAIT_YIELD,5)
+	set_trait(TRAIT_PRODUCT_ICON,"flowers")
+	set_trait(TRAIT_PRODUCT_COLOUR,"#f0d74c")
+	set_trait(TRAIT_PLANT_COLOUR,"#75581a")
+	set_trait(TRAIT_PLANT_ICON,"bush6")
+	set_trait(TRAIT_IDEAL_LIGHT, 1)
+	set_trait(TRAIT_NUTRIENT_CONSUMPTION, 0.1)
+	set_trait(TRAIT_WATER_CONSUMPTION, 0.1)
+
+/datum/seed/bentars
+	name = "bentars"
+	seed_name = "bentar"
+	display_name = "bentars"
+	kitchen_tag = "bentars"
+	chems = list("sugar" = list(1,5), "bentarjuice" = list(1,10))
+
+/datum/seed/bentars/New()
+	..()
+	set_trait(TRAIT_HARVEST_REPEAT,2)
+	set_trait(TRAIT_MATURATION,10)
+	set_trait(TRAIT_PRODUCTION,3)
+	set_trait(TRAIT_YIELD,4)
+	set_trait(TRAIT_POTENCY,10)
+	set_trait(TRAIT_PRODUCT_ICON,"bean")
+	set_trait(TRAIT_PRODUCT_COLOUR,"#9d23aa")
+	set_trait(TRAIT_PLANT_COLOUR,"#53391b")
+	set_trait(TRAIT_PLANT_ICON,"bush5")
+	set_trait(TRAIT_IDEAL_LIGHT, 1)
+	set_trait(TRAIT_NUTRIENT_CONSUMPTION, 0.1)
+	set_trait(TRAIT_WATER_CONSUMPTION, 0.1)
+
+/datum/seed/juhtak
+	name = "juhtak"
+	seed_name = "juhtak"
+	display_name = "juhtak"
+	kitchen_tag = "juhtak"
+	chems = list("nutriment" = list(1,5), "juhtakpulp" = list(1,10))
+
+/datum/seed/juhtak/New()
+	..()
+	set_trait(TRAIT_HARVEST_REPEAT,2)
+	set_trait(TRAIT_MATURATION,15)
+	set_trait(TRAIT_PRODUCTION,5)
+	set_trait(TRAIT_YIELD,4)
+	set_trait(TRAIT_POTENCY,6)
+	set_trait(TRAIT_PRODUCT_ICON,"vine")
+	set_trait(TRAIT_PRODUCT_COLOUR,"#7c260c")
+	set_trait(TRAIT_PLANT_COLOUR,"#684f32")
+	set_trait(TRAIT_PLANT_ICON,"bush7")
+	set_trait(TRAIT_IDEAL_LIGHT, 1)
+	set_trait(TRAIT_NUTRIENT_CONSUMPTION, 0.1)
+	set_trait(TRAIT_WATER_CONSUMPTION, 0.1)
+
+/datum/seed/cersut
+	name = "cersut"
+	seed_name = "cersut"
+	display_name = "cersut"
+	kitchen_tag = "cersut"
+	chems = list("cersutpaste" = list(5,10))
+
+/datum/seed/cersut/New()
+	..()
+	set_trait(TRAIT_HARVEST_REPEAT,2)
+	set_trait(TRAIT_MATURATION,8)
+	set_trait(TRAIT_PRODUCTION,4)
+	set_trait(TRAIT_YIELD,6)
+	set_trait(TRAIT_POTENCY,10)
+	set_trait(TRAIT_PRODUCT_ICON,"leafy")
+	set_trait(TRAIT_PRODUCT_COLOUR,"#e0f569")
+	set_trait(TRAIT_PLANT_COLOUR,"#42222a")
+	set_trait(TRAIT_PLANT_ICON,"vine2")
+	set_trait(TRAIT_IDEAL_LIGHT, 1)
+	set_trait(TRAIT_NUTRIENT_CONSUMPTION, 0.1)
+	set_trait(TRAIT_WATER_CONSUMPTION, 0.1)
+
+/datum/seed/shimash
+	name = "shimash"
+	seed_name = "shimash"
+	display_name = "shimash"
+	kitchen_tag = "shimash"
+	chems = list("shimashpulp" = list(5,10))
+
+/datum/seed/shimash/New()
+	..()
+	set_trait(TRAIT_HARVEST_REPEAT,4)
+	set_trait(TRAIT_MATURATION,6)
+	set_trait(TRAIT_PRODUCTION,5)
+	set_trait(TRAIT_YIELD,6)
+	set_trait(TRAIT_POTENCY,10)
+	set_trait(TRAIT_PRODUCT_ICON,"spinefruit")
+	set_trait(TRAIT_PRODUCT_COLOUR,"#304730")
+	set_trait(TRAIT_PLANT_COLOUR,"#580505")
+	set_trait(TRAIT_PLANT_ICON,"bush2")
+	set_trait(TRAIT_IDEAL_LIGHT, 1)
+	set_trait(TRAIT_NUTRIENT_CONSUMPTION, 0.1)
+	set_trait(TRAIT_WATER_CONSUMPTION, 0.1)
+
+/datum/seed/pokalea
+	name = "pokalea"
+	seed_name = "pokalea"
+	display_name = "pokalea"
+	kitchen_tag = "pokalea"
+	chems = list("nicotine" = list(5,10), "pokaleapaste" = list(5,10))
+
+/datum/seed/pokalea/New()
+	..()
+	set_trait(TRAIT_HARVEST_REPEAT,4)
+	set_trait(TRAIT_MATURATION,6)
+	set_trait(TRAIT_PRODUCTION,5)
+	set_trait(TRAIT_YIELD,6)
+	set_trait(TRAIT_POTENCY,10)
+	set_trait(TRAIT_PRODUCT_ICON,"pod")
+	set_trait(TRAIT_PRODUCT_COLOUR,"#684c34")
+	set_trait(TRAIT_PLANT_COLOUR,"#9aa07c")
+	set_trait(TRAIT_PLANT_ICON,"tree")
+	set_trait(TRAIT_IDEAL_LIGHT, 1)
+	set_trait(TRAIT_NUTRIENT_CONSUMPTION, 0.1)
+	set_trait(TRAIT_WATER_CONSUMPTION, 0.1)
+
+//Exotic Seeds and Stuff
+
+/datum/seed/mushroom/fungiwheat
+	name = "fungiwheat"
+	seed_name = "black fungi-wheat spores"
+	display_name = "fungi-wheat stalks"
+	kitchen_tag = "wheat"
+	chems = list("nutriment" = list(1,25), "flour" = list(15,15))
+	catalog_data_grown = list(/datum/category_item/catalogue/flora/fungiwheat)
+
+/datum/seed/mushroom/fungiwheat/New()
+	..()
+	set_trait(TRAIT_IMMUTABLE,1)
+	set_trait(TRAIT_MATURATION,8)
+	set_trait(TRAIT_YIELD,4)
+	set_trait(TRAIT_POTENCY,0)
+	set_trait(TRAIT_PEST_TOLERANCE,8)
+	set_trait(TRAIT_PRODUCT_ICON,"wheat")
+	set_trait(TRAIT_PRODUCT_COLOUR,"#2e2f32")
+	set_trait(TRAIT_PLANT_COLOUR,"#2e2f32")
+	set_trait(TRAIT_PLANT_ICON,"stalk2")
+
+
+/datum/category_item/catalogue/flora/fungiwheat
+	name = "Flora - Black Fungiwheat"
+	desc = "A genetically engineered fungus created by the Department of Genetics Research on the Krisitik homeworld of Murith. It is a staple crop for the \
+	subterranean Krisitik and its coarse fungal flour is mold and pest resistant, dramatically increasing the shelf life of its products. \
+	The specific breeds of fungus used by the Krisitik are 'copyrighted' by the Department of Genetics Research and are grown exclusively \
+	at their hydroponic facilities however, recently lesser breeds of the fungus have been licensed to the wider galaxy as trade relations \
+	with the Krisitik improve."
+	value = CATALOGUER_REWARD_TRIVIAL
+
+/datum/seed/ironwood
+	name = "ironwood"
+	seed_name = "ironwood sapling"
+	display_name = "ironwood bonsai"
+	chems = list("woodpulp" = list(1,20))
+	has_item_product = /obj/item/stack/material/log/ironwood
+	catalog_data_grown = list(/datum/category_item/catalogue/flora/ironwood)
+
+/datum/seed/ironwood/New()
+	..()
+	set_trait(TRAIT_IMMUTABLE,1)
+	set_trait(TRAIT_MATURATION,15)
+	set_trait(TRAIT_PRODUCTION,5)
+	set_trait(TRAIT_YIELD,3)
+	set_trait(TRAIT_POTENCY,20)
+	set_trait(TRAIT_WATER_CONSUMPTION,3)
+	set_trait(TRAIT_NUTRIENT_CONSUMPTION,3)
+	set_trait(TRAIT_PRODUCT_ICON,"mushroom7")
+	set_trait(TRAIT_PRODUCT_COLOUR,"#5C5454")
+	set_trait(TRAIT_PLANT_COLOUR,"#666666")
+	set_trait(TRAIT_PLANT_ICON,"mushroom8")
+
+/datum/category_item/catalogue/flora/ironwood
+	name = "Flora - Ironwood Bonsais"
+	desc = "The Ironwood tree is a type of tree native to the Alraune homeworld of Loam whose wood is known to be exceptionally strong rivalling many metals in terms \
+	of durability. The intense amount of nutrients Ironwood Trees consume and their slow overall growth has prevented widescale adoption by the galaxy as a building material \
+	though it remains popular among the Alraune who see it as far more ethical then traditional steel. This miniature Ironwood tree was specifically bred by the Alraune \
+	to create an ironwood tree capable of growing in hydroponics trays, resulting in a 'Ironwood Bonsai'. Despite small yields it still provides more than enough material to \
+	use in ironwood crafts."
+	value = CATALOGUER_REWARD_TRIVIAL
+
+/datum/seed/creepermoss
+	name = "creepermoss"
+	seed_name = "creeper sphagnum"
+	display_name = "creeper sphagnum"
+	chems = list("nutriment" = list(2,10), "gunpowder" = list(2,6))
+	catalog_data_grown = list(/datum/category_item/catalogue/flora/creepermoss)
+
+/datum/seed/creepermoss/New()
+	..()
+	set_trait(TRAIT_HARVEST_REPEAT,1)
+	set_trait(TRAIT_MATURATION,6)
+	set_trait(TRAIT_PRODUCTION,6)
+	set_trait(TRAIT_YIELD,4)
+	set_trait(TRAIT_POTENCY,10)
+	set_trait(TRAIT_STINGS,1)
+	set_trait(TRAIT_PLANT_ICON,"bush5")
+	set_trait(TRAIT_PRODUCT_ICON,"nettles")
+	set_trait(TRAIT_PLANT_COLOUR,"#26d443")
+	set_trait(TRAIT_PRODUCT_COLOUR,"#26d443")
+
+/datum/category_item/catalogue/flora/creepermoss
+	name = "Flora - Creeper Sphagnum"
+	desc = "Creeper Sphagnum was developed by a long bankrupt genetics research company in attempts to create 'growable gunpowder'. Using sphagnum moss as base the \
+	experiment failed being unable to produce a gunpowder fit for modern cartridges. The company shortly after filed for bankruptcy and for a while it was thought \
+	the 'Creeper Sphagnum' would just become another failed genetic template to be archived for eternity. Years after the company closed PMCs and Orion Naval patrols began \
+	to find a mysterious new 'gunpowder moss' growing in pirate vessels and hideouts. It did not take long to link the new moss to the now bankrupt company but how \
+	the moss fell into pirate hands remains a mystery to this day. What is certain though is that Creeper Sphagnum is now grown across the frontier whether to make ammo \
+	for a Frontiersman's primitive homemade firearm or for explosives used in pirate raids."
+	value = CATALOGUER_REWARD_TRIVIAL

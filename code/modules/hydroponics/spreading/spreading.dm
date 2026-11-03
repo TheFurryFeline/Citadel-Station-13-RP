@@ -6,7 +6,7 @@
 		var/list/turf/simulated/floor/turfs = get_area_turfs(typesof(/area/hallway)) //list of all the empty floor turfs in the hallway areas
 		for(var/i in turfs)
 			var/turf/T = i
-			if(!(T.z in GLOB.using_map.station_levels))
+			if(!(T.z in (LEGACY_MAP_DATUM).station_levels))
 				turfs -= T
 
 		if(turfs.len) //Pick a turf to spawn at if we can
@@ -19,8 +19,8 @@
 			seed.display_name = "strange plants" //more thematic for the vine infestation event
 
 			//make vine zero start off fully matured
-			var/obj/effect/plant/vine = new(T,seed)
-			vine.health = vine.max_health
+			var/obj/structure/plant/vine = new(T,seed)
+			vine.integrity = vine.integrity_max
 			vine.mature_time = 0
 			vine.process()
 
@@ -28,39 +28,40 @@
 			return
 		message_admins("<span class='notice'>Event: Spacevines failed to find a viable turf.</span>")
 
-/obj/effect/dead_plant
+/obj/structure/dead_plant
 	anchored = 1
 	opacity = 0
 	density = 0
 	color = DEAD_PLANT_COLOUR
 
-/obj/effect/dead_plant/attack_hand()
+/obj/structure/dead_plant/attack_hand(mob/user, datum/event_args/actor/clickchain/e_args)
 	qdel(src)
 
-/obj/effect/dead_plant/attackby()
+/obj/structure/dead_plant/attackby()
 	..()
-	for(var/obj/effect/plant/neighbor in range(1))
+	for(var/obj/structure/plant/neighbor in range(1))
 		neighbor.update_neighbors()
 	qdel(src)
 
-/obj/effect/plant
+/obj/structure/plant
 	name = "plant"
-	anchored = 1
-	can_buckle = 1
+	anchored = TRUE
+	buckle_allowed = TRUE
 	opacity = 0
 	density = 0
 	icon = 'icons/obj/hydroponics_growing.dmi'
 	icon_state = "bush4-1"
-	pass_flags = PASSTABLE
-	mouse_opacity = 2
+	pass_flags = ATOM_PASS_TABLE
+	mouse_opacity = MOUSE_OPACITY_OPAQUE
 
-	var/health = 15
-	var/max_health = 95 - TRAIT_POTENCY
+	integrity = 15
+	integrity_max = 110
+
 	var/growth_threshold = 0
 	var/growth_type = 1
 	var/max_growth = 0
 	var/list/neighbors = list()
-	var/obj/effect/plant/parent
+	var/obj/structure/plant/parent
 	var/datum/seed/seed
 	var/sampled = 0
 	var/floor = 0
@@ -71,17 +72,18 @@
 	var/last_tick = 0
 	var/obj/machinery/portable_atmospherics/hydroponics/soil/invisible/plant
 
-/obj/effect/plant/Destroy()
-	if(SSplants)
-		SSplants.remove_plant(src)
-	for(var/obj/effect/plant/neighbor in range(1,src))
+/obj/structure/plant/Destroy()
+	QDEL_NULL(plant)
+	parent = null
+	SSplants.remove_plant(src)
+	for(var/obj/structure/plant/neighbor in orange(1, src))
 		SSplants.add_plant(neighbor)
 	return ..()
 
-/obj/effect/plant/single
+/obj/structure/plant/single
 	spread_chance = 0
 
-/obj/effect/plant/Initialize(mapload, datum/seed/newseed, obj/effect/plant/newparent)
+/obj/structure/plant/Initialize(mapload, datum/seed/newseed, obj/structure/plant/newparent)
 	. = ..()
 	if(!newparent)
 		parent = src
@@ -96,14 +98,14 @@
 		return
 
 	name = seed.display_name
-	max_health = round(seed.get_trait(TRAIT_ENDURANCE)/2)
+	integrity_max = round(seed.get_trait(TRAIT_ENDURANCE)/2)
 	if(seed.get_trait(TRAIT_SPREAD)==2)
 		max_growth = VINE_GROWTH_STAGES
-		growth_threshold = max_health/VINE_GROWTH_STAGES
+		growth_threshold = integrity_max / VINE_GROWTH_STAGES
 		icon = 'icons/obj/hydroponics_vines.dmi'
 	else
 		max_growth = seed.growth_stages
-		growth_threshold = max_health/seed.growth_stages
+		growth_threshold = integrity_max / seed.growth_stages
 
 	if(max_growth > 2 && prob(50))
 		max_growth-- //Ensure some variation in final sprite, makes the carpet of crap look less wonky.
@@ -113,17 +115,31 @@
 	spread_distance = ((growth_type>0) ? round(spread_chance*0.77) : round(spread_chance*0.6))
 	update_icon()
 
+/obj/structure/plant/heal_integrity(amount, gradual, do_not_fix)
+	. = ..()
+	refresh_icon()
+
+/obj/structure/plant/damage_integrity(amount, gradual, do_not_break)
+	. = ..()
+	refresh_icon()
+	SSplants.add_plant(src)
+
+/obj/structure/plant/atom_destruction()
+	die_off(TRUE)
+	return ..()
+
 // Plants will sometimes be spawned in the turf adjacent to the one they need to end up in, for the sake of correct dir/etc being set.
-/obj/effect/plant/proc/finish_spreading()
+/obj/structure/plant/proc/finish_spreading()
 	setDir(calc_dir())
 	update_icon()
 	SSplants.add_plant(src)
 	//Some plants eat through plating.
 	if(islist(seed.chems) && !isnull(seed.chems["pacid"]))
 		var/turf/T = get_turf(src)
-		T.ex_act(prob(80) ? 3 : 2)
+		var/P = prob(80)? 3 : 2
+		LEGACY_EX_ACT(T, P, null)
 
-/obj/effect/plant/update_icon()
+/obj/structure/plant/update_icon()
 	//TODO: should really be caching this.
 	refresh_icon()
 	if(growth_type == 0 && !floor)
@@ -152,8 +168,8 @@
 	else
 		set_light(0)
 
-/obj/effect/plant/proc/refresh_icon()
-	var/growth = min(max_growth,round(health/growth_threshold))
+/obj/structure/plant/proc/refresh_icon()
+	var/growth = min(max_growth,round(integrity / growth_threshold))
 	var/at_fringe = get_dist(src,parent)
 	if(spread_distance > 5)
 		if(at_fringe >= (spread_distance-3))
@@ -162,14 +178,14 @@
 			max_growth--
 	max_growth = max(1,max_growth)
 	if(growth_type > 0)
-		if(max_health > 40)
-			icon_state = "vines-[growth]"
-		else if(max_health <= 40 > 30)
-			icon_state = "mass-[growth]"
-		else if(max_health <= 30 > 20)
-			icon_state = "worms"
-		else
-			icon_state = "mold-[growth]"
+		var/growth_for_icon_state_selection = clamp(growth, 1, 5)
+		icon_state = "vines-[growth_for_icon_state_selection]"
+		// current vines dont vary to warrant this code
+		// TODO: implement way of vines sometimes picking different iconstates:
+		// Options are:
+			// "mass-[growth_for_icon_state_selection]"
+			// "worms"
+			// "mold-[growth_for_icon_state_selection]"
 	else
 		icon_state = "[seed.get_trait(TRAIT_PLANT_ICON)]-[growth]"
 
@@ -179,10 +195,11 @@
 		if(!isnull(seed.chems["woodpulp"]))
 			density = 1
 	else
-		reset_plane_and_layer()
+		plane = initial(plane)
+		set_base_layer(initial(layer))
 		density = 0
 
-/obj/effect/plant/proc/calc_dir()
+/obj/structure/plant/proc/calc_dir()
 	set background = 1
 	var/turf/T = get_turf(src)
 	if(!istype(T)) return
@@ -194,7 +211,7 @@
 		if(newTurf.density)
 			direction |= wallDir
 
-	for(var/obj/effect/plant/shroom in T.contents)
+	for(var/obj/structure/plant/shroom in T.contents)
 		if(shroom == src)
 			continue
 		if(shroom.floor) //special
@@ -218,12 +235,11 @@
 	floor = 1
 	return 1
 
-/obj/effect/plant/attackby(var/obj/item/W, var/mob/user)
-
-	user.setClickCooldown(user.get_attack_speed(W))
-	SSplants.add_plant(src)
-
-	if(W.is_wirecutter() || istype(W, /obj/item/surgical/scalpel))
+/obj/structure/plant/attackby(obj/item/I, mob/living/user, list/params, clickchain_flags, damage_multiplier)
+	if(user.a_intent == INTENT_HARM)
+		return ..()
+	if(I.is_wirecutter() || istype(I, /obj/item/surgical/scalpel))
+		. = CLICKCHAIN_DO_NOT_PROPAGATE
 		if(sampled)
 			to_chat(user, "<span class='warning'>\The [src] has already been sampled recently.</span>")
 			return
@@ -239,16 +255,13 @@
 		if(prob(70))
 			sampled = 1
 		seed.harvest(user,0,1)
-		health -= (rand(3,5)*5)
+		damage_integrity(rand(3, 5) * 5)
 		sampled = 1
-	else
-		..()
-		if(W.force)
-			health -= W.force
-	check_health()
+		return
+	return ..()
 
 //handles being overrun by vines - note that attacker_parent may be null in some cases
-/obj/effect/plant/proc/vine_overrun(datum/seed/attacker_seed, obj/effect/plant/attacker_parent)
+/obj/structure/plant/proc/vine_overrun(datum/seed/attacker_seed, obj/structure/plant/attacker_parent)
 	var/aggression = 0
 	aggression += (attacker_seed.get_trait(TRAIT_CARNIVOROUS) - seed.get_trait(TRAIT_CARNIVOROUS))
 	aggression += (attacker_seed.get_trait(TRAIT_SPREAD) - seed.get_trait(TRAIT_SPREAD))
@@ -270,28 +283,7 @@
 	aggression -= resiliance
 
 	if(aggression > 0)
-		health -= aggression*5
-		check_health()
+		damage_integrity(aggression * 5)
 
-/obj/effect/plant/ex_act(severity)
-	switch(severity)
-		if(1.0)
-			die_off()
-			return
-		if(2.0)
-			if (prob(50))
-				die_off()
-				return
-		if(3.0)
-			if (prob(5))
-				die_off()
-				return
-		else
-	return
-
-/obj/effect/plant/proc/check_health()
-	if(health <= 0)
-		die_off()
-
-/obj/effect/plant/proc/is_mature()
-	return (health >= (max_health/3) && world.time > mature_time)
+/obj/structure/plant/proc/is_mature()
+	return percent_integrity() >= (1/3) && world.time > mature_time

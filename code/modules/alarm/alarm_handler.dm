@@ -3,16 +3,26 @@
 
 /datum/alarm_handler
 	var/category = ""
-	var/list/datum/alarm/alarms = new		// All alarms, to handle cases when an origin has been deleted with one or more active alarms
-	var/list/datum/alarm/alarms_assoc = new	// Associative list of alarms, to efficiently acquire them based on origin.
-	var/list/listeners = new				// A list of all objects interested in alarm changes.
+	// All alarms, to handle cases when an origin has been deleted with one or more active alarms
+	var/list/datum/alarm/alarms = list()
+	// Associative list of alarms, to efficiently acquire them based on origin.
+	var/list/datum/alarm/alarms_assoc = list()
+	// A list of all objects interested in alarm changes, associated to proc-refs.
+	var/list/listeners = list()
+
+/datum/alarm_handler/Destroy(force)
+	if(!force)
+		stack_trace("attempted to delete an alarm handler (don't do this please)")
+		return QDEL_HINT_LETMELIVE
+	listeners = null
+	return ..()
 
 /datum/alarm_handler/process(delta_time)
 	for(var/datum/alarm/A in alarms)
 		A.process()
 		check_alarm_cleared(A)
 
-/datum/alarm_handler/proc/triggerAlarm(var/atom/origin, var/atom/source, var/duration = 0, var/severity = 1, var/hidden = 0)
+/datum/alarm_handler/proc/triggerAlarm(var/atom/origin, var/atom/source, var/duration = 0, var/severity = 1, var/hidden = 0, var/list/reasons)
 	var/new_alarm
 	//Proper origin and source mandatory
 	if(!(origin && source))
@@ -23,9 +33,9 @@
 	//see if there is already an alarm of this origin
 	var/datum/alarm/existing = alarms_assoc[origin]
 	if(existing)
-		existing.set_source_data(source, duration, severity, hidden)
+		existing.set_source_data(source, duration, severity, hidden, reasons)
 	else
-		existing = new/datum/alarm(origin, source, duration, severity, hidden)
+		existing = new/datum/alarm(origin, source, duration, severity, hidden, reasons)
 		new_alarm = 1
 
 	alarms |= existing
@@ -104,7 +114,7 @@
 /datum/alarm_handler/proc/visible_alarms(var/z)
 	if(!LAZYLEN(alarms))
 		return list()
-	var/list/map_levels = GLOB.using_map.get_map_levels(z)
+	var/list/map_levels = (LEGACY_MAP_DATUM).get_map_levels(z)
 	var/list/visible_alarms = new()
 	for(var/datum/alarm/A in alarms)
 		if(A.hidden || (z && !(A.origin?.z in map_levels)))

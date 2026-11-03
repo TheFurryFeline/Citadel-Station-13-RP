@@ -8,6 +8,7 @@
 	use_power = USE_POWER_IDLE
 	idle_power_usage = 100
 	active_power_usage = 1000
+	integrity_flags = INTEGRITY_INDESTRUCTIBLE
 
 	var/list/obj/machinery/am_shielding/linked_shielding
 	var/list/obj/machinery/am_shielding/linked_cores
@@ -48,7 +49,7 @@
 		check_shield_icons()
 		update_shield_icons = 0
 
-	if(stat & (NOPOWER|BROKEN) || !active)//can update the icons even without power
+	if(machine_stat & (NOPOWER|BROKEN) || !active)//can update the icons even without power
 		return
 
 	if(!fueljar)//No fuel but we are on, shutdown
@@ -56,7 +57,7 @@
 		//Angry buzz or such here
 		return
 
-	add_avail(stored_power)
+	add_avail(stored_power * 0.001)
 
 	power_cycle++
 	if(power_cycle >= power_cycle_delay)
@@ -105,7 +106,7 @@
 	return 0
 
 
-/obj/machinery/power/am_control_unit/ex_act(severity)
+/obj/machinery/power/am_control_unit/legacy_ex_act(severity)
 	switch(severity)
 		if(1.0)
 			stability -= 60
@@ -116,16 +117,14 @@
 	check_stability()
 	return
 
-
-/obj/machinery/power/am_control_unit/bullet_act(var/obj/item/projectile/Proj)
-	if(Proj.check_armour != "bullet")
-		stability -= Proj.force
-	return 0
-
+/obj/machinery/power/am_control_unit/on_bullet_act(obj/projectile/proj, impact_flags, list/bullet_act_args)
+	if(proj.damage_flag != ARMOR_BULLET)
+		stability -= proj.damage_force
+	return ..()
 
 /obj/machinery/power/am_control_unit/power_change()
 	..()
-	if(stat & NOPOWER && active)
+	if(machine_stat & NOPOWER && active)
 		toggle_power()
 	return
 
@@ -140,14 +139,14 @@
 	if(!istype(W) || !user) return
 	if(W.is_wrench())
 		if(!anchored)
-			playsound(src, W.usesound, 75, 1)
+			playsound(src, W.tool_sound, 75, 1)
 			user.visible_message("[user.name] secures the [src.name] to the floor.", \
 				"You secure the anchor bolts to the floor.", \
 				"You hear a ratchet.")
 			src.anchored = 1
 			connect_to_network()
 		else if(!linked_shielding.len > 0)
-			playsound(src, W.usesound, 75, 1)
+			playsound(src, W.tool_sound, 75, 1)
 			user.visible_message("[user.name] unsecures the [src.name].", \
 				"You remove the anchor bolts.", \
 				"You hear a ratchet.")
@@ -161,23 +160,23 @@
 		if(fueljar)
 			to_chat(user, "<font color='red'>There is already a [fueljar] inside!</font>")
 			return
+		if(!user.attempt_insert_item_for_installation(W, src))
+			return
 		fueljar = W
-		user.remove_from_mob(W)
-		W.loc = src
 		user.update_icons()
 		user.visible_message("[user.name] loads an [W.name] into the [src.name].", \
 				"You load an [W.name].", \
 				"You hear a thunk.")
 		return
 
-	if(W.force >= 20)
-		stability -= W.force/2
+	if(W.damage_force >= 20)
+		stability -= W.damage_force/2
 		check_stability()
 	..()
 	return
 
 
-/obj/machinery/power/am_control_unit/attack_hand(mob/user as mob)
+/obj/machinery/power/am_control_unit/attack_hand(mob/user, datum/event_args/actor/clickchain/e_args)
 	if(anchored)
 		interact(user)
 	return
@@ -250,7 +249,7 @@
 
 
 /obj/machinery/power/am_control_unit/interact(mob/user)
-	if((get_dist(src, user) > 1) || (stat & (BROKEN|NOPOWER)))
+	if((get_dist(src, user) > 1) || (machine_stat & (BROKEN|NOPOWER)))
 		if(!istype(user, /mob/living/silicon/ai))
 			user.unset_machine()
 			user << browse(null, "window=AMcontrol")
@@ -291,7 +290,7 @@
 /obj/machinery/power/am_control_unit/Topic(href, href_list)
 	..()
 	//Ignore input if we are broken or guy is not touching us, AI can control from a ways away
-	if(stat & (BROKEN|NOPOWER) || (get_dist(src, usr) > 1 && !istype(usr, /mob/living/silicon/ai)))
+	if(machine_stat & (BROKEN|NOPOWER) || (get_dist(src, usr) > 1 && !istype(usr, /mob/living/silicon/ai)))
 		usr.unset_machine()
 		usr << browse(null, "window=AMcontrol")
 		return

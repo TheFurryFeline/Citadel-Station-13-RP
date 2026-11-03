@@ -1,6 +1,6 @@
-/*!
- * Copyright (c) 2020 Aleksej Komarov
- * SPDX-License-Identifier: MIT
+/**
+ *! Copyright (c) 2020 Aleksej Komarov
+ *! SPDX-License-Identifier: MIT
  */
 
 /**
@@ -10,6 +10,7 @@
  * and view for robots.
  */
 
+// TODO: ughhhhhh check the logic on this and define what this even semantically means
 GLOBAL_DATUM_INIT(default_state, /datum/ui_state/default, new)
 
 /datum/ui_state/default/can_use_topic(src_object, mob/user)
@@ -20,15 +21,10 @@ GLOBAL_DATUM_INIT(default_state, /datum/ui_state/default, new)
 
 /mob/living/default_can_use_topic(src_object)
 	. = shared_ui_interaction(src_object)
-	if(. > UI_CLOSE && loc)
-		. = min(., loc.contents_ui_distance(src_object, src)) // Check the distance...
-	if(. == UI_INTERACTIVE) // Non-human living mobs can only look, not touch.
-		return UI_UPDATE
-
-/mob/living/carbon/human/default_can_use_topic(src_object)
-	. = shared_ui_interaction(src_object)
-	if(. > UI_CLOSE)
+	if(. > UI_CLOSE && loc) //must not be in nullspace.
 		. = min(., shared_living_ui_distance(src_object)) // Check the distance...
+	if(. == UI_INTERACTIVE && !IsAdvancedToolUser()) // Non-human living mobs can only look, not touch.
+		return UI_UPDATE
 
 /mob/living/silicon/robot/default_can_use_topic(src_object)
 	. = shared_ui_interaction(src_object)
@@ -36,8 +32,8 @@ GLOBAL_DATUM_INIT(default_state, /datum/ui_state/default, new)
 		return
 
 	// Robots can interact with anything they can see.
-	var/list/clientviewlist = getviewsize(client.view)
-	if(get_dist(src, src_object) <= min(clientviewlist[1],clientviewlist[2]))
+	// todo: in view range for zooming
+	if(get_dist(src, src_object) <= min(CEILING(client.current_viewport_width / 2, 1), CEILING(client.current_viewport_height / 2, 1)))
 		return UI_INTERACTIVE
 	return UI_DISABLED // Otherwise they can keep the UI open.
 
@@ -46,11 +42,13 @@ GLOBAL_DATUM_INIT(default_state, /datum/ui_state/default, new)
 	if(. != UI_INTERACTIVE)
 		return
 
-	// Prevents the AI from using Topic on admin levels (by for example viewing through the court/thunderdome cameras)
-	// unless it's on the same level as the object it's interacting with.
-	var/turf/T = get_turf(src_object)
-	if(!T || !(z == T.z || (T.z in GLOB.using_map.player_levels)))
-		return UI_CLOSE
+	// Make sure it's in the same map
+	var/turf/src_turf = get_turf(src_object)
+	var/turf/our_turf = get_turf(src)
+	var/datum/map_level/src_level = src_turf && SSmapping.ordered_levels[src_turf.z]
+	var/datum/map_level/our_level = our_turf && SSmapping.ordered_levels[our_turf.z]
+	if(!src_level || (src_level.parent_map != our_level.parent_map))
+		return FALSE
 
 	// If an object is in view then we can interact with it
 	if(src_object in view(client.view, src))
@@ -59,18 +57,13 @@ GLOBAL_DATUM_INIT(default_state, /datum/ui_state/default, new)
 	// If we're installed in a chassi, rather than transfered to an inteliCard or other container, then check if we have camera view
 	if(is_in_chassis())
 		//stop AIs from leaving windows open and using then after they lose vision
-		if(cameranet && !cameranet.checkTurfVis(get_turf(src_object)))
+		if(GLOB.cameranet && !GLOB.cameranet.checkTurfVis(get_turf(src_object)))
 			return UI_CLOSE
 		return UI_INTERACTIVE
 	else if(get_dist(src_object, src) <= client.view)	// View does not return what one would expect while installed in an inteliCard
 		return UI_INTERACTIVE
 
 	return UI_CLOSE
-
-/mob/living/simple_animal/default_can_use_topic(src_object)
-	. = shared_ui_interaction(src_object)
-	if(. > UI_CLOSE)
-		. = min(., shared_living_ui_distance(src_object)) //simple animals can only use things they're near.
 
 /mob/living/silicon/pai/default_can_use_topic(src_object)
 	// pAIs can only use themselves and the owner's radio.

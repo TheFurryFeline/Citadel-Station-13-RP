@@ -70,10 +70,10 @@
 
 
 
-	req_access = list(access_tcomsat)
+	req_access = list(ACCESS_ENGINEERING_TELECOMMS)
 
 	attack_hand(mob/user as mob)
-		if(stat & (BROKEN|NOPOWER))
+		if(machine_stat & (BROKEN|NOPOWER))
 			return
 		user.set_machine(src)
 		var/dat = "<TITLE>Telecommunication Traffic Control</TITLE><center><b>Telecommunications Traffic Control</b></center>"
@@ -208,7 +208,7 @@
 
 /obj/machinery/computer/telecomms/traffic/emag_act(var/remaining_charges, var/mob/user)
 	if(!emagged)
-		playsound(src, 'sound/effects/sparks4.ogg', 75, 1)
+		playsound(src, /datum/soundbyte/sparks, 75, 1)
 		emagged = 1
 		to_chat(user, "<span class='notice'>You you disable the security protocols</span>")
 		src.updateUsrDialog()

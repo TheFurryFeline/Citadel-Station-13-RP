@@ -10,10 +10,7 @@
 	..()
 
 	var/severity_range = 0
-	severity = pickweight(EVENT_LEVEL_MUNDANE = 10,
-		EVENT_LEVEL_MODERATE = 5,
-		EVENT_LEVEL_MAJOR = 1
-		)
+	severity = pick_weight(mundande_weight = 10, moderate_weight = 5, major_weight = 1)
 
 	switch(severity)
 		if(EVENT_LEVEL_MUNDANE)
@@ -33,12 +30,12 @@
 					cam.wires.cut(WIRE_CAM_ALARM)
 
 /datum/gm_action/camera_damage/proc/acquire_random_camera(var/remaining_attempts = 5)
-	if(!cameranet.cameras.len)
+	if(!GLOB.cameranet.cameras.len)
 		return
 	if(!remaining_attempts)
 		return
 
-	var/obj/machinery/camera/C = pick(cameranet.cameras)
+	var/obj/machinery/camera/C = pick(GLOB.cameranet.cameras)
 	if(is_valid_camera(C))
 		return C
 	return acquire_random_camera(remaining_attempts--)
@@ -46,7 +43,7 @@
 /datum/gm_action/camera_damage/proc/is_valid_camera(var/obj/machinery/camera/C)
 	// Only return a functional camera, not installed in a silicon/hardsuit/circuit/etc, and that exists somewhere players have access
 	var/turf/T = get_turf(C)
-	return T && C.can_use() && istype(C.loc, /turf) && (T.z in GLOB.using_map.player_levels)
+	return T && C.can_use() && istype(C.loc, /turf) && (T.z in (LEGACY_MAP_DATUM).station_levels)
 
 /datum/gm_action/camera_damage/get_weight()
 	return 40 + (metric.count_people_in_department(DEPARTMENT_ENGINEERING) * 20) + (metric.count_people_in_department(DEPARTMENT_SYNTHETIC) * 40)

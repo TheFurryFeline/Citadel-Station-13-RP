@@ -16,8 +16,9 @@
 	var/slowdown = 1			//people said this was too fast. meh.
 
 	see_in_dark = 7
-	status_flags = GODMODE
-	plane = PLANE_AI_EYE
+	plane = OBSERVER_PLANE
+	status_flags = STATUS_GODMODE
+	interaction_range = INFINITY
 
 	var/mob/owner = null
 	var/list/visibleChunks = list()
@@ -51,7 +52,10 @@
 	set src = usr.contents
 	return 0
 
-/mob/observer/eye/examine(mob/user)
+/mob/observer/eye/examine(mob/user, dist)
+	return list(
+		"An eye object belonging to [owner || "no one in particular."]"
+	)
 
 // Use this when setting the eye's location.
 // It will also stream the chunk that the new loc is in.
@@ -59,7 +63,9 @@
 	if(owner)
 		T = get_turf(T)
 		if(T != loc)
+			var/old = loc
 			loc = T
+			SEND_SIGNAL(src, COMSIG_MOVABLE_MOVED, old, NONE, TRUE)
 			visualnet.visibility(src)
 			return 1
 	return 0
@@ -74,9 +80,6 @@
 	var/datum/perspective/P = ..()
 	// we see everything by default
 	P.SetSight(SEE_TURFS | SEE_MOBS | SEE_OBJS)
-
-/mob
-	var/mob/observer/eye/eyeobj
 
 /mob/proc/EyeMove(n, direct)
 	if(!eyeobj)

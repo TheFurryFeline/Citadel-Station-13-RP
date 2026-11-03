@@ -1,15 +1,16 @@
 
 //moved these here from code/defines/obj/weapon.dm
 //please preference put stuff where it's easy to find - C
-
+// todo: redo autopsy
 /obj/item/autopsy_scanner
-	name = "biopsy scanner"
+	name = "autopsy scanner"
 	desc = "Extracts information on wounds."
 	icon = 'icons/obj/autopsy_scanner.dmi'
 	icon_state = ""
 	item_state = "autopsy_scanner"
-	w_class = ITEMSIZE_SMALL
+	w_class = WEIGHT_CLASS_SMALL
 	origin_tech = list(TECH_MATERIAL = 1, TECH_BIO = 1)
+	belt_storage_class = BELT_CLASS_SMALL
 	var/list/datum/autopsy_data_scanner/wdata = list()
 	var/list/datum/autopsy_data_scanner/chemtraces = list()
 	var/target_name = null
@@ -74,7 +75,7 @@
 			chemtraces += V
 
 /obj/item/autopsy_scanner/verb/print_data()
-	set category = "Object"
+	set category = VERB_CATEGORY_OBJECT
 	set src in view(usr, 1)
 	set name = "Print Data"
 	if(usr.stat || !(istype(usr,/mob/living/carbon/human)))

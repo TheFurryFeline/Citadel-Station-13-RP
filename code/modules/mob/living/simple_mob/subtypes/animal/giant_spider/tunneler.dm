@@ -35,14 +35,16 @@
 	maxHealth = 120
 	health = 120
 
-	melee_damage_lower = 10
-	melee_damage_upper = 10
+	legacy_melee_damage_lower = 10
+	legacy_melee_damage_upper = 10
 
 	poison_chance = 15
 	poison_per_bite = 3
 	poison_type = "serotrotium_v"
 
-//	ai_holder_type = /datum/ai_holder/simple_mob/melee/tunneler
+	exotic_type = /obj/item/reagent_containers/glass/venomgland/spider/serotrotium
+
+//	ai_holder_type = /datum/ai_holder/polaris/simple_mob/melee/tunneler
 
 	player_msg = "You <b>can perform a tunneling attack</b> by clicking on someone from a distance.<br>\
 	There is a noticable travel delay as you tunnel towards the tile the target was at when you started the tunneling attack.<br>\
@@ -116,7 +118,7 @@
 
 		visible_message(SPAN_DANGER("\The [src] erupts from underneath, and hits \the [L]!"))
 		playsound(L, 'sound/weapons/heavysmash.ogg', 75, 1)
-		L.Weaken(3)
+		L.afflict_paralyze(20 * 3)
 		overshoot = FALSE
 
 	if(!overshoot) // We hit the target, or something, at destination, so we're done.
@@ -158,14 +160,14 @@
 		if(T.check_density(ignore_mobs = TRUE))
 			to_chat(src, SPAN_CRITICAL("You hit something really solid!"))
 			playsound(src, "punch", 75, 1)
-			Weaken(5)
+			afflict_paralyze(20 * 5)
 			add_modifier(/datum/modifier/tunneler_vulnerable, 10 SECONDS)
 			return FALSE // Hit a wall.
 
 		// Stun anyone in our way.
 		for(var/mob/living/L in T)
 			playsound(L, 'sound/weapons/heavysmash.ogg', 75, 1)
-			L.Weaken(2)
+			L.afflict_paralyze(20 * 2)
 
 		// Get into the tile.
 		forceMove(T)
@@ -188,7 +190,16 @@
 	new /obj/effect/temporary_effect/tunneler_hole(get_turf(src))
 
 /mob/living/simple_mob/animal/giant_spider/tunneler/proc/dig_under_floor(turf/T)
-	new /obj/item/ore/glass(T) // This will be rather weird when on station but the alternative is too much work.
+	new /obj/item/stack/ore/glass(T) // This will be rather weird when on station but the alternative is too much work.
+
+/obj/item/reagent_containers/glass/venomgland/spider/serotrotium
+	name = "Dulling Venom Gland"
+	desc = "A sac of venom. Your thoughts drift a bit holding it."
+
+/obj/item/reagent_containers/glass/venomgland/spider/thermite/Initialize(mapload)
+	. = ..()
+	reagents.add_reagent("serotrotium_v", 15)
+
 
 /obj/effect/temporary_effect/tunneler_hole
 	name = "hole"

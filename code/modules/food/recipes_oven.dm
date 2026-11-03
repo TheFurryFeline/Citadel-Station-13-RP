@@ -5,17 +5,6 @@
 	)
 	result = /obj/item/reagent_containers/food/snacks/ovenchips
 
-
-
-/datum/recipe/dionaroast
-	appliance = OVEN
-	fruit = list("apple" = 1)
-	reagents = list("pacid" = 5) //It dissolves the carapace. Still poisonous, though.
-	items = list(/obj/item/holder/diona)
-	result = /obj/item/reagent_containers/food/snacks/dionaroast
-	reagent_mix = RECIPE_REAGENT_REPLACE //No eating polyacid
-
-
 /datum/recipe/ribplate //Putting this here for not seeing a roast section.
 	appliance = OVEN
 	reagents = list("honey" = 5, "spacespice" = 2, "blackpepper" = 1)
@@ -38,9 +27,15 @@
 	result = /obj/item/reagent_containers/food/snacks/teshariroast
 	reagent_mix = RECIPE_REAGENT_REPLACE
 
+/datum/recipe/dionaroast
+	appliance = OVEN
+	fruit = list("apple" = 1)
+	reagents = list("pacid" = 5) //It dissolves the carapace. Still poisonous, though.
+	items = list(/obj/item/holder/diona)
+	result = /obj/item/reagent_containers/food/snacks/dionaroast
+	reagent_mix = RECIPE_REAGENT_REPLACE //No eating polyacid
 
 //Predesigned breads
-//================================
 /datum/recipe/bread
 	appliance = OVEN
 	items = list(
@@ -116,9 +111,9 @@
 		/obj/item/reagent_containers/food/snacks/dough,
 		/obj/item/reagent_containers/food/snacks/dough,
 		/obj/item/reagent_containers/food/snacks/dough,
-		/obj/item/reagent_containers/food/snacks/meat/syntiflesh,
-		/obj/item/reagent_containers/food/snacks/meat/syntiflesh,
-		/obj/item/reagent_containers/food/snacks/meat/syntiflesh,
+		/obj/item/reagent_containers/food/snacks/meat/synthflesh,
+		/obj/item/reagent_containers/food/snacks/meat/synthflesh,
+		/obj/item/reagent_containers/food/snacks/meat/synthflesh,
 		/obj/item/reagent_containers/food/snacks/cheesewedge,
 		/obj/item/reagent_containers/food/snacks/cheesewedge,
 		/obj/item/reagent_containers/food/snacks/cheesewedge
@@ -357,7 +352,41 @@
 	reagent_mix = RECIPE_REAGENT_REPLACE //No egg or mix in final recipe
 	result = /obj/item/reagent_containers/food/snacks/sliceable/cosmicbrownies
 
+/datum/recipe/red_macaron
+	appliance = OVEN
+	reagents = list("egg" = 3, "crayon_dust_red" = 1, "sugar" = 5)
+	items = list(
+		/obj/item/reagent_containers/food/snacks/doughslice
+	)
+	reagent_mix = RECIPE_REAGENT_REPLACE
+	result = /obj/item/reagent_containers/food/snacks/macaron/red
 
+/datum/recipe/yellow_macaron
+	appliance = OVEN
+	reagents = list("egg" = 3, "crayon_dust_yellow" = 1, "sugar" = 5)
+	items = list(
+		/obj/item/reagent_containers/food/snacks/doughslice
+	)
+	reagent_mix = RECIPE_REAGENT_REPLACE
+	result = /obj/item/reagent_containers/food/snacks/macaron/yellow
+
+/datum/recipe/purple_macaron
+	appliance = OVEN
+	reagents = list("egg" = 3, "crayon_dust_purple" = 1, "sugar" = 5)
+	items = list(
+		/obj/item/reagent_containers/food/snacks/doughslice
+	)
+	reagent_mix = RECIPE_REAGENT_REPLACE
+	result = /obj/item/reagent_containers/food/snacks/macaron/purple
+
+/datum/recipe/green_macaron
+	appliance = OVEN
+	reagents = list("egg" = 3, "crayon_dust_green" = 1, "sugar" = 5)
+	items = list(
+		/obj/item/reagent_containers/food/snacks/doughslice
+	)
+	reagent_mix = RECIPE_REAGENT_REPLACE
+	result = /obj/item/reagent_containers/food/snacks/macaron/green
 
 
 //Pizzas
@@ -391,9 +420,9 @@
 	fruit = list("tomato" = 1)
 	items = list(
 		/obj/item/reagent_containers/food/snacks/sliceable/flatdough,
-		/obj/item/reagent_containers/food/snacks/meat/syntiflesh,
-		/obj/item/reagent_containers/food/snacks/meat/syntiflesh,
-		/obj/item/reagent_containers/food/snacks/meat/syntiflesh,
+		/obj/item/reagent_containers/food/snacks/meat/synthflesh,
+		/obj/item/reagent_containers/food/snacks/meat/synthflesh,
+		/obj/item/reagent_containers/food/snacks/meat/synthflesh,
 		/obj/item/reagent_containers/food/snacks/cheesewedge
 	)
 	result = /obj/item/reagent_containers/food/snacks/sliceable/pizza/meatpizza

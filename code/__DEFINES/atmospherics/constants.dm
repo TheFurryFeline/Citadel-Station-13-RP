@@ -1,11 +1,34 @@
-// Gas moles
-/// Moles in a tile after which gases are visible.
-#define MOLES_GAS_VISIBLE					0.25
-/// moles_visible * FACTOR_GAS_VISIBLE_MAX = Moles after which gas is at maximum visibility.
-#define FACTOR_GAS_VISIBLE_MAX				20
-/// Mole step for alpha updates. This means alpha can update at 0.25, 0.5, 0.75, and so on.
-#define MOLES_GAS_VISIBLE_STEP				0.25
+//* Simulation Constants *//
 
 /// Volume, in liters, of a single tile. Y'KNOW WHY THIS IS A CONSTANT? WELL FOR ONE, initial_gas_mix IS MOLES, NOT PERCENTAGES OR PRESSURES. IF YOU TOUCH THIS, YOU BREAK *EVERYTHING*. DON'T TOUCH THIS.
 /// Exceptions can be made if you're a big boy who knows how this clusterfuck of a ZAS/LINDA hybrid works and have good reason to touch this.
-#define CELL_VOLUME							2500
+#define CELL_VOLUME 2500
+/// Moles in a 2.5 m^3 cell at 101.325 kPa and 20 C.
+#define CELL_MOLES (ONE_ATMOSPHERE*CELL_VOLUME/(T20C*R_IDEAL_GAS_EQUATION))
+
+//* Gas Constants *//
+
+/// kPa*L/(K*mol).
+#define R_IDEAL_GAS_EQUATION 8.31
+
+//* Math Helpers - Pressures *//
+
+/// 1atm of earth-standard pressure, in kPa
+#define ONE_ATMOSPHERE             101.325
+
+//* Math Helpers - Temperatures *//
+
+// todo: T_0C?
+
+/**
+ * -60C in Kelvin
+ *
+ * * Please get this a better name. T_NEG_60C?
+ */
+#define TN60C 213.15
+/// 0 deg C, in Kelvin
+#define T0C 273.15
+/// 20 deg C, in Kelvin
+#define T20C 293.15
+/// 100 deg C, in Kelvin
+#define T100C 373.15

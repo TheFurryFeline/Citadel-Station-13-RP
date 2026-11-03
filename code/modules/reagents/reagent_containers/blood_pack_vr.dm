@@ -1,12 +1,15 @@
-/obj/item/reagent_containers/blood/attack_self(mob/living/user as mob)
+/obj/item/reagent_containers/blood/attack_self(mob/user, datum/event_args/actor/actor)
+	. = ..()
+	if(.)
+		return
 	if(istype(user, /mob/living/carbon/human))
 		var/mob/living/carbon/human/human_user = user
 		if(human_user.species.is_vampire)
 			if(user.a_intent == INTENT_HARM)
 				if(reagents.total_volume && volume)
 					var/remove_volume = volume* 0.1 //10% of what the bloodpack can hold.
-					var/reagent_to_remove = reagents.get_master_reagent_id()
-					switch(reagents.get_master_reagent_id())
+					var/reagent_to_remove = reagents.get_majority_reagent_id()
+					switch(reagents.get_majority_reagent_id())
 						if("blood")
 							user.show_message("<span class='warning'>You sink your fangs into \the [src] and suck the blood out of it!</span>")
 							user.visible_message("<font color='red'>[user] sinks their fangs into \the [src] and drains it!</font>")

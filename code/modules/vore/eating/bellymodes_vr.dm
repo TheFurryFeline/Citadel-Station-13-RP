@@ -38,7 +38,7 @@
 				if(is_wet && wet_loop) // Is it a fleshy environment, and does the pred have a fleshy heartbeat loop to play?
 					if(!M.client)
 						continue
-					if(M.is_preference_enabled(/datum/client_preference/digestion_noises)) //then we check if the mob has sounds enabled at all
+					if(M.get_preference_toggle(/datum/game_preference_toggle/vore_sounds/digestion_noises)) //then we check if the mob has sounds enabled at all
 						var/sound/preyloop = sound('sound/vore/sunesound/prey/loop.ogg')
 						M.playsound_local(get_turf(src),preyloop, 80,0, channel = CHANNEL_PREYLOOP)
 						M.next_preyloop = (world.time + (52 SECONDS))
@@ -99,7 +99,7 @@
 			touchable_mobs += L
 
 			if(L.absorbed)
-				L.Weaken(5)
+				L.afflict_paralyze(20 * 5)
 
 			//Handle 'human'
 			if(ishuman(L))
@@ -118,9 +118,9 @@
 				//Stripping flag
 				if(mode_flags & DM_FLAG_STRIPPING)
 					for(var/slot in slots)
-						var/obj/item/I = H.get_equipped_item(slot = slot)
+						var/obj/item/I = H.item_by_slot_id(slot)
 						if(I)
-							H.unEquip(I,force = TRUE)
+							H.transfer_item_to_loc(I, src, INV_OP_FORCE)
 							if(contaminates || istype(I,/obj/item/card/id))
 								I.gurgle_contaminate(contents, contamination_flavor, contamination_color)
 							if(item_digest_mode == IM_HOLD)
@@ -131,19 +131,42 @@
 								else
 									items_preserved |= I
 								if(prob(25)) //Less often than with normal digestion
-									if(L && L.client && L.is_preference_enabled(/datum/client_preference/digestion_noises))
+									if(L && L.client && L.get_preference_toggle(/datum/game_preference_toggle/vore_sounds/digestion_noises))
 										SEND_SOUND(L,prey_digest)
 									play_sound = pick(pred_digest)
 							else if(item_digest_mode == IM_DIGEST)
 								digest_item(I)
 								if(prob(25)) //Less often than with normal digestion
-									if(L && L.client && L.is_preference_enabled(/datum/client_preference/digestion_noises))
+									if(L && L.client && L.get_preference_toggle(/datum/game_preference_toggle/vore_sounds/digestion_noises))
 										SEND_SOUND(L,prey_digest)
 									play_sound = pick(pred_digest)
 							to_update = TRUE
 							break
+					for(var/obj/item/I as anything in H.get_held_items())
+						H.transfer_item_to_loc(I, src, INV_OP_FORCE)
+						if(contaminates || istype(I,/obj/item/card/id))
+							I.gurgle_contaminate(contents, contamination_flavor, contamination_color)
+						if(item_digest_mode == IM_HOLD)
+							items_preserved |= I
+						else if(item_digest_mode == IM_DIGEST_FOOD)
+							if(istype(I,/obj/item/reagent_containers/food) || istype(I,/obj/item/organ))
+								digest_item(I)
+							else
+								items_preserved |= I
+							if(prob(25)) //Less often than with normal digestion
+								if(L && L.client && L.get_preference_toggle(/datum/game_preference_toggle/vore_sounds/digestion_noises))
+									SEND_SOUND(L,prey_digest)
+								play_sound = pick(pred_digest)
+						else if(item_digest_mode == IM_DIGEST)
+							digest_item(I)
+							if(prob(25)) //Less often than with normal digestion
+								if(L && L.client && L.get_preference_toggle(/datum/game_preference_toggle/vore_sounds/digestion_noises))
+									SEND_SOUND(L,prey_digest)
+								play_sound = pick(pred_digest)
+						to_update = TRUE
+						break
 		//get rid of things like blood drops and gibs that end up in there
-		else if(istype(A,/obj/effect/decal/cleanable/))
+		else if(istype(A,/obj/effect/debris/cleanable/))
 			qdel(A)
 
 ///////////////////////////// DM_HOLD /////////////////////////////
@@ -155,7 +178,7 @@
 
 		if(prob(50)) //Was SO OFTEN. AAAA.
 			for(var/mob/M in contents)
-				if(M && M.client && M.is_preference_enabled(/datum/client_preference/digestion_noises))
+				if(M && M.client && M.get_preference_toggle(/datum/game_preference_toggle/vore_sounds/digestion_noises))
 					SEND_SOUND(M,prey_digest)
 			play_sound = pick(pred_digest)
 
@@ -185,7 +208,7 @@
 				to_chat(M,"<span class='notice'>" + digest_alert_prey + "</span>")
 
 				play_sound = pick(pred_death)
-				if(M && M.client && M.is_preference_enabled(/datum/client_preference/digestion_noises))
+				if(M && M.client && M.get_preference_toggle(/datum/game_preference_toggle/vore_sounds/digestion_noises))
 					SEND_SOUND(M,prey_death)
 				if((mode_flags & DM_FLAG_LEAVEREMAINS) && M.digest_leave_remains)
 					handle_remains_leaving(M)
@@ -230,7 +253,7 @@
 		for (var/target in touchable_mobs)
 			var/mob/living/M = target
 			if(prob(10)) //Less often than gurgles. People might leave this on forever.
-				if(M && M.client && M.is_preference_enabled(/datum/client_preference/digestion_noises))
+				if(M && M.client && M.get_preference_toggle(/datum/game_preference_toggle/vore_sounds/digestion_noises))
 					SEND_SOUND(M,prey_digest)
 				play_sound = pick(pred_digest)
 
@@ -265,7 +288,7 @@
 			var/mob/living/M = target
 
 			if(prob(10)) //Less often than gurgles. People might leave this on forever.
-				if(M && M.client && M.is_preference_enabled(/datum/client_preference/digestion_noises))
+				if(M && M.client && M.get_preference_toggle(/datum/game_preference_toggle/vore_sounds/digestion_noises))
 					SEND_SOUND(M,prey_digest)
 				play_sound = pick(pred_digest)
 
@@ -281,7 +304,7 @@
 			var/mob/living/M = target
 
 			if(prob(10)) //Infinite gurgles!
-				if(M && M.client && M.is_preference_enabled(/datum/client_preference/digestion_noises))
+				if(M && M.client && M.get_preference_toggle(/datum/game_preference_toggle/vore_sounds/digestion_noises))
 					SEND_SOUND(M,prey_digest)
 				play_sound = pick(pred_digest)
 
@@ -300,7 +323,7 @@
 			var/mob/living/M = target
 
 			if(prob(10))
-				if(M && M.client && M.is_preference_enabled(/datum/client_preference/digestion_noises))
+				if(M && M.client && M.get_preference_toggle(/datum/game_preference_toggle/vore_sounds/digestion_noises))
 					SEND_SOUND(M,prey_digest)
 				play_sound = pick(pred_digest)
 
@@ -316,7 +339,7 @@
 			var/mob/living/M = target
 
 			if(prob(10))
-				if(M && M.client && M.is_preference_enabled(/datum/client_preference/digestion_noises))
+				if(M && M.client && M.get_preference_toggle(/datum/game_preference_toggle/vore_sounds/digestion_noises))
 					SEND_SOUND(M,prey_digest)
 				play_sound = pick(pred_digest)
 
@@ -333,7 +356,7 @@
 
 		if(prob(50)) //Wet heals! The secret is you can leave this on for gurgle noises for fun.
 			for(var/mob/M in contents)
-				if(M && M.client && M.is_preference_enabled(/datum/client_preference/digestion_noises))
+				if(M && M.client && M.get_preference_toggle(/datum/game_preference_toggle/vore_sounds/digestion_noises))
 					SEND_SOUND(M,prey_digest)
 			play_sound = pick(pred_digest)
 
@@ -364,7 +387,7 @@
 	if(play_sound)
 		LAZYCLEARLIST(hearing_mobs)
 		for(var/mob/M in hearers(VORE_SOUND_RANGE, owner))
-			if(!M.client || !(M.is_preference_enabled(/datum/client_preference/digestion_noises)))
+			if(!M.client || !(M.get_preference_toggle(/datum/game_preference_toggle/vore_sounds/digestion_noises)))
 				continue
 			LAZYADD(hearing_mobs, M)
 		for(var/mob/M in hearing_mobs) //so we don't fill the whole room with the sound effect

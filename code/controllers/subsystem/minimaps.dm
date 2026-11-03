@@ -1,6 +1,6 @@
 SUBSYSTEM_DEF(minimaps)
 	name = "Minimaps"
-	flags = SS_NO_FIRE
+	subsystem_flags = SS_NO_FIRE
 	var/list/station_minimaps
 	var/datum/minimap_group/station_minimap
 
@@ -9,18 +9,19 @@ SUBSYSTEM_DEF(minimaps)
 		to_chat(world, "<span class='boldwarning'>Minimaps disabled! Skipping init.</span>")
 		return ..()
 	build_minimaps()
-	return ..()
+	return SS_INIT_SUCCESS
 
 /datum/controller/subsystem/minimaps/proc/build_minimaps()
 	station_minimaps = list()
 /*
 	for(var/z in SSmapping.levels_by_trait(ZTRAIT_STATION))
 */
-	for(var/z in GLOB.using_map.station_levels)
+	for(var/z in (LEGACY_MAP_DATUM).station_levels)
 		/*
 		var/datum/space_level/SL = SSmapping.get_level(z)
 		var/name = (SL.name == initial(SL.name))? "[z] - Station" : "[z] - [SL.name]"
 		*/
 		var/name = "[z] - Station"
 		station_minimaps += new /datum/minimap(z, name = name)
+		CHECK_TICK
 	station_minimap = new(station_minimaps, "Station")

@@ -1,9 +1,8 @@
-//TODO: rewrite and standardise all controller datums to the datum/controller type
-//TODO: allow all controllers to be deleted for clean restarts (see WIP master controller stuff) - MC done - lighting done
-
 // Clickable stat() button.
 /obj/effect/statclick
 	name = "Initializing..."
+	blocks_emissive = EMISSIVE_BLOCK_NONE
+	icon = null
 	var/target
 
 INITIALIZE_IMMEDIATE(/obj/effect/statclick)
@@ -12,10 +11,23 @@ INITIALIZE_IMMEDIATE(/obj/effect/statclick)
 	. = ..()
 	name = text
 	src.target = target
+	if(isdatum(target)) //Harddel man bad
+		RegisterSignal(target, COMSIG_PARENT_QDELETING, PROC_REF(cleanup))
+
+/obj/effect/statclick/Destroy()
+	target = null
+	return ..()
+
+/obj/effect/statclick/proc/cleanup()
+	SIGNAL_HANDLER
+	qdel(src)
 
 /obj/effect/statclick/proc/update(text)
 	name = text
 	return src
+
+/obj/effect/statclick/statpanel_click(client/C, action)
+	Click()
 
 /obj/effect/statclick/debug
 	var/class
@@ -73,9 +85,11 @@ INITIALIZE_IMMEDIATE(/obj/effect/statclick)
 	if(!holder)
 		return
 	var/list/options = list()
-	options["MC"] = Master
-	options["Failsafe"] = Failsafe
-	options["Configuration"] = config
+	options["MC"] = global.Master
+	options["Failsafe"] = global.Failsafe
+	options["Global Variables"] = global.GLOB
+	options["Configuration"] = global.config
+	options["Gas Data"] = global.gas_data
 	options["Legacy Configuration"] = config_legacy
 	for(var/i in Master.subsystems)
 		var/datum/controller/subsystem/S = i
@@ -91,10 +105,9 @@ INITIALIZE_IMMEDIATE(/obj/effect/statclick)
 			options[strtype] = S
 
 	//Goon PS stuff, and other yet-to-be-subsystem things.
-	options["LEGACY: air_master"] = air_master
 	options["LEGACY: radio_controller"] = radio_controller
 	options["LEGACY: paiController"] = paiController
-	options["LEGACY: cameranet"] = cameranet
+	options["LEGACY: GLOB.cameranet"] = GLOB.cameranet
 
 	var/pick = input(mob, "Choose a controller to debug/view variables of.", "VV controller:") as null|anything in options
 	if(!pick)

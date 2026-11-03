@@ -35,12 +35,16 @@
 	bone_amount = 4
 	hide_amount = 6
 
-	var/datum/reagents/udder = null
+	var/datum/reagent_holder/udder = null
 
 /mob/living/simple_mob/animal/passive/cow/Initialize(mapload)
 	. = ..()
 	udder = new(50)
 	udder.my_atom = src
+
+/mob/living/simple_mob/animal/passive/cow/Destroy()
+	QDEL_NULL(udder)
+	return ..()
 
 /mob/living/simple_mob/animal/passive/cow/attackby(var/obj/item/O as obj, var/mob/user as mob)
 	var/obj/item/reagent_containers/glass/G = O
@@ -54,16 +58,21 @@
 	else
 		..()
 
-/mob/living/simple_mob/animal/passive/cow/Life()
-	. = ..()
-	if(stat == CONSCIOUS)
+/mob/living/simple_mob/animal/passive/cow/BiologicalLife(seconds, times_fired)
+	if((. = ..()))
+		return
+
+	if(stat != DEAD)
 		if(udder && prob(5))
 			udder.add_reagent("milk", rand(5, 10))
 
-/mob/living/simple_mob/animal/passive/cow/attack_hand(mob/living/carbon/M as mob)
+/mob/living/simple_mob/animal/passive/cow/attack_hand(mob/user, datum/event_args/actor/clickchain/e_args)
+	var/mob/living/M = user
+	if(!istype(M))
+		return
 	if(!stat && M.a_intent == INTENT_DISARM && icon_state != icon_dead)
 		M.visible_message("<span class='warning'>[M] tips over [src].</span>","<span class='notice'>You tip over [src].</span>")
-		Weaken(30)
+		afflict_paralyze(20 * 30)
 		icon_state = icon_dead
 		spawn(rand(20,50))
 			if(!stat && M)

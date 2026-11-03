@@ -2,7 +2,7 @@
 /// Drinks.
 ////////////////////////////////////////////////////////////////////////////////
 //custom_open_sound is for a sound path to use instead of the default opening
-//example: custom_open_sound = 'sound/effects/Explosion1.ogg'
+//example: custom_open_sound = 'sound/soundbytes/effects/explosion/explosion1.ogg'
 /obj/item/reagent_containers/food/drinks
 	name = "drink"
 	desc = "yummy"
@@ -10,22 +10,25 @@
 	drop_sound = 'sound/items/drop/bottle.ogg'
 	pickup_sound = 'sound/items/pickup/bottle.ogg'
 	icon_state = null
-	flags = OPENCONTAINER
+	atom_flags = OPENCONTAINER
 	amount_per_transfer_from_this = 5
 	possible_transfer_amounts = list(5,10,15,25,30)
 	volume = 50
 	var/custom_open_sound
 
 /obj/item/reagent_containers/food/drinks/on_reagent_change()
-	if (reagents.reagent_list.len > 0)
-		var/datum/reagent/R = reagents.get_master_reagent()
+	. = ..()
+	if (reagents.total_volume)
+		var/datum/reagent/R = reagents.get_majority_reagent_datum()
 		if(R.price_tag)
 			price_tag = R.price_tag
 		else
 			price_tag = null
-	return
 
-/obj/item/reagent_containers/food/drinks/attack_self(mob/user as mob)
+/obj/item/reagent_containers/food/drinks/attack_self(mob/user, datum/event_args/actor/actor)
+	. = ..()
+	if(.)
+		return
 	if(!is_open_container())
 		open(user)
 
@@ -35,20 +38,17 @@
 	else
 		playsound(loc,"canopen", rand(10,50), 1)
 	to_chat(user, "<span class='notice'>You open [src] with an audible pop!</span>")
-	flags |= OPENCONTAINER
+	atom_flags |= OPENCONTAINER
 
-/obj/item/reagent_containers/food/drinks/attack(mob/M as mob, mob/user as mob, def_zone)
-	if(force && !(flags & NOBLUDGEON) && user.a_intent == INTENT_HARM)
+/obj/item/reagent_containers/food/drinks/legacy_mob_melee_hook(mob/target, mob/user, clickchain_flags, list/params, mult, target_zone, intent)
+	if(user.a_intent == INTENT_HARM)
 		return ..()
+	. = CLICKCHAIN_DO_NOT_PROPAGATE
+	standard_feed_mob(user, target)
 
-	if(standard_feed_mob(user, M))
+/obj/item/reagent_containers/food/drinks/afterattack(atom/target, mob/user, clickchain_flags, list/params)
+	if(!(clickchain_flags & CLICKCHAIN_HAS_PROXIMITY))
 		return
-
-	return 0
-
-/obj/item/reagent_containers/food/drinks/afterattack(obj/target, mob/user, proximity)
-	if(!proximity) return
-
 	if(standard_dispenser_refill(user, target))
 		return
 	if(standard_pour_into(user, target))
@@ -68,7 +68,7 @@
 	return ..()
 
 /obj/item/reagent_containers/food/drinks/standard_pour_into(var/mob/user, var/atom/target)
-	if(!is_open_container())
+	if(!is_open_container() && target.reagents)
 		to_chat(user, "<span class='notice'>You need to open [src]!</span>")
 		return 1
 	if(target == loc) //prevent filling a machine with a glass you just put into it.
@@ -81,7 +81,7 @@
 /obj/item/reagent_containers/food/drinks/feed_sound(var/mob/user)
 	playsound(user.loc, 'sound/items/drink.ogg', rand(10, 50), 1)
 
-/obj/item/reagent_containers/food/drinks/examine(mob/user)
+/obj/item/reagent_containers/food/drinks/examine(mob/user, dist)
 	. = ..()
 	if(!reagents || reagents.total_volume == 0)
 		. += "<span class='notice'>\The [src] is empty!</span>"
@@ -93,6 +93,10 @@
 		. += "<span class='notice'>\The [src] is almost full!</span>"
 	else
 		. += "<span class='notice'>\The [src] is full!</span>"
+	if(reagents)
+		var/datum/reagent/ethanol/R = locate() in reagents.get_reagent_datums()
+		if(istype(R))
+			. += "<span class='notice'>It contains alcohol.</span>"
 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -104,74 +108,18 @@
 	name = "golden cup"
 	icon_state = "golden_cup"
 	item_state = "" //nope :(
-	w_class = ITEMSIZE_LARGE
-	force = 14
-	throwforce = 10
+	w_class = WEIGHT_CLASS_BULKY
+	damage_force = 14
+	throw_force = 10
 	amount_per_transfer_from_this = 20
 	possible_transfer_amounts = null
 	volume = 150
-	flags = OPENCONTAINER
+	atom_flags = OPENCONTAINER
 
-/obj/item/reagent_containers/food/drinks/golden_cup/on_reagent_change()
-	..()
-
-///////////////////////////////////////////////Drinks
 //Notes by Darem: Drinks are simply containers that start preloaded. Unlike condiments, the contents can be ingested directly
 //	rather then having to add it to something else first. They should only contain liquids. They have a default container size of 50.
 //	Formatting is the same as food.
 
-/obj/item/reagent_containers/food/drinks/milk
-	name = "milk carton"
-	desc = "It's milk. White and nutritious goodness!"
-	icon_state = "milk"
-	item_state = "carton"
-	center_of_mass = list("x"=16, "y"=9)
-	drop_sound = 'sound/items/drop/cardboardbox.ogg'
-	pickup_sound = 'sound/items/pickup/cardboardbox.ogg'
-
-
-/obj/item/reagent_containers/food/drinks/milk/Initialize(mapload)
-	. = ..()
-	reagents.add_reagent("milk", 50)
-
-/obj/item/reagent_containers/food/drinks/soymilk
-	name = "soymilk carton"
-	desc = "It's soy milk. White and nutritious goodness!"
-	icon_state = "soymilk"
-	item_state = "carton"
-	center_of_mass = list("x"=16, "y"=9)
-	drop_sound = 'sound/items/drop/cardboardbox.ogg'
-	pickup_sound = 'sound/items/pickup/cardboardbox.ogg'
-
-/obj/item/reagent_containers/food/drinks/soymilk/Initialize(mapload)
-	. = ..()
-	reagents.add_reagent("soymilk", 50)
-
-/obj/item/reagent_containers/food/drinks/smallmilk
-	name = "small milk carton"
-	desc = "It's milk. White and nutritious goodness!"
-	volume = 30
-	icon_state = "mini-milk"
-	item_state = "carton"
-	center_of_mass = list("x"=16, "y"=9)
-	drop_sound = 'sound/items/drop/cardboardbox.ogg'
-	pickup_sound = 'sound/items/pickup/cardboardbox.ogg'
-/obj/item/reagent_containers/food/drinks/smallmilk/Initialize(mapload)
-	. = ..()
-	reagents.add_reagent("milk", 30)
-
-/obj/item/reagent_containers/food/drinks/smallchocmilk
-	name = "small chocolate milk carton"
-	desc = "It's milk! This one is in delicious chocolate flavour."
-	volume = 30
-	icon_state = "mini-milk_choco"
-	item_state = "carton"
-	center_of_mass = list("x"=16, "y"=9)
-	drop_sound = 'sound/items/drop/cardboardbox.ogg'
-	pickup_sound = 'sound/items/pickup/cardboardbox.ogg'
-/obj/item/reagent_containers/food/drinks/smallchocmilk/Initialize(mapload)
-	. = ..()
-	reagents.add_reagent("chocolate_milk", 30)
 
 /obj/item/reagent_containers/food/drinks/coffee
 	name = "\improper Robust Coffee"
@@ -227,58 +175,6 @@
 	. = ..()
 	reagents.add_reagent("dry_ramen", 30)
 
-/obj/item/reagent_containers/food/drinks/bludboxmax
-	name = "Bludbox MAX carton"
-	desc = "A vampire's best friend! This Bludbox contains only the most delicious of organic, free-range O-Negatives. For all your dietry needs!"
-	volume = 30
-	icon_state = "bludboxmax"
-	center_of_mass = list("x"=16, "y"=9)
-	drop_sound = 'sound/items/drop/cardboardbox.ogg'
-	pickup_sound = 'sound/items/pickup/cardboardbox.ogg'
-
-/obj/item/reagent_containers/food/drinks/bludboxmax/Initialize(mapload)
-	. = ..()
-	reagents.add_reagent("blood", 30)
-
-/obj/item/reagent_containers/food/drinks/bludboxmaxlight
-	name = "Bludbox MAX Light carton"
-	desc = "A bloodsucking vegan's hipster alternative to drinking the red stuff. Bludbox light is just the same as drinking straight from the source! Comes in O- flavour."
-	volume = 30
-	icon_state = "bludboxmaxlight"
-	center_of_mass = list("x"=16, "y"=9)
-	drop_sound = 'sound/items/drop/cardboardbox.ogg'
-	pickup_sound = 'sound/items/pickup/cardboardbox.ogg'
-
-/obj/item/reagent_containers/food/drinks/bludboxmaxlight/Initialize(mapload)
-	. = ..()
-	reagents.add_reagent("synthblood", 30)
-
-/obj/item/reagent_containers/food/drinks/bludbox
-	name = "Bludbox carton"
-	desc = "The pop alternative to drinking real, human blood! Comes in blood flavour and contains all the dietry requirements for your undead friends."
-	volume = 30
-	icon_state = "bludbox"
-	center_of_mass = list("x"=16, "y"=9)
-	drop_sound = 'sound/items/drop/cardboardbox.ogg'
-	pickup_sound = 'sound/items/pickup/cardboardbox.ogg'
-
-/obj/item/reagent_containers/food/drinks/bludbox/Initialize(mapload)
-	. = ..()
-	reagents.add_reagent("blud", 30)
-
-/obj/item/reagent_containers/food/drinks/bludboxlight
-	name = "Bludbox Light carton"
-	desc = "The pop alternative to drinking real, human blood! Comes in blood flavour and contains all the dietry requirements for your undead friends. This one has less sweeteners, gross!"
-	volume = 30
-	icon_state = "bludboxlight"
-	center_of_mass = list("x"=16, "y"=9)
-	drop_sound = 'sound/items/drop/cardboardbox.ogg'
-	pickup_sound = 'sound/items/pickup/cardboardbox.ogg'
-
-/obj/item/reagent_containers/food/drinks/bludboxlight/Initialize(mapload)
-	. = ..()
-	reagents.add_reagent("bludlight", 30)
-
 /obj/item/reagent_containers/food/drinks/sillycup
 	name = "paper cup"
 	desc = "A paper water cup."
@@ -294,7 +190,7 @@
 	else
 		icon_state = "water_cup_e"
 
-/obj/item/reagent_containers/food/drinks/sillycup/MouseDrop(obj/over_object as obj)
+/obj/item/reagent_containers/food/drinks/sillycup/OnMouseDropLegacy(obj/over_object as obj)
 	if(!reagents.total_volume && istype(over_object, /obj/structure/reagent_dispensers/water_cooler))
 		if(over_object.Adjacent(usr))
 			var/obj/structure/reagent_dispensers/water_cooler/W = over_object
@@ -306,81 +202,50 @@
 	else
 		return ..()
 
-//////////////////////////drinkingglass and shaker//
-//Note by Darem: This code handles the mixing of drinks. New drinks go in three places: In Chemistry-Reagents.dm (for the drink
-//	itself), in Chemistry-Recipes.dm (for the reaction that changes the components into the drink), and here (for the drinking glass
-//	icon states.
-
-/obj/item/reagent_containers/food/drinks/shaker
-	name = "shaker"
-	desc = "A metal shaker to mix drinks in."
-	icon_state = "shaker"
+//Coffeepots: for reference, a standard cup is 30u, to allow 20u for sugar/sweetener/milk/creamer
+/obj/item/reagent_containers/food/drinks/coffeepot
+	name = "coffeepot"
+	desc = "A large pot for dispensing that ambrosia of corporate life known to mortals only as coffee. Contains 4 standard cups."
 	amount_per_transfer_from_this = 10
+	possible_transfer_amounts = list(5, 10, 15, 20, 25, 30, 50)
 	volume = 120
-	center_of_mass = list("x"=17, "y"=10)
+	icon_state = "coffeepot"
+	fill_icon_state = "coffeepot"
+	fill_icon_thresholds = list(0, 1, 40, 80, 120)
+	atom_flags = OPENCONTAINER
+	materials_base = list(MAT_GLASS = 500, MAT_STEEL = 500)
 
-/obj/item/reagent_containers/food/drinks/shaker/on_reagent_change()
-	..()
+/obj/item/reagent_containers/food/drinks/coffeepot/bluespace
+	name = "bluespace coffeepot"
+	desc = "The most advanced coffeepot the eggheads could cook up: sleek design; graduated lines; connection to a pocket dimension for coffee containment; yep, it's got it all. Contains 8 standard cups."
+	volume = 240
+	icon_state = "coffeepot_bluespace"
+	fill_icon_thresholds = list(0, 1, 40, 80, 120)
 
-/obj/item/reagent_containers/food/drinks/teapot
-	name = "teapot"
-	desc = "An elegant teapot. It simply oozes class."
-	icon_state = "teapot"
-	item_state = "teapot"
-	amount_per_transfer_from_this = 10
-	volume = 120
-	center_of_mass = list("x"=17, "y"=7)
+/obj/item/reagent_containers/food/drinks/mug/nanotrasen
+	name = "\improper Nanotrasen mug"
+	desc = "A mug to display your corporate pride."
+	icon_state = "mug_nt_empty"
+	atom_flags = OPENCONTAINER
 
-/obj/item/reagent_containers/food/drinks/teapot/on_reagent_change()
-	..()
+/obj/item/reagent_containers/food/drinks/mug/nanotrasen/update_icon_state()
+	icon_state = reagents.total_volume ? "mug_nt" : "mug_nt_empty"
+	return ..()
 
-/obj/item/reagent_containers/food/drinks/flask
-	name = "\improper Facility Director's flask"
-	desc = "A metal flask belonging to the Facility Director"
-	icon_state = "flask"
-	volume = 60
-	center_of_mass = list("x"=17, "y"=7)
-
-/obj/item/reagent_containers/food/drinks/flask/on_reagent_change()
-	..()
-
-/obj/item/reagent_containers/food/drinks/flask/shiny
-	name = "shiny flask"
-	desc = "A shiny metal flask. It appears to have a Greek symbol inscribed on it."
-	icon_state = "shinyflask"
-
-/obj/item/reagent_containers/food/drinks/flask/lithium
-	name = "lithium flask"
-	desc = "A flask with a Lithium Atom symbol on it."
-	icon_state = "lithiumflask"
-
-/obj/item/reagent_containers/food/drinks/flask/detflask
-	name = "\improper Detective's flask"
-	desc = "A metal flask with a leather band and golden badge belonging to the detective."
-	icon_state = "detflask"
-	volume = 60
-	center_of_mass = list("x"=17, "y"=8)
-
-/obj/item/reagent_containers/food/drinks/flask/barflask
-	name = "flask"
-	desc = "For those who can't be bothered to hang out at the bar to drink."
-	icon_state = "barflask"
-	volume = 60
-	center_of_mass = list("x"=17, "y"=7)
-
-/obj/item/reagent_containers/food/drinks/flask/vacuumflask
-	name = "vacuum flask"
-	desc = "Keeping your drinks at the perfect temperature since 1892."
-	icon_state = "vacuumflask"
-	volume = 60
-	center_of_mass = list("x"=15, "y"=4)
-
-/obj/item/reagent_containers/food/drinks/britcup
-	name = "cup"
-	desc = "A cup with the British flag emblazoned on it."
-	icon_state = "britcup"
+/obj/item/reagent_containers/food/drinks/coffee_cup
+	name = "coffee cup"
+	desc = "A heat-formed plastic coffee cup. Can theoretically be used for other hot drinks, if you're feeling adventurous."
+	icon_state = "coffee_cup_e"
+	possible_transfer_amounts = list(5, 10)
 	volume = 30
-	center_of_mass = list("x"=15, "y"=13)
+	atom_flags = OPENCONTAINER
+	drop_sound = 'sound/items/drop/papercup.ogg'
+	pickup_sound = 'sound/items/pickup/papercup.ogg'
 
-/obj/item/reagent_containers/food/drinks/britcup/on_reagent_change()
-	..()
+/obj/item/reagent_containers/food/drinks/coffee_cup/update_icon_state()
+	icon_state = reagents.total_volume ? "coffee_cup" : "coffee_cup_e"
+	return ..()
+
+/obj/item/reagent_containers/food/drinks/coffee_cup/on_reagent_change()
+	. = ..()
+	update_icon()

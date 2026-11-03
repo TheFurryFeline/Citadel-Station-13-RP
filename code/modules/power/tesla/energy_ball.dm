@@ -29,7 +29,7 @@
 	if(!is_miniball)
 		set_light(10, 7, "#EEEEFF")
 
-/obj/singularity/energy_ball/ex_act(severity, target)
+/obj/singularity/energy_ball/legacy_ex_act(severity, target)
 	return
 
 /obj/singularity/energy_ball/Destroy()
@@ -71,7 +71,7 @@
 	else
 		energy = 0 // ensure we dont have miniballs of miniballs
 
-/obj/singularity/energy_ball/examine(mob/user)
+/obj/singularity/energy_ball/examine(mob/user, dist)
 	. = ..()
 	if(orbiting_balls.len)
 		. += "The amount of orbiting mini-balls is [orbiting_balls.len]."
@@ -94,7 +94,7 @@
 
 /obj/singularity/energy_ball/proc/handle_energy()
 	if (energy <= 0)
-		investigate_log("collapsed.", I_SINGULO)
+		investigate_log("collapsed.", INVESTIGATE_SINGULO)
 		qdel(src)
 		return TRUE
 	if(energy >= energy_to_raise)
@@ -102,7 +102,7 @@
 		energy_to_raise = energy_to_raise * 1.25
 
 		playsound(src.loc, 'sound/effects/lightning_chargeup.ogg', 100, 1, extrarange = 30)
-		addtimer(CALLBACK(src, .proc/new_mini_ball), 100)
+		addtimer(CALLBACK(src, PROC_REF(new_mini_ball)), 100)
 
 	else if(energy < energy_to_lower && orbiting_balls.len)
 		energy_to_raise = energy_to_raise / 1.25
@@ -160,9 +160,11 @@
 		if(GR.anchored)
 			return
 	var/mob/living/carbon/C = A
-	// C.dust() - Changing to do fatal elecrocution instead
-	C.electrocute_act(500, src, def_zone = BP_TORSO)
+	C.electrocute(0, 500, 0, ELECTROCUTE_ACT_FLAG_UNIFORM, BP_TORSO, src)
 
+/**
+ * scale: watts
+ */
 /proc/tesla_zap(atom/source, zap_range = 3, power, explosive = FALSE, stun_mobs = TRUE)
 	. = source.dir
 	if(power < 1000)
@@ -227,7 +229,7 @@
 		else if(isliving(A))
 			var/dist = get_dist(source, A)
 			var/mob/living/L = A
-			if(dist <= zap_range && (dist < closest_dist || !closest_mob) && L.stat != DEAD && !(L.status_flags & GODMODE))
+			if(dist <= zap_range && (dist < closest_dist || !closest_mob) && L.stat != DEAD && !(L.status_flags & STATUS_GODMODE))
 				closest_mob = L
 				closest_atom = A
 				closest_dist = dist
@@ -268,13 +270,13 @@
 	//Alright, we've done our loop, now lets see if was anything interesting in range
 	if(closest_atom)
 		//common stuff
-		var/atom/srcLoc = get_turf(source) // VOREStation Edit - Makes beams look nicer
-		srcLoc.Beam(closest_atom, icon_state="lightning[rand(1,12)]", time=5, maxdistance = INFINITY)  // VOREStation Edit - Makes beams look nicer
+		var/atom/srcLoc = get_turf(source)
+		srcLoc.Beam(closest_atom, icon_state="lightning[rand(1,12)]", time=5, maxdistance = INFINITY)
 		var/zapdir = get_dir(source, closest_atom)
 		if(zapdir)
 			. = zapdir
 
-	var/drain_energy = TRUE // Citadel Station Edit: Reactivates drain for reactor. Keeping VS Edits for legacy knowledge.
+	var/drain_energy = TRUE
 
 	//per type stuff:
 	if(closest_tesla_coil)
@@ -285,7 +287,7 @@
 
 	else if(closest_mob)
 		var/shock_damage = clamp(round(power/400), 10, 90) + rand(-5, 5)
-		closest_mob.electrocute_act(shock_damage, source, 1 - closest_mob.get_shock_protection(), ran_zone())
+		closest_mob.electrocute(power, shock_damage, 0, ELECTROCUTE_ACT_FLAG_DISTRIBUTE, ran_zone(), source)
 		log_game("TESLA([source.x],[source.y],[source.z]) Shocked [key_name(closest_mob)] for [shock_damage]dmg.")
 		message_admins("Tesla zapped [key_name_admin(closest_mob)]!")
 		if(issilicon(closest_mob))
@@ -297,20 +299,19 @@
 			tesla_zap(closest_mob, 5, power / 1.5, explosive, stun_mobs)
 
 	else if(closest_machine)
-		drain_energy = TRUE // VOREStation Edit - Safety First! Drain Tesla fast when its loose
+		drain_energy = TRUE // Safety First! Drain Tesla fast when its loose
 		closest_machine.tesla_act(power, explosive, stun_mobs)
 
 	else if(closest_blob)
-		drain_energy = TRUE // VOREStation Edit - Safety First! Drain Tesla fast when its loose
+		drain_energy = TRUE // Safety First! Drain Tesla fast when its loose
 		closest_blob.tesla_act(power, explosive, stun_mobs)
 
 	else if(closest_structure)
-		drain_energy = TRUE // VOREStation Edit - Safety First! Drain Tesla fast when its loose
+		drain_energy = TRUE // Safety First! Drain Tesla fast when its loose
 		closest_structure.tesla_act(power, explosive, stun_mobs)
 
-	// VOREStation Edit Start - Safety First! Drain Tesla fast when its loose
+	// Safety First! Drain Tesla fast when its loose
 	if(drain_energy && istype(source, /obj/singularity/energy_ball))
 		var/obj/singularity/energy_ball/EB = source
 		if (EB.energy > 0)
-			EB.energy -= min(EB.energy, max(1, round(EB.energy * 0.001))) // Citadel Station Edit: Reduces Drain speed to allow contained balls to lose power too /Vore station has set to 10 causing rapid decay
-	// VOREStation Edit End
+			EB.energy -= min(EB.energy, max(1, round(EB.energy * 0.001)))

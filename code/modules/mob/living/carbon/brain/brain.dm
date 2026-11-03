@@ -32,20 +32,23 @@
 
 //This file was auto-corrected by findeclaration.exe on 25.5.2012 20:42:32
 
+// todo: this should be like, /mob/brain or something, this doesn't simulate /living stuff at all.
+
 /mob/living/carbon/brain
 	var/obj/item/container = null
 	var/timeofhostdeath = 0
 	var/emp_damage = 0//Handles a type of MMI damage
 	var/alert = null
-	use_me = 0 //Can't use the me verb, it's a freaking immobile brain
 	icon = 'icons/obj/surgery.dmi'
 	icon_state = "brain1"
-	no_vore = TRUE //VOREStation Edit - PLEASE. lol.
+	no_vore = TRUE
+	emote_class = NONE
+	inventory = null
 	catalogue_data = list(/datum/category_item/catalogue/fauna/brain/organic)
 
 /mob/living/carbon/brain/Initialize(mapload)
 	. = ..()
-	var/datum/reagents/R = new/datum/reagents(1000)
+	var/datum/reagent_holder/R = new/datum/reagent_holder(1000)
 	reagents = R
 	R.my_atom = src
 
@@ -56,13 +59,11 @@
 		ghostize()		//Ghostize checks for key so nothing else is necessary.
 	return ..()
 
-/mob/living/carbon/brain/update_canmove()
-	if(in_contents_of(/obj/mecha) || istype(loc, /obj/item/mmi))
-		canmove = 1
-		use_me = 1
+/mob/living/carbon/brain/update_mobility(blocked, forced)
+	if(in_contents_of(/obj/vehicle/sealed/mecha) || istype(loc, /obj/item/mmi))
+		. = ..(blocked, forced)
 	else
-		canmove = 0
-	return canmove
+		. = ..(MOBILITY_FLAGS_REAL, forced)
 
 /mob/living/carbon/brain/isSynthetic()
 	return istype(loc, /obj/item/mmi)

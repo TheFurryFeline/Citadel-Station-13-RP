@@ -1,5 +1,6 @@
-#define EMITTER_DAMAGE_POWER_TRANSFER 500 //used to transfer power to containment field generators
-
+///used to transfer power to containment field generators
+#define EMITTER_DAMAGE_POWER_TRANSFER 500
+// todo: emitters shouldn't be part of the singularity / power module
 /obj/machinery/power/emitter
 	name = "emitter"
 	desc = "It is a heavy duty industrial laser."
@@ -7,7 +8,10 @@
 	icon_state = "emitter"
 	anchored = 0
 	density = 1
-	req_access = list(access_engine_equip)
+	req_access = list(ACCESS_ENGINEERING_ENGINE)
+	armor_type = /datum/armor/object/medium
+
+	worth_intrinsic = 350
 	var/id = null
 
 	use_power = USE_POWER_OFF	//uses powernet power, not APC power
@@ -27,12 +31,9 @@
 	var/burst_delay = 2
 	var/initial_fire_delay = 100
 
-	var/integrity = 80
-
-
 /obj/machinery/power/emitter/verb/rotate_clockwise()
 	set name = "Rotate Emitter Clockwise"
-	set category = "Object"
+	set category = VERB_CATEGORY_OBJECT
 	set src in oview(1)
 
 	if (src.anchored || usr:stat)
@@ -53,12 +54,12 @@
 	..()
 
 /obj/machinery/power/emitter/update_icon()
-	if (active && powernet && avail(active_power_usage))
+	if (active && powernet && avail(active_power_usage * 0.001))
 		icon_state = "emitter_+a"
 	else
 		icon_state = "emitter"
 
-/obj/machinery/power/emitter/attack_hand(mob/user as mob)
+/obj/machinery/power/emitter/attack_hand(mob/user, datum/event_args/actor/clickchain/e_args)
 	src.add_fingerprint(user)
 	activate(user)
 
@@ -99,7 +100,7 @@
 	return 1
 
 /obj/machinery/power/emitter/process(delta_time)
-	if(stat & (BROKEN))
+	if(machine_stat & (BROKEN))
 		return
 	if(src.state != 2 || (!powernet && active_power_usage))
 		src.active = 0
@@ -107,7 +108,7 @@
 		return
 	if(((src.last_shot + src.fire_delay) <= world.time) && (src.active == 1))
 
-		var/actual_load = draw_power(active_power_usage)
+		var/actual_load = draw_power(active_power_usage * 0.001) * 1000
 		if(actual_load >= active_power_usage) //does the laser have enough power to shoot?
 			if(!powered)
 				powered = 1
@@ -140,8 +141,8 @@
 			s.set_up(5, 1, src)
 			s.start()
 
-		var/obj/item/projectile/beam/emitter/A = get_emitter_beam()
-		A.damage = round(power_per_shot/EMITTER_DAMAGE_POWER_TRANSFER)
+		var/obj/projectile/beam/emitter/A = get_emitter_beam()
+		A.damage_force = round(power_per_shot/EMITTER_DAMAGE_POWER_TRANSFER)
 		A.firer = src
 		A.fire(dir2angle(dir))
 
@@ -154,14 +155,14 @@
 		switch(state)
 			if(0)
 				state = 1
-				playsound(src, W.usesound, 75, 1)
+				playsound(src, W.tool_sound, 75, 1)
 				user.visible_message("[user.name] secures [src] to the floor.", \
 					"You secure the external reinforcing bolts to the floor.", \
 					"You hear a ratchet.")
 				src.anchored = 1
 			if(1)
 				state = 0
-				playsound(src, W.usesound, 75, 1)
+				playsound(src, W.tool_sound, 75, 1)
 				user.visible_message("[user.name] unsecures [src] reinforcing bolts from the floor.", \
 					"You undo the external reinforcing bolts.", \
 					"You hear a ratchet.")
@@ -181,11 +182,11 @@
 				to_chat(user, "<span class='warning'>\The [src] needs to be wrenched to the floor.</span>")
 			if(1)
 				if (WT.remove_fuel(0,user))
-					playsound(loc, WT.usesound, 50, 1)
+					playsound(loc, WT.tool_sound, 50, 1)
 					user.visible_message("[user.name] starts to weld [src] to the floor.", \
 						"You start to weld [src] to the floor.", \
 						"You hear welding")
-					if (do_after(user,20 * WT.toolspeed))
+					if (do_after(user,20 * WT.tool_speed))
 						if(!src || !WT.isOn()) return
 						state = 2
 						to_chat(user, "You weld [src] to the floor.")
@@ -194,11 +195,11 @@
 					to_chat(user, "<span class='warning'>You need more welding fuel to complete this task.</span>")
 			if(2)
 				if (WT.remove_fuel(0,user))
-					playsound(loc, WT.usesound, 50, 1)
+					playsound(loc, WT.tool_sound, 50, 1)
 					user.visible_message("[user.name] starts to cut [src] free from the floor.", \
 						"You start to cut [src] free from the floor.", \
 						"You hear welding")
-					if (do_after(user,20 * WT.toolspeed))
+					if (do_after(user,20 * WT.tool_speed))
 						if(!src || !WT.isOn()) return
 						state = 1
 						to_chat(user, "You cut [src] free from the floor.")
@@ -207,7 +208,7 @@
 					to_chat(user, "<span class='warning'>You need more welding fuel to complete this task.</span>")
 		return
 
-	if(istype(W, /obj/item/stack/material) && W.get_material_name() == MAT_STEEL)
+	if(W.is_material_stack_of(/datum/prototype/material/steel))
 		var/amt = CEILING(( initial(integrity) - integrity)/10, 1)
 		if(!amt)
 			to_chat(user, "<span class='notice'>\The [src] is already fully repaired.</span>")
@@ -220,7 +221,7 @@
 		if(do_after(user, 30))
 			if(P.use(amt))
 				to_chat(user, "<span class='notice'>You have repaired \the [src].</span>")
-				integrity = initial(integrity)
+				set_integrity(integrity_max)
 				return
 			else
 				to_chat(user, "<span class='warning'>You don't have enough sheets to repair this! You need at least [amt] sheets.</span>")
@@ -246,37 +247,6 @@
 		user.visible_message("[user.name] emags [src].","<span class='warning'>You short out the lock.</span>")
 		return 1
 
-/obj/machinery/power/emitter/bullet_act(var/obj/item/projectile/P)
-	if(!P || !P.damage || P.get_structure_damage() <= 0 )
-		return
-
-	adjust_integrity(-P.get_structure_damage())
-
-/obj/machinery/power/emitter/blob_act()
-	adjust_integrity(-1000) // This kills the emitter.
-
-/obj/machinery/power/emitter/proc/adjust_integrity(amount)
-	integrity = between(0, integrity + amount, initial(integrity))
-	if(integrity == 0)
-		if(powernet && avail(active_power_usage)) // If it's powered, it goes boom if killed.
-			visible_message(src, "<span class='danger'>\The [src] explodes violently!</span>", "<span class='danger'>You hear an explosion!</span>")
-			explosion(get_turf(src), 1, 2, 4)
-		else
-			src.visible_message("<span class='danger'>\The [src] crumples apart!</span>", "<span class='warning'>You hear metal collapsing.</span>")
-		if(src)
-			qdel(src)
-
-/obj/machinery/power/emitter/examine(mob/user)
-	. = ..()
-	var/integrity_percentage = round((integrity / initial(integrity)) * 100)
-	switch(integrity_percentage)
-		if(0 to 30)
-			. += "<span class='danger'>\The [src] is close to falling apart!</span>"
-		if(31 to 70)
-			. += "<span class='danger'>\The [src] is damaged.</span>"
-		if(77 to 99)
-			. += "<span class='warning'>\The [src] is slightly damaged.</span>"
-
 //R-UST port
 /obj/machinery/power/emitter/proc/get_initial_fire_delay()
 	return initial_fire_delay
@@ -288,4 +258,4 @@
 	return burst_delay
 
 /obj/machinery/power/emitter/proc/get_emitter_beam()
-	return new /obj/item/projectile/beam/emitter(get_turf(src))
+	return new /obj/projectile/beam/emitter(get_turf(src))

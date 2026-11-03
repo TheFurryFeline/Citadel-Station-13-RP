@@ -1,12 +1,12 @@
 /datum/outfit/pirate
 	abstract_type = /datum/outfit/pirate
 
-	name = "Pirate"
+	name = "Pirate - Classic"
 	uniform = /obj/item/clothing/under/pirate
 	shoes = /obj/item/clothing/shoes/brown
 	head = /obj/item/clothing/head/bandana
 	glasses = /obj/item/clothing/glasses/eyepatch
-	l_hand = /obj/item/melee/energy/sword/pirate
+	l_hand = /obj/item/melee/transforming/energy/sword/cutlass
 
 /datum/outfit/pirate/norm
 
@@ -18,16 +18,16 @@
 	flags = OUTFIT_HAS_JETPACK
 
 /datum/outfit/pirate/vox
-	name = "Vox Raider"
+	name = "Pirate - Vox Raider"
 	uniform = /obj/item/clothing/under/color/black
 	suit = /obj/item/clothing/suit/armor/vox_scrap
 	shoes = /obj/item/clothing/shoes/magboots/vox
 	gloves = /obj/item/clothing/gloves/light_brown
 	mask = /obj/item/clothing/mask/breath
 	back = /obj/item/tank/vox
-	l_hand = /obj/item/melee/energy/sword/pirate
-	r_hand = /obj/item/gun/projectile/shotgun/pump/rifle/vox_hunting
-	l_pocket = /obj/item/ammo_magazine/clip/c762
-	r_pocket = /obj/item/ammo_magazine/clip/c762
+	l_hand = /obj/item/melee/transforming/energy/sword/cutlass
+	r_hand = /obj/item/gun/projectile/ballistic/shotgun/pump/rifle/vox_hunting
+	l_pocket = /obj/item/ammo_magazine/a7_62mm/clip
+	r_pocket = /obj/item/ammo_magazine/a7_62mm/clip
 
 	var/faction = "voxpirate"

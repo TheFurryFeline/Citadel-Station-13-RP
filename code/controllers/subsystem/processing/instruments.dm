@@ -2,8 +2,10 @@ PROCESSING_SUBSYSTEM_DEF(instruments)
 	name = "Instruments"
 	wait = 0.5
 	init_order = INIT_ORDER_INSTRUMENTS
-	flags = SS_KEEP_TIMING
+	init_stage = INIT_STAGE_EARLY
+	subsystem_flags = SS_KEEP_TIMING
 	priority = FIRE_PRIORITY_INSTRUMENTS
+	stat_tag = "P_INST"
 	var/static/list/datum/instrument/instrument_data = list()		//id = datum
 	var/static/list/datum/song/songs = list()
 	var/static/musician_maxlines = 600
@@ -14,7 +16,7 @@ PROCESSING_SUBSYSTEM_DEF(instruments)
 
 /datum/controller/subsystem/processing/instruments/Initialize()
 	initialize_instrument_data()
-	return ..()
+	return SS_INIT_SUCCESS
 
 /datum/controller/subsystem/processing/instruments/proc/on_song_new(datum/song/S)
 	songs += S

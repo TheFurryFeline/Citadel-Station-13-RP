@@ -41,9 +41,9 @@
 
 	var/obj/item/forensics/swab/swab = W
 	if(istype(swab) && swab.is_used())
-		user.unEquip(W)
+		if(!user.attempt_insert_item_for_installation(W, src))
+			return
 		bloodsamp = swab
-		swab.forceMove(src)
 		to_chat(user, SPAN_NOTICE("You insert [W] into [src]."))
 		update_icon()
 	else
@@ -51,7 +51,7 @@
 		return
 
 /obj/machinery/dnaforensics/ui_interact(mob/user, datum/tgui/ui)
-	if(stat & (NOPOWER))
+	if(machine_stat & (NOPOWER))
 		return
 	ui = SStgui.try_update_ui(user, src, ui)
 	if(!ui)
@@ -59,7 +59,7 @@
 		ui.open()
 
 
-/obj/machinery/dnaforensics/ui_data(mob/user)
+/obj/machinery/dnaforensics/ui_data(mob/user, datum/tgui/ui)
 	var/list/data = ..()
 
 	data["scan_progress"] = round(scanner_progress)
@@ -70,11 +70,11 @@
 	return data
 
 
-/obj/machinery/dnaforensics/ui_act(action, list/params)
+/obj/machinery/dnaforensics/ui_act(action, list/params, datum/tgui/ui, datum/ui_state/state, datum/event_args/actor/actor)
 	if(..())
 		return TRUE
 
-	if(stat & (NOPOWER))
+	if(machine_stat & (NOPOWER))
 		return FALSE //Don't update UIs attached to this object
 
 	. = TRUE
@@ -121,7 +121,8 @@
 		var/obj/item/paper/P = new(src)
 		P.name = "[src] report #[++report_num]: [bloodsamp.name]"
 		P.stamped = list(/obj/item/stamp)
-		P.overlays = list("paper_stamped")
+		P.cut_overlays()
+		P.add_overlay("paper_stamped")
 		//dna data itself
 		var/data = "No scan information available."
 		if(bloodsamp.dna != null)
@@ -141,12 +142,12 @@
 /obj/machinery/dnaforensics/attack_ai(mob/user)
 	ui_interact(user)
 
-/obj/machinery/dnaforensics/attack_hand(mob/user)
+/obj/machinery/dnaforensics/attack_hand(mob/user, datum/event_args/actor/clickchain/e_args)
 	ui_interact(user)
 
 /obj/machinery/dnaforensics/update_icon()
 	..()
-	if(!(stat & NOPOWER) && scanning)
+	if(!(machine_stat & NOPOWER) && scanning)
 		icon_state = "dnaworking"
 	else if(bloodsamp)
 		icon_state = "dnaclosed"

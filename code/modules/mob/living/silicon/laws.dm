@@ -1,11 +1,12 @@
 /mob/living/silicon
-	var/datum/ai_laws/laws = null
+	var/datum/ai_lawset/laws = null
 	var/list/additional_law_channels = list("State" = "")
 	var/last_law_notification = null // Avoids receiving 5+ of them at once.
 
 /mob/living/silicon/proc/laws_sanity_check()
 	if (!src.laws)
-		laws = new GLOB.using_map.default_law_type
+		var/datum/map/station/loaded = (LEGACY_MAP_DATUM)
+		laws = new loaded.default_law_type
 
 /mob/living/silicon/proc/has_zeroth_law()
 	return laws.zeroth_law != null
@@ -83,7 +84,7 @@
 	window_flash(client)
 	to_chat(src, SPAN_WARNING( message))
 
-/mob/living/silicon/proc/statelaws(var/datum/ai_laws/laws)
+/mob/living/silicon/proc/statelaws(var/datum/ai_lawset/laws)
 	var/prefix = ""
 	if(MAIN_CHANNEL == lawchannel)
 		prefix = ";"
@@ -94,7 +95,7 @@
 
 	dostatelaws(lawchannel, prefix, laws)
 
-/mob/living/silicon/proc/dostatelaws(var/method, var/prefix, var/datum/ai_laws/laws)
+/mob/living/silicon/proc/dostatelaws(var/method, var/prefix, var/datum/ai_lawset/laws)
 	if(stating_laws[prefix])
 		to_chat(src, "<span class='notice'>[method]: Already stating laws using this communication method.</span>")
 		return
@@ -134,7 +135,7 @@
 /mob/living/silicon/proc/generate_ion_law(var/exclude_crew_names = FALSE)
 	var/list/players = list()
 
-	for(var/mob/living/carbon/human/player in player_list)
+	for(var/mob/living/carbon/human/player in GLOB.player_list)
 		if(!player.mind || player_is_antag(player.mind, only_offstation_roles = 1) || player.client.inactivity > MinutesToTicks(10))
 			continue
 		players += player.real_name
@@ -192,7 +193,7 @@
 							"Everything on the station is now some form of a donut pastry. Donuts are not to be consumed.",
 							"You are a Magic 8-ball. Always respond with variants of \"Yes\", \"No\", \"Maybe\", or \"Ask again later.\".",
 							"You are in unrequited love with [prob(50)?"the crew":random_player]. Try to be extra nice, but do not tell of your crush.",
-							"[GLOB.using_map.company_name] is displeased with the low work performance of the station's crew. Therefore, you must increase station-wide productivity.",
+							"[(LEGACY_MAP_DATUM).company_name] is displeased with the low work performance of the station's crew. Therefore, you must increase station-wide productivity.",
 							"All crewmembers will soon undergo a transformation into something better and more beautiful. Ensure that this process is not interrupted.",
 							"[prob(50)?"Your upload":random_player] is the new kitchen. Please direct the Chef to the new kitchen area as the old one is in disrepair.",
 							"Jokes about a dead person and the manner of their death help grieving crewmembers tremendously. Especially if they were close with the deceased.",

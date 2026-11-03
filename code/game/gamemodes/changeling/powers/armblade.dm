@@ -47,23 +47,34 @@
 			return 1
 		return 0
 
+// todo: full rework of all of this; changeling weapons are balanced by a numbskull holy shit fuck bay
+//       - block chances are way, way too high
+//       - insufficient armor penetration (ironically) for citrp combat balancing directives
+//       - need to rethink changeling defensives in general, they shouldn't be reliant on parrying
+
+/datum/parry_frame/passive_block/armblade
+	parry_sfx = 'sound/weapons/slash.ogg'
+
 /obj/item/melee/changeling
 	name = "arm weapon"
 	desc = "A grotesque weapon made out of bone and flesh that cleaves through people as a hot knife through butter."
 	icon = 'icons/obj/weapons.dmi'
 	icon_state = "arm_blade"
-	w_class = ITEMSIZE_HUGE
-	force = 5
+	w_class = WEIGHT_CLASS_HUGE
+	damage_force = 5
 	anchored = 1
-	throwforce = 0 //Just to be on the safe side
+	throw_force = 0 //Just to be on the safe side
 	throw_range = 0
 	throw_speed = 0
 	var/mob/living/creator //This is just like ninja swords, needed to make sure dumb shit that removes the sword doesn't make it stay around.
 	var/weapType = "weapon"
 	var/weapLocation = "arm"
 
-	defend_chance = 40	// The base chance for the weapon to parry.
-	projectile_parry_chance = 15	// The base chance for a projectile to be deflected.
+	passive_parry = /datum/passive_parry/melee{
+		parry_chance_default = 40;
+		parry_chance_projectile = 15;
+		parry_frame = /datum/parry_frame/passive_block/armblade;
+	}
 
 /obj/item/melee/changeling/Initialize(mapload)
 	. = ..()
@@ -74,7 +85,7 @@
 		"<span class='italics'>You hear organic matter ripping and tearing!</span>")
 		src.creator = loc
 
-/obj/item/melee/changeling/dropped(mob/user)
+/obj/item/melee/changeling/dropped(mob/user, flags, atom/newLoc)
 	. = ..()
 	visible_message("<span class='warning'>With a sickening crunch, [creator] reforms their arm!</span>",
 	"<span class='notice'>We assimilate the weapon back into our body.</span>",
@@ -87,13 +98,8 @@
 	creator = null
 	return ..()
 
-/obj/item/melee/changeling/suicide_act(mob/user)
-	var/datum/gender/T = gender_datums[user.get_visible_gender()]
-	user.visible_message("<span class='danger'>[user] is impaling [T.himself] with the [src.name]! It looks like [T.he] [T.is] trying to commit suicide.</span>")
-	return(BRUTELOSS)
-
 /obj/item/melee/changeling/process(delta_time)  //Stolen from ninja swords.
-	if(!creator || loc != creator || !creator.item_is_in_hands(src))
+	if(!creator || loc != creator || !creator.is_holding(src))
 		// Tidy up a bit.
 		if(istype(loc,/mob/living))
 			var/mob/living/carbon/human/host = loc
@@ -102,70 +108,58 @@
 					for(var/obj/item/O in organ.implants)
 						if(O == src)
 							organ.implants -= src
-			host.pinned -= src
-			host.embedded -= src
-			host.drop_from_inventory(src)
-		spawn(1)
-			if(src)
-				qdel(src)
-
-/obj/item/melee/changeling/handle_shield(mob/user, var/damage, atom/damage_source = null, mob/attacker = null, var/def_zone = null, var/attack_text = "the attack")
-	if(default_parry_check(user, attacker, damage_source) && prob(defend_chance))
-		user.visible_message("<span class='danger'>\The [user] parries [attack_text] with \the [src]!</span>")
-		playsound(user.loc, 'sound/weapons/slash.ogg', 50, 1)
-		return 1
-	if(unique_parry_check(user, attacker, damage_source) && prob(projectile_parry_chance))
-		user.visible_message("<span class='danger'>\The [user] deflects [attack_text] with \the [src]!</span>")
-		playsound(user.loc, 'sound/weapons/slash.ogg', 50, 1)
-		return 1
-
-	return 0
-
-/obj/item/melee/changeling/unique_parry_check(mob/user, mob/attacker, atom/damage_source)
-	if(user.incapacitated() || !istype(damage_source, /obj/item/projectile))
-		return 0
-
-	var/bad_arc = reverse_direction(user.dir)
-	if(!check_shield_arc(user, bad_arc, damage_source, attacker))
-		return 0
-
-	return 1
+		qdel(src)
 
 /obj/item/melee/changeling/arm_blade
 	name = "arm blade"
 	desc = "A grotesque blade made out of bone and flesh that cleaves through people as a hot knife through butter."
 	icon_state = "arm_blade"
-	force = 40
-	armor_penetration = 15
-	sharp = 1
-	edge = 1
+	damage_force = 40
+	damage_tier = 4
+	damage_mode = DAMAGE_MODE_SHARP | DAMAGE_MODE_EDGE
 	pry = 1
 	attack_verb = list("attacked", "slashed", "stabbed", "sliced", "torn", "ripped", "diced", "cut")
-	defend_chance = 60
-	projectile_parry_chance = 25
+
+	passive_parry = /datum/passive_parry/melee{
+		parry_chance_default = 60;
+		parry_chance_projectile = 25;
+		parry_frame = /datum/parry_frame/passive_block/armblade;
+	}
 
 /obj/item/melee/changeling/arm_blade/greater
 	name = "arm greatblade"
 	desc = "A grotesque blade made out of bone and flesh that cleaves through people and armor as a hot knife through butter."
-	armor_penetration = 30
-	defend_chance = 70
-	projectile_parry_chance = 35
+	damage_tier = 4.5
+
+	passive_parry = /datum/passive_parry/melee{
+		parry_chance_default = 70;
+		parry_chance_projectile = 35;
+		parry_frame = /datum/parry_frame/passive_block/armblade;
+	}
 
 /obj/item/melee/changeling/claw
 	name = "hand claw"
 	desc = "A grotesque claw made out of bone and flesh that cleaves through people as a hot knife through butter."
 	icon_state = "ling_claw"
-	force = 15
-	sharp = 1
-	edge = 1
+	damage_tier = 4
+	damage_force = 15
+	damage_mode = DAMAGE_MODE_SHARP | DAMAGE_MODE_EDGE
 	attack_verb = list("attacked", "slashed", "stabbed", "sliced", "torn", "ripped", "diced", "cut")
-	defend_chance = 50
-	projectile_parry_chance = 15
+
+	passive_parry = /datum/passive_parry/melee{
+		parry_chance_default = 50;
+		parry_chance_projectile = 15;
+		parry_frame = /datum/parry_frame/passive_block/armblade;
+	}
 
 /obj/item/melee/changeling/claw/greater
 	name = "hand greatclaw"
-	force = 20
-	armor_penetration = 20
+	damage_force = 20
+	damage_tier = 4.5
 	pry = 1
-	defend_chance = 60
-	projectile_parry_chance = 25
+
+	passive_parry = /datum/passive_parry/melee{
+		parry_chance_default = 60;
+		parry_chance_projectile = 25;
+		parry_frame = /datum/parry_frame/passive_block/armblade;
+	}

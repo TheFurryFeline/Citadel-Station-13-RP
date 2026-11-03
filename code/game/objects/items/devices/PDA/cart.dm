@@ -50,7 +50,7 @@ var/list/civilian_cartridges = list(
 	icon = 'icons/obj/pda.dmi'
 	icon_state = "cart"
 	item_state = "electronic"
-	w_class = ITEMSIZE_TINY
+	w_class = WEIGHT_CLASS_TINY
 	drop_sound = 'sound/items/drop/component.ogg'
 	pickup_sound = 'sound/items/pickup/component.ogg'
 
@@ -253,7 +253,7 @@ var/list/civilian_cartridges = list(
 
 /obj/item/cartridge/proc/post_status(var/command, var/data1, var/data2)
 
-	var/datum/radio_frequency/frequency = radio_controller.return_frequency(1435)
+	var/datum/radio_frequency/frequency = radio_controller.return_frequency(FREQ_STATUS_DISPLAYS)
 	if(!frequency) return
 
 	var/datum/signal/status_signal = new
@@ -312,7 +312,7 @@ var/list/civilian_cartridges = list(
 		var/list/sensors = list()
 		var/obj/machinery/power/sensor/MS = null
 
-		for(var/obj/machinery/power/sensor/S in machines)
+		for(var/obj/machinery/power/sensor/S in GLOB.machines)
 			sensors.Add(list(list("name_tag" = S.name_tag)))
 			if(S.name_tag == selected_sensor)
 				MS = S
@@ -532,20 +532,13 @@ var/list/civilian_cartridges = list(
 
 	return values
 
-
-
-
-
 /obj/item/cartridge/Topic(href, href_list)
 	..()
 
-	if (!usr.canmove || usr.stat || usr.restrained() || !in_range(loc, usr))
+	if (!CHECK_MOBILITY(usr, MOBILITY_CAN_UI) || !in_range(loc, usr))
 		usr.unset_machine()
 		usr << browse(null, "window=pda")
 		return
-
-
-
 
 	switch(href_list["choice"])
 		if("Medical Records")

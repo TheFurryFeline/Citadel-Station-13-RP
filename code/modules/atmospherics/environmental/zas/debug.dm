@@ -1,23 +1,25 @@
-var/image/assigned = image('icons/Testing/Zone.dmi', icon_state = "assigned")
-var/image/created = image('icons/Testing/Zone.dmi', icon_state = "created")
-var/image/merged = image('icons/Testing/Zone.dmi', icon_state = "merged")
-var/image/invalid_zone = image('icons/Testing/Zone.dmi', icon_state = "invalid")
-var/image/air_blocked = image('icons/Testing/Zone.dmi', icon_state = "block")
-var/image/zone_blocked = image('icons/Testing/Zone.dmi', icon_state = "zoneblock")
-var/image/blocked = image('icons/Testing/Zone.dmi', icon_state = "fullblock")
-var/image/mark = image('icons/Testing/Zone.dmi', icon_state = "mark")
+GLOBAL_DATUM_INIT(zas_debug_image_assigned, /image, image('icons/testing/Zone.dmi', icon_state = "assigned"))
+GLOBAL_DATUM_INIT(zas_debug_image_created, /image, image('icons/testing/Zone.dmi', icon_state = "created"))
+GLOBAL_DATUM_INIT(zas_debug_image_merged, /image, image('icons/testing/Zone.dmi', icon_state = "merged"))
+GLOBAL_DATUM_INIT(zas_debug_image_invalid_zone, /image, image('icons/testing/Zone.dmi', icon_state = "invalid"))
+GLOBAL_DATUM_INIT(zas_debug_image_air_blocked, /image, image('icons/testing/Zone.dmi', icon_state = "block"))
+GLOBAL_DATUM_INIT(zas_debug_image_zone_blocked, /image, image('icons/testing/Zone.dmi', icon_state = "zoneblock"))
+GLOBAL_DATUM_INIT(zas_debug_image_blocked, /image, image('icons/testing/Zone.dmi', icon_state = "fullblock"))
+GLOBAL_DATUM_INIT(zas_debug_image_mark, /image, image('icons/testing/Zone.dmi', icon_state = "mark"))
 
 /datum/zas_edge/var/dbg_out = 0
 
 /turf/var/tmp/dbg_img
 /turf/proc/dbg(image/img, d = 0)
-	if(d > 0) img.dir = d
-	overlays -= dbg_img
-	overlays += img
+	if(d > 0)
+		img.dir = d
+	cut_overlay(dbg_img)
+	add_overlay(img)
 	dbg_img = img
 
-proc/soft_assert(thing,fail)
-	if(!thing) message_admins(fail)
+/proc/soft_assert(thing,fail)
+	if(!thing)
+		message_admins(fail)
 
 /client/proc/ZoneTick()
 	set category = "Debug"
@@ -29,12 +31,12 @@ proc/soft_assert(thing,fail)
 	/*
 	if(!check_rights(R_DEBUG)) return
 
-	var/result = air_master.Tick()
+	var/result = SSair.Tick()
 	if(result)
 		to_chat(src, "Successfully Processed.")
 
 	else
-		to_chat(src, "Failed to process! ([air_master.tick_progress])")
+		to_chat(src, "Failed to process! ([SSair.tick_progress])")
 	*/
 
 /client/proc/Zone_Info(turf/T as null|turf)
@@ -76,41 +78,46 @@ proc/soft_assert(thing,fail)
 		return
 
 	if(direction == "N/A")
-		if(!(T.c_airblock(T) & AIR_BLOCKED))
+		if(T.CanAtmosPass(T, NONE) != ATMOS_PASS_AIR_BLOCKED)
 			to_chat(mob, "The turf can pass air! :D")
 		else
 			to_chat(mob, "No air passage :x")
 		return
 
-	var/turf/simulated/other_turf = get_step(T, direction_list[direction])
+	var/turf/other_turf = T.vertical_step(direction_list[direction])
 	if(!istype(other_turf))
+		to_chat(mob, "there's no turf in that dir.")
 		return
+	if(!istype(other_turf, /turf/simulated))
+		to_chat(mob, SPAN_RED("the other turf is unsimulated."))
 
-	var/t_block = T.c_airblock(other_turf)
-	var/o_block = other_turf.c_airblock(T)
+	var/t_block = T.CanAtmosPass(other_turf, T.vertical_dir(other_turf))
+	var/o_block = other_turf.CanAtmosPass(T, other_turf.vertical_dir(T))
 
-	if(o_block & AIR_BLOCKED)
-		if(t_block & AIR_BLOCKED)
+	if(o_block == ATMOS_PASS_AIR_BLOCKED)
+		if(t_block == ATMOS_PASS_AIR_BLOCKED)
 			to_chat(mob, "Neither turf can connect. :(")
 
 		else
 			to_chat(mob, "The initial turf only can connect. :\\")
+		return
 	else
-		if(t_block & AIR_BLOCKED)
+		if(t_block == ATMOS_PASS_AIR_BLOCKED)
 			to_chat(mob, "The other turf can connect, but not the initial turf. :/")
+			return
 
 		else
 			to_chat(mob, "Both turfs can connect! :)")
 
 	to_chat(mob, "Additionally, \...")
 
-	if(o_block & ZONE_BLOCKED)
-		if(t_block & ZONE_BLOCKED)
+	if(o_block == ATMOS_PASS_ZONE_BLOCKED)
+		if(t_block == ATMOS_PASS_ZONE_BLOCKED)
 			to_chat(mob, "neither turf can merge.")
 		else
 			to_chat(mob, "the other turf cannot merge.")
 	else
-		if(t_block & ZONE_BLOCKED)
+		if(t_block == ATMOS_PASS_ZONE_BLOCKED)
 			to_chat(mob, "the initial turf cannot merge.")
 		else
 			to_chat(mob, "both turfs can merge.")

@@ -4,10 +4,10 @@
 	icon_state = "shield0"
 	slot_flags = SLOT_BELT
 	item_state = "electronic"
-	throwforce = 5.0
+	throw_force = 5.0
 	throw_speed = 1
 	throw_range = 5
-	w_class = ITEMSIZE_SMALL
+	w_class = WEIGHT_CLASS_SMALL
 	origin_tech = list(TECH_ILLEGAL = 4, TECH_MAGNET = 4)
 	var/can_use = 1
 	var/obj/effect/dummy/chameleon/active_dummy = null
@@ -16,20 +16,22 @@
 	var/saved_icon_state = "cigbutt"
 	var/saved_overlays
 
-/obj/item/chameleon/dropped()
+/obj/item/chameleon/dropped(mob/user, flags, atom/newLoc)
+	. = ..()
 	disrupt()
-	..()
 
-/obj/item/chameleon/equipped()
-	..()
+/obj/item/chameleon/equipped(mob/user, slot, flags)
+	. = ..()
 	disrupt()
-	..()
 
-/obj/item/chameleon/attack_self()
+/obj/item/chameleon/attack_self(mob/user, datum/event_args/actor/actor)
+	. = ..()
+	if(.)
+		return
 	toggle()
 
-/obj/item/chameleon/afterattack(atom/target, mob/user , proximity)
-	if(!proximity) return
+/obj/item/chameleon/afterattack(atom/target, mob/user, clickchain_flags, list/params)
+	if(!(clickchain_flags & CLICKCHAIN_HAS_PROXIMITY)) return
 	if(!active_dummy)
 		if(istype(target,/obj/item) && !istype(target, /obj/item/disk/nuclear))
 			playsound(get_turf(src), 'sound/weapons/flash.ogg', 100, 1, -6)
@@ -37,7 +39,7 @@
 			saved_item = target.type
 			saved_icon = target.icon
 			saved_icon_state = target.icon_state
-			saved_overlays = target.overlays
+			saved_overlays = copy_overlays(target)
 
 /obj/item/chameleon/proc/toggle()
 	if(!can_use || !saved_item) return
@@ -99,7 +101,7 @@
 	icon_state = new_iconstate
 	overlays = new_overlays
 	setDir(O.dir)
-	M.loc = src
+	M.forceMove(src)
 	master = C
 	master.active_dummy = src
 
@@ -108,20 +110,20 @@
 		to_chat(M, "<span class='warning'>Your chameleon-projector deactivates.</span>")
 	master.disrupt()
 
-/obj/effect/dummy/chameleon/attack_hand()
+/obj/effect/dummy/chameleon/attack_hand(mob/user, datum/event_args/actor/clickchain/e_args)
 	for(var/mob/M in src)
 		to_chat(M, "<span class='warning'>Your chameleon-projector deactivates.</span>")
 	master.disrupt()
 
-/obj/effect/dummy/chameleon/ex_act()
+/obj/effect/dummy/chameleon/legacy_ex_act()
 	for(var/mob/M in src)
 		to_chat(M, "<span class='warning'>Your chameleon-projector deactivates.</span>")
 	master.disrupt()
 
-/obj/effect/dummy/chameleon/bullet_act()
+/obj/effect/dummy/chameleon/on_bullet_act(obj/projectile/proj, impact_flags, list/bullet_act_args)
+	. = ..()
 	for(var/mob/M in src)
 		to_chat(M, "<span class='warning'>Your chameleon-projector deactivates.</span>")
-	..()
 	master.disrupt()
 
 /obj/effect/dummy/chameleon/relaymove(var/mob/user, direction)

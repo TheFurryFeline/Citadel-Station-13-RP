@@ -13,8 +13,8 @@ GLOBAL_LIST_EMPTY(all_turbines)
 	var/max_power = 500000
 	var/thermal_efficiency = 0.65
 
-	var/obj/machinery/atmospherics/binary/circulator/circ1
-	var/obj/machinery/atmospherics/binary/circulator/circ2
+	var/obj/machinery/atmospherics/component/binary/circulator/circ1
+	var/obj/machinery/atmospherics/component/binary/circulator/circ2
 
 	var/last_circ1_gen = 0
 	var/last_circ2_gen = 0
@@ -41,7 +41,7 @@ GLOBAL_LIST_EMPTY(all_turbines)
 	GLOB.all_turbines -= src
 	return ..()
 
-//generators connect in dir and GLOB.reverse_dir(dir) directions
+//generators connect in dir and global.reverse_dir(dir) directions
 //mnemonic to determine circulator/generator directions: the cirulators orbit clockwise around the generator
 //so a circulator to the NORTH of the generator connects first to the EAST, then to the WEST
 //and a circulator to the WEST of the generator connects first to the NORTH, then to the SOUTH
@@ -51,8 +51,8 @@ GLOBAL_LIST_EMPTY(all_turbines)
 	circ2 = null
 	if(src.loc && anchored)
 		if(src.dir & (EAST|WEST))
-			circ1 = locate(/obj/machinery/atmospherics/binary/circulator) in get_step(src,WEST)
-			circ2 = locate(/obj/machinery/atmospherics/binary/circulator) in get_step(src,EAST)
+			circ1 = locate(/obj/machinery/atmospherics/component/binary/circulator) in get_step(src,WEST)
+			circ2 = locate(/obj/machinery/atmospherics/component/binary/circulator) in get_step(src,EAST)
 
 			if(circ1 && circ2)
 				if(circ1.dir != NORTH || circ2.dir != SOUTH)
@@ -60,8 +60,8 @@ GLOBAL_LIST_EMPTY(all_turbines)
 					circ2 = null
 
 		else if(src.dir & (NORTH|SOUTH))
-			circ1 = locate(/obj/machinery/atmospherics/binary/circulator) in get_step(src,NORTH)
-			circ2 = locate(/obj/machinery/atmospherics/binary/circulator) in get_step(src,SOUTH)
+			circ1 = locate(/obj/machinery/atmospherics/component/binary/circulator) in get_step(src,NORTH)
+			circ2 = locate(/obj/machinery/atmospherics/component/binary/circulator) in get_step(src,SOUTH)
 
 			if(circ1 && circ2 && (circ1.dir != EAST || circ2.dir != WEST))
 				circ1 = null
@@ -74,7 +74,7 @@ GLOBAL_LIST_EMPTY(all_turbines)
 		circ1.temperature_overlay = null
 	if (circ2)
 		circ2.temperature_overlay = null
-	if (stat & (NOPOWER|BROKEN))
+	if (machine_stat & (NOPOWER|BROKEN))
 		return 1
 	else
 		if (lastgenlev != 0)
@@ -90,7 +90,7 @@ GLOBAL_LIST_EMPTY(all_turbines)
 		return 1
 
 /obj/machinery/power/generator/process(delta_time)
-	if(!circ1 || !circ2 || !anchored || stat & (BROKEN|NOPOWER))
+	if(!circ1 || !circ2 || !anchored || machine_stat & (BROKEN|NOPOWER))
 		stored_energy = 0
 		return
 
@@ -152,6 +152,7 @@ GLOBAL_LIST_EMPTY(all_turbines)
 	// Sounds.
 	if(effective_gen > (max_power * 0.05)) // More than 5% and sounds start.
 		soundloop.start()
+		soundloop.opacity_check = 1
 		soundloop.volume = LERP(1, 40, effective_gen / max_power)
 	else
 		soundloop.stop()
@@ -163,14 +164,14 @@ GLOBAL_LIST_EMPTY(all_turbines)
 	if(genlev != lastgenlev)
 		lastgenlev = genlev
 		updateicon()
-	add_avail(effective_gen)
+	add_avail(effective_gen * 0.001)
 
 /obj/machinery/power/generator/attack_ai(mob/user)
 	attack_hand(user)
 
 /obj/machinery/power/generator/attackby(obj/item/W as obj, mob/user as mob)
 	if(W.is_wrench())
-		playsound(src, W.usesound, 75, 1)
+		playsound(src, W.tool_sound, 75, 1)
 		anchored = !anchored
 		user.visible_message("[user.name] [anchored ? "secures" : "unsecures"] the bolts holding [src.name] to the floor.", \
 					"You [anchored ? "secure" : "unsecure"] the bolts holding [src] to the floor.", \
@@ -187,9 +188,10 @@ GLOBAL_LIST_EMPTY(all_turbines)
 	else
 		..()
 
-/obj/machinery/power/generator/attack_hand(mob/user)
+/obj/machinery/power/generator/attack_hand(mob/user, datum/event_args/actor/clickchain/e_args)
 	add_fingerprint(user)
-	if(stat & (BROKEN|NOPOWER) || !anchored) return
+	if(machine_stat & (BROKEN|NOPOWER) || !anchored)
+		return
 	if(!circ1 || !circ2) //Just incase the middle part of the TEG was not wrenched last.
 		reconnect()
 	ui_interact(user)
@@ -200,7 +202,7 @@ GLOBAL_LIST_EMPTY(all_turbines)
 		ui = new(user, src, "TEGenerator", name)
 		ui.open()
 
-/obj/machinery/power/generator/ui_data(mob/user)
+/obj/machinery/power/generator/ui_data(mob/user, datum/tgui/ui)
 	// this is the data which will be sent to the ui
 	var/vertical = 0
 	if (dir == NORTH || dir == SOUTH)
@@ -292,7 +294,7 @@ GLOBAL_LIST_EMPTY(all_turbines)
 
 
 /obj/machinery/power/generator/verb/rotate_clockwise()
-	set category = "Object"
+	set category = VERB_CATEGORY_OBJECT
 	set name = "Rotate Generator Clockwise"
 	set src in view(1)
 
@@ -302,7 +304,7 @@ GLOBAL_LIST_EMPTY(all_turbines)
 	src.setDir(turn(src.dir, 270))
 
 /obj/machinery/power/generator/verb/rotate_counterclockwise()
-	set category = "Object"
+	set category = VERB_CATEGORY_OBJECT
 	set name = "Rotate Generator Counterclockwise"
 	set src in view(1)
 
@@ -339,4 +341,3 @@ GLOBAL_LIST_EMPTY(all_turbines)
 					sleep(1)
 				if(i >= limit)
 					break
-

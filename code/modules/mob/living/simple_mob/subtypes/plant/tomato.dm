@@ -15,7 +15,7 @@
 
 	mob_class = MOB_CLASS_PLANT
 
-	faction = "plants"
+	iff_factions = MOB_IFF_FACTION_PLANT
 	maxHealth = 15
 	health = 15
 	poison_resist = 1.0
@@ -25,11 +25,11 @@
 	response_harm   = "smacks"
 
 	harm_intent_damage = 5
-	melee_damage_upper = 15
-	melee_damage_lower = 10
+	legacy_melee_damage_upper = 15
+	legacy_melee_damage_lower = 10
 	attacktext = list("mauled")
 
-	ai_holder_type = /datum/ai_holder/simple_mob/melee
+	ai_holder_type = /datum/ai_holder/polaris/simple_mob/melee
 
 	meat_amount = 2
 	meat_type = /obj/item/reagent_containers/food/snacks/tomatomeat

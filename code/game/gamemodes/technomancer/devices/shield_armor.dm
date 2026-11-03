@@ -16,15 +16,15 @@
 	require a very potent supply of an energy of some kind in order to function."
 	icon_state = "shield_armor_0"
 	blood_overlay_type = "armor"
-	slowdown = 0
-	armor = list(melee = 0, bullet = 0, laser = 0, energy = 0, bomb = 0, bio = 0, rad = 0)
-	action_button_name = "Toggle Shield Projector"
+	weight = ITEM_WEIGHT_BASELINE
+	armor_type = /datum/armor/none
+	item_action_name = "Toggle Shield Projector"
 	var/active = 0
 	var/damage_to_energy_multiplier = 50.0 //Determines how much energy to charge for blocking, e.g. 20 damage attack = 750 energy cost
 	var/datum/effect_system/spark_spread/spark_system = null
 	var/block_percentage = 75
 
-/obj/item/clothing/suit/armor/shield/Initialize()
+/obj/item/clothing/suit/armor/shield/Initialize(mapload)
 	. = ..()
 	spark_system = new /datum/effect_system/spark_spread()
 	spark_system.set_up(5, 0, src)
@@ -33,7 +33,25 @@
 	qdel(spark_system)
 	return ..()
 
-/obj/item/clothing/suit/armor/shield/handle_shield(mob/user, var/damage, atom/damage_source = null, mob/attacker = null, var/def_zone = null, var/attack_text = "the attack")
+/obj/item/clothing/suit/armor/shield/equipped(mob/user, slot, flags)
+	. = ..()
+	if(slot == SLOT_ID_HANDS)
+		return
+	// if you're reading this: this is not the right way to do shieldcalls
+	// this is just a lazy implementation
+	// signals have highest priority, this as a piece of armor shouldn't have that.
+	RegisterSignal(user, COMSIG_ATOM_SHIELDCALL, PROC_REF(shieldcall))
+
+/obj/item/clothing/suit/armor/shield/unequipped(mob/user, slot, flags)
+	. = ..()
+	if(slot == SLOT_ID_HANDS)
+		return
+	UnregisterSignal(user, COMSIG_ATOM_SHIELDCALL)
+
+/obj/item/clothing/suit/armor/shield/proc/shieldcall(mob/user, list/shieldcall_args, fake_attack)
+	var/damage = shieldcall_args[SHIELDCALL_ARG_DAMAGE]
+	var/damage_source = shieldcall_args[SHIELDCALL_ARG_ATTACK_SOURCE]
+
 	//Since this is a pierce of armor that is passive, we do not need to check if the user is incapacitated.
 	if(!active)
 		return 0
@@ -56,29 +74,28 @@
 
 	damage = damage - damage_blocked
 
-	if(istype(damage_source, /obj/item/projectile))
-		var/obj/item/projectile/P = damage_source
-		P.sharp = 0
-		P.edge = 0
+	if(istype(damage_source, /obj/projectile))
+		var/obj/projectile/P = damage_source
+		P.damage_mode &= ~(DAMAGE_MODE_EDGE | DAMAGE_MODE_SHARP | DAMAGE_MODE_SHRED | DAMAGE_MODE_PIERCE)
 		P.embed_chance = 0
-		if(P.agony)
-			var/agony_blocked = P.agony * (modified_block_percentage / 100)
-			P.agony -= agony_blocked
-		P.damage = P.damage - damage_blocked
+		if(P.damage_inflict_agony)
+			var/damage_inflict_agony_blocked = P.damage_inflict_agony * (modified_block_percentage / 100)
+			P.damage_inflict_agony -= damage_inflict_agony_blocked
+		P.damage_force = P.damage_force - damage_blocked
 
-	user.visible_message("<span class='danger'>\The [user]'s [src] absorbs [attack_text]!</span>")
+	user.visible_message("<span class='danger'>\The [user]'s [src] absorbs the attack!</span>")
 	to_chat(user, "<span class='warning'>Your shield has absorbed most of \the [damage_source].</span>")
 
 	spark_system.start()
 	playsound(user.loc, 'sound/weapons/blade1.ogg', 50, 1)
-	return 0 // This shield does not block all damage, so returning 0 is needed to tell the game to apply the new damage.
 
-/obj/item/clothing/suit/armor/shield/attack_self(mob/user)
+/obj/item/clothing/suit/armor/shield/attack_self(mob/user, datum/event_args/actor/actor)
+	. = ..()
+	if(.)
+		return
 	active = !active
 	to_chat(user, "<span class='notice'>You [active ? "" : "de"]activate \the [src].</span>")
-	update_icon()
-	user.update_inv_wear_suit()
-	user.update_action_buttons()
+	update_full_icon()
 
 /obj/item/clothing/suit/armor/shield/update_icon()
 	icon_state = "shield_armor_[active]"

@@ -8,7 +8,7 @@
 	name = "Exosuit - Advanced Dark Gygax"
 	desc = "This exosuit is an experimental prototype, descended from the Dark Gygax. It retains the \
 	speed that is characteristic of the other models, yet outclasses all of them in durability, \
-	to the point of having a comparable amount of protection to models that placed a higher emphesis \
+	to the point of having a comparable amount of protection to models that placed a higher emphasis \
 	on armor, like the Durand and even the Marauder. It is also much larger in scale, and significantly \
 	heavier than most other exosuits developed by humans, which often causes shockwaves to be felt \
 	whenever it moves. This has been observed to have a demoralizing effect on hostile forces.\
@@ -84,7 +84,7 @@
 	maxHealth = 450
 	deflect_chance = 25
 	has_repair_droid = TRUE
-	armor = list(
+	armor_legacy_mob = list(
 				"melee"		= 50,
 				"bullet"	= 50,
 				"laser"		= 50,
@@ -97,9 +97,9 @@
 	special_attack_min_range = 1
 	special_attack_max_range = 7
 	special_attack_cooldown = 10 SECONDS
-	projectiletype = /obj/item/projectile/energy/homing_bolt // We're now a bullet hell game.
+	projectiletype = /obj/projectile/energy/homing_bolt // We're now a bullet hell game.
 	projectilesound = 'sound/weapons/wave.ogg'
-	ai_holder_type = /datum/ai_holder/simple_mob/intentional/adv_dark_gygax
+	ai_holder_type = /datum/ai_holder/polaris/simple_mob/intentional/adv_dark_gygax
 	var/obj/effect/overlay/energy_ball/energy_ball = null
 
 /mob/living/simple_mob/mechanical/mecha/combat/gygax/dark/advanced/Destroy()
@@ -118,21 +118,18 @@
 		if(INTENT_GRAB) // Micro-singulo
 			launch_microsingularity(A)
 
-/obj/item/projectile/energy/homing_bolt
+/obj/projectile/energy/homing_bolt
 	name = "homing bolt"
 	icon_state = "force_missile"
-	damage = 20
-	damage_type = BURN
-	check_armour = "laser"
+	damage_force = 20
+	damage_type = DAMAGE_TYPE_BURN
+	damage_flag = ARMOR_LASER
+	speed = 5 * WORLD_ICON_SIZE
+	homing_turn_speed = 85
 
-/obj/item/projectile/energy/homing_bolt/launch_projectile(atom/target, target_zone, mob/user, params, angle_override, forced_spread = 0)
+/obj/projectile/energy/homing_bolt/fire(set_angle_to, atom/direct_target, no_source_check, datum/callback/on_submunition_ready)
 	..()
-	if(target)
-		set_homing_target(target)
-
-/obj/item/projectile/energy/homing_bolt/fire(angle, atom/direct_target)
-	..()
-	set_pixel_speed(0.5)
+	set_homing_target(original_target)
 
 #define ELECTRIC_ZAP_POWER 20000
 
@@ -167,13 +164,13 @@
 					continue
 				if(L.stat)
 					continue // Otherwise it can get pretty laggy if there's loads of corpses around.
-				L.inflict_shock_damage(i * 2)
-				if(L && L.has_AI()) // Some mobs delete themselves when dying.
-					L.ai_holder.react_to_attack(src)
+				L.inflict_shock_damage_legacy(i * 2)
+				if(L && L.has_polaris_AI()) // Some mobs delete themselves when dying.
+					L.ai_holder.react_to_attack_polaris(src)
 
-			else if(istype(thing, /obj/mecha))
-				var/obj/mecha/M = thing
-				M.take_damage(i * 2, "energy") // Mechs don't have a concept for siemens so energy armor check is the best alternative.
+			else if(istype(thing, /obj/vehicle/sealed/mecha))
+				var/obj/vehicle/sealed/mecha/M = thing
+				M.take_damage_legacy(i * 2, "energy") // Mechs don't have a concept for siemens so energy armor check is the best alternative.
 
 		sleep(1 SECOND)
 
@@ -215,7 +212,7 @@
 				visible_message(SPAN_WARNING( "\The [src] fires a rocket into the air!"))
 				playsound(src, 'sound/weapons/rpg.ogg', 70, 1)
 				face_atom(T)
-				var/obj/item/projectile/arc/explosive_rocket/rocket = new(loc)
+				var/obj/projectile/arc/explosive_rocket/rocket = new(loc)
 				rocket.old_style_target(T, src)
 				rocket.fire()
 				sleep(1 SECOND)
@@ -223,55 +220,19 @@
 	visible_message(SPAN_WARNING( "\The [src] retracts the missile rack."))
 	playsound(src, 'sound/effects/turret/move2.wav', 50, 1)
 
-// Arcing rocket projectile that produces a weak explosion when it lands.
-// Shouldn't punch holes in the floor, but will still hurt.
-/obj/item/projectile/arc/explosive_rocket
-	name = "rocket"
-	icon_state = "mortar"
-
-/obj/item/projectile/arc/explosive_rocket/on_impact(turf/T)
-	new /obj/effect/explosion(T) // Weak explosions don't produce this on their own, apparently.
-	explosion(T, 0, 0, 2, adminlog = FALSE)
-
 /mob/living/simple_mob/mechanical/mecha/combat/gygax/dark/advanced/proc/launch_microsingularity(atom/target)
 	var/turf/T = get_turf(target)
 	visible_message(SPAN_WARNING( "\The [src] fires an energetic sphere into the air!"))
 	playsound(src, 'sound/weapons/Laser.ogg', 50, 1)
 	face_atom(T)
-	var/obj/item/projectile/arc/microsingulo/sphere = new(loc)
+	var/obj/projectile/arc/microsingulo/sphere = new(loc)
 	sphere.old_style_target(T, src)
 	sphere.fire()
-
-/obj/item/projectile/arc/microsingulo
-	name = "micro singularity"
-	icon_state = "bluespace"
-
-/obj/item/projectile/arc/microsingulo/on_impact(turf/T)
-	new /obj/effect/temporary_effect/pulse/microsingulo(T)
-
-
-/obj/effect/temporary_effect/pulse/microsingulo
-	name = "micro singularity"
-	desc = "It's sucking everything in!"
-	icon = 'icons/obj/objects.dmi'
-	icon_state = "bhole3"
-	light_range = 4
-	light_power = 5
-	light_color = "#2ECCFA"
-	pulses_remaining = 10
-	pulse_delay = 0.5 SECONDS
-	var/pull_radius = 3
-	var/pull_strength = STAGE_THREE
-
-/obj/effect/temporary_effect/pulse/microsingulo/on_pulse()
-	for(var/atom/A in range(pull_radius, src))
-		A.singularity_pull(src, pull_strength)
-
 
 // The Advanced Dark Gygax's AI.
 // The mob has three special attacks, based on the current intent.
 // This AI choose the appropiate intent for the situation, and tries to ensure it doesn't kill itself by firing missiles at its feet.
-/datum/ai_holder/simple_mob/intentional/adv_dark_gygax
+/datum/ai_holder/polaris/simple_mob/intentional/adv_dark_gygax
 	conserve_ammo = TRUE					// Might help avoid 'I shoot the wall forever' cheese.
 	var/closest_desired_distance = 1		// Otherwise run up to them to be able to potentially shock or punch them.
 
@@ -284,7 +245,7 @@
 
 // Used to control the mob's positioning based on which special attack it has done.
 // Note that the intent will not change again until the next special attack is about to happen.
-/datum/ai_holder/simple_mob/intentional/adv_dark_gygax/on_engagement(atom/A)
+/datum/ai_holder/polaris/simple_mob/intentional/adv_dark_gygax/on_engagement(atom/A)
 	// Make the AI backpeddle if using an AoE special attack.
 	var/list/risky_intents = list(INTENT_GRAB, INTENT_HARM) // Mini-singulo and missiles.
 	if(holder.a_intent in risky_intents)
@@ -304,7 +265,7 @@
 
 // Changes the mob's intent, which controls which special attack is used.
 // INTENT_DISARM causes Electric Defense, INTENT_GRAB causes Micro-Singularity, and INTENT_HARM causes Missile Barrage.
-/datum/ai_holder/simple_mob/intentional/adv_dark_gygax/pre_special_attack(atom/A)
+/datum/ai_holder/polaris/simple_mob/intentional/adv_dark_gygax/pre_special_attack(atom/A)
 	if(isliving(A))
 		var/mob/living/target = A
 

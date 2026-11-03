@@ -10,7 +10,8 @@ var/list/overminds = list()
 	see_in_dark = 8
 	invisibility = INVISIBILITY_OBSERVER
 
-	faction = "blob"
+	iff_factions = MOB_IFF_FACTION_BLOB
+
 	var/obj/structure/blob/core/blob_core = null // The blob overmind's core
 	var/blob_points = 0
 	var/max_blob_points = 200
@@ -59,15 +60,17 @@ var/list/overminds = list()
 			BM.update_icons()
 
 	overminds -= src
+	blob_core = null
 	return ..()
 
-/mob/observer/blob/Stat()
-	..()
-	if(statpanel("Status"))
+/mob/observer/blob/statpanel_data(client/C)
+	. = ..()
+	if(C.statpanel_tab("Status"))
+		INJECT_STATPANEL_DATA_LINE(., "")
 		if(blob_core)
-			stat(null, "Core Health: [blob_core.integrity]")
-		stat(null, "Power Stored: [blob_points]/[max_blob_points]")
-		stat(null, "Total Blobs: [blobs.len]")
+			INJECT_STATPANEL_DATA_LINE(., "Core Health: [blob_core.integrity]")
+		INJECT_STATPANEL_DATA_LINE(., "Power Stored: [blob_points]/[max_blob_points]")
+		INJECT_STATPANEL_DATA_LINE(., "Total Blobs: [blobs.len]")
 
 /mob/observer/blob/Move(NewLoc, Dir = 0)
 	if(placed)
@@ -85,9 +88,12 @@ var/list/overminds = list()
 		return TRUE
 
 /mob/observer/blob/proc/add_points(points)
-	blob_points = between(0, blob_points + points, max_blob_points)
+	blob_points = clamp( blob_points + points, 0,  max_blob_points)
 
-/mob/observer/blob/Life()
+/mob/observer/blob/Life(seconds, times_fired)
+	if((. = ..()))
+		return
+
 	if(ai_controlled && (!client || auto_pilot))
 		if(prob(blob_type.ai_aggressiveness))
 			auto_attack()

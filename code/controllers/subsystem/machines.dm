@@ -14,7 +14,7 @@ SUBSYSTEM_DEF(machines)
 	name = "Machines"
 	priority = FIRE_PRIORITY_MACHINES
 	init_order = INIT_ORDER_MACHINES
-	flags = SS_KEEP_TIMING
+	subsystem_flags = SS_KEEP_TIMING
 	runlevels = RUNLEVEL_GAME|RUNLEVEL_POSTGAME
 
 	var/current_step = SSMACHINES_PIPENETS
@@ -32,20 +32,29 @@ SUBSYSTEM_DEF(machines)
 
 	var/list/current_run = list()
 
+/datum/controller/subsystem/machines/stat_entry()
+	var/msg = list(
+		"MC/MS: [round((cost ? global.processing_machines.len/cost_machinery : 0),0.1)]",
+		"&emsp;Cost: { PiNet: [round(cost_pipenets,1)] | M: [round(cost_machinery,1)] | PowNet: [round(cost_powernets,1)] | PowObj: [round(cost_power_objects,1)] }",
+		"&emsp;Total: { PiNet [global.pipe_networks.len] | M: [global.processing_machines.len] | PowNet: [global.powernets.len] | PowObj: [global.processing_power_items.len] }"
+	)
+	return ..() + jointext(msg, "<br>")
+
 /datum/controller/subsystem/machines/Initialize(timeofday)
 	makepowernets()
-	admin_notice("<span class='danger'>Initializing atmos machinery.</span>", R_DEBUG)
-	setup_atmos_machinery(global.machines)
+	report_progress("Initializing atmos machinery...")
+	setup_atmos_machinery(GLOB.machines)
+	update_all_apcs()
 	fire()
-	..()
+	return SS_INIT_SUCCESS
 
 /datum/controller/subsystem/machines/fire(resumed = 0)
 	var/timer = TICK_USAGE
 
-	INTERNAL_PROCESS_STEP(SSMACHINES_POWER_OBJECTS,FALSE,process_power_objects,cost_power_objects,SSMACHINES_PIPENETS) // Higher priority, damnit
-	INTERNAL_PROCESS_STEP(SSMACHINES_PIPENETS,TRUE,process_pipenets,cost_pipenets,SSMACHINES_MACHINERY)
-	INTERNAL_PROCESS_STEP(SSMACHINES_MACHINERY,FALSE,process_machinery,cost_machinery,SSMACHINES_POWERNETS)
-	INTERNAL_PROCESS_STEP(SSMACHINES_POWERNETS,FALSE,process_powernets,cost_powernets,SSMACHINES_POWER_OBJECTS)
+	INTERNAL_SUBSYSTEM_PROCESS_STEP(SSMACHINES_POWER_OBJECTS,FALSE,process_power_objects,cost_power_objects,SSMACHINES_PIPENETS) // Higher priority, damnit
+	INTERNAL_SUBSYSTEM_PROCESS_STEP(SSMACHINES_PIPENETS,TRUE,process_pipenets,cost_pipenets,SSMACHINES_MACHINERY)
+	INTERNAL_SUBSYSTEM_PROCESS_STEP(SSMACHINES_MACHINERY,FALSE,process_machinery,cost_machinery,SSMACHINES_POWERNETS)
+	INTERNAL_SUBSYSTEM_PROCESS_STEP(SSMACHINES_POWERNETS,FALSE,process_powernets,cost_powernets,SSMACHINES_POWER_OBJECTS)
 
 // rebuild all power networks from scratch - only called at world creation or by the admin verb
 // The above is a lie. Turbolifts also call this proc.
@@ -72,36 +81,25 @@ SUBSYSTEM_DEF(machines)
 		machine.build_network()
 		CHECK_TICK
 
-	for(var/obj/machinery/atmospherics/unary/U in atmos_machines)
-		if(istype(U, /obj/machinery/atmospherics/unary/vent_pump))
-			var/obj/machinery/atmospherics/unary/vent_pump/T = U
+	for(var/obj/machinery/atmospherics/component/unary/U in atmos_machines)
+		if(istype(U, /obj/machinery/atmospherics/component/unary/vent_pump))
+			var/obj/machinery/atmospherics/component/unary/vent_pump/T = U
 			T.broadcast_status()
-		else if(istype(U, /obj/machinery/atmospherics/unary/vent_scrubber))
-			var/obj/machinery/atmospherics/unary/vent_scrubber/T = U
+		else if(istype(U, /obj/machinery/atmospherics/component/unary/vent_scrubber))
+			var/obj/machinery/atmospherics/component/unary/vent_scrubber/T = U
 			T.broadcast_status()
 		CHECK_TICK
 
-/datum/controller/subsystem/machines/stat_entry()
-	var/msg = list()
-	msg += "C:{"
-	msg += "PI:[round(cost_pipenets,1)]|"
-	msg += "MC:[round(cost_machinery,1)]|"
-	msg += "PN:[round(cost_powernets,1)]|"
-	msg += "PO:[round(cost_power_objects,1)]"
-	msg += "} "
-	msg += "PI:[global.pipe_networks.len]|"
-	msg += "MC:[global.processing_machines.len]|"
-	msg += "PN:[global.powernets.len]|"
-	msg += "PO:[global.processing_power_items.len]|"
-	msg += "MC/MS:[round((cost ? global.processing_machines.len/cost_machinery : 0),0.1)]"
-	..(jointext(msg, null))
+/datum/controller/subsystem/machines/proc/update_all_apcs()
+	for(var/obj/machinery/power/apc/apc in GLOB.apcs)
+		apc.update()
 
 /datum/controller/subsystem/machines/proc/process_pipenets(resumed = 0)
 	if (!resumed)
 		src.current_run = global.pipe_networks.Copy()
 	//cache for sanic speed (lists are references anyways)
 	var/list/current_run = src.current_run
-	var/dt = (flags & SS_TICKER)? (wait * world.tick_lag * 0.1) : (wait * 0.1)
+	var/dt = nominal_dt_s
 	while(current_run.len)
 		var/datum/pipe_network/PN = current_run[current_run.len]
 		current_run.len--
@@ -110,7 +108,7 @@ SUBSYSTEM_DEF(machines)
 		else
 			global.pipe_networks.Remove(PN)
 			if(!QDELETED(PN))
-				DISABLE_BITFIELD(PN.datum_flags, DF_ISPROCESSING)
+				PN.datum_flags &= ~DF_ISPROCESSING
 		if(MC_TICK_CHECK)
 			return
 
@@ -119,14 +117,14 @@ SUBSYSTEM_DEF(machines)
 		src.current_run = global.processing_machines.Copy()
 
 	var/list/current_run = src.current_run
-	var/dt = (flags & SS_TICKER)? (wait * world.tick_lag * 0.1) : (wait * 0.1)
+	var/dt = nominal_dt_s
 	while(current_run.len)
 		var/obj/machinery/M = current_run[current_run.len]
 		current_run.len--
 		if(!istype(M) || QDELETED(M) || (M.process(dt) == PROCESS_KILL))
 			global.processing_machines.Remove(M)
 			if(!QDELETED(M))
-				DISABLE_BITFIELD(M.datum_flags, DF_ISPROCESSING)
+				M.datum_flags &= ~DF_ISPROCESSING
 		if(MC_TICK_CHECK)
 			return
 
@@ -143,7 +141,7 @@ SUBSYSTEM_DEF(machines)
 		else
 			global.powernets.Remove(PN)
 			if(!QDELETED(PN))
-				DISABLE_BITFIELD(PN.datum_flags, DF_ISPROCESSING)
+				PN.datum_flags &= ~DF_ISPROCESSING
 		if(MC_TICK_CHECK)
 			return
 
@@ -159,7 +157,7 @@ SUBSYSTEM_DEF(machines)
 		current_run.len--
 		if(!I.pwr_drain(wait)) // 0 = Process Kill, remove from processing list.
 			global.processing_power_items.Remove(I)
-			DISABLE_BITFIELD(I.datum_flags, DF_ISPROCESSING)
+			I.datum_flags &= ~DF_ISPROCESSING
 		if(MC_TICK_CHECK)
 			return
 

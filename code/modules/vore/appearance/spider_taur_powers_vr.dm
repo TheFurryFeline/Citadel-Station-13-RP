@@ -9,24 +9,17 @@
 //ahuhuhuhu
 //-Antsnap
 
-obj/item/clothing/suit/web_bindings
+/obj/item/clothing/suit/web_bindings
 	icon = 'icons/vore/custom_clothes_vr.dmi'
 	icon_override = 'icons/vore/custom_clothes_vr.dmi'
 	name = "web bindings"
 	desc = "A webbed cocoon that completely restrains the wearer."
 	icon_state = "web_bindings"
 	item_state = "web_bindings_mob"
-	body_parts_covered = UPPER_TORSO|LOWER_TORSO|LEGS|FEET|ARMS|HANDS
-	flags_inv = HIDEGLOVES|HIDESHOES|HIDEJUMPSUIT|HIDETAIL
+	body_cover_flags = UPPER_TORSO|LOWER_TORSO|LEGS|FEET|ARMS|HANDS
+	inv_hide_flags = HIDEGLOVES|HIDESHOES|HIDEJUMPSUIT|HIDETAIL
 
-//yw edit start - Teshari Sprite
-/obj/item/clothing/suit/straight_jacket/web_bindings/get_worn_icon_file(var/body_type,var/slot_name,var/default_icon,var/inhands)
-	if(body_type == SPECIES_TESHARI)
-		if(!inhands)
-			return 'icons/mob/species/teshari/suit.dmi'
-	else
-		return ..()
-//yw edit end
+// todo: convert to new icon system ; tesh will be broken until then, too bad!
 
 /* //Commenting all this out, as people keep abusing it. Sorry!
 /mob/proc/weaveWeb()
@@ -36,7 +29,7 @@ obj/item/clothing/suit/web_bindings
 		src.visible_message("<span class='notice'>\the [src] weaves a web from their spinneret silk.</span>")
 		nutrition -= 500
 		spawn(30) //3 seconds to form
-		new /obj/effect/spider/stickyweb(src.loc)
+		new /obj/structure/spider/stickyweb(src.loc)
 	else
 		to_chat(src, "You do not have enough nutrition to create webbing!")
 */

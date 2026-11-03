@@ -3,11 +3,12 @@
 	desc = "Swipe your ID card to make purchases electronically."
 	icon = 'icons/obj/device.dmi'
 	icon_state = "retail_idle"
-	flags = NOBLUDGEON
+	item_flags = ITEM_NO_BLUDGEON | ITEM_ENCUMBERS_WHILE_HELD
 	slot_flags = SLOT_BELT
-	req_access = list(access_heads)
-	w_class = ITEMSIZE_SMALL
+	req_access = list(ACCESS_COMMAND_BRIDGE)
+	w_class = WEIGHT_CLASS_SMALL
 	origin_tech = list(TECH_MATERIAL = 1)
+	suit_storage_class = SUIT_STORAGE_CLASS_SOFTWEAR
 
 	var/locked = 1
 	var/emagged = 0
@@ -26,27 +27,30 @@
 // Claim machine ID
 /obj/item/retail_scanner/Initialize(mapload)
 	. = ..()
-	machine_id = "[station_name()] RETAIL #[num_financial_terminals++]"
+	machine_id = "[station_name()] RETAIL #[GLOB.num_financial_terminals++]"
 	if(locate(/obj/structure/table) in loc)
 		pixel_y = 3
-	transaction_devices += src // Global reference list to be properly set up by /proc/setup_economy()
+	GLOB.transaction_devices += src // Global reference list to be properly set up by /proc/setup_economy()
 
 // Always face the user when put on a table
-/obj/item/retail_scanner/afterattack(atom/movable/AM, mob/user, proximity)
-	if(!proximity)	return
-	if(istype(AM, /obj/structure/table))
+/obj/item/retail_scanner/afterattack(atom/target, mob/user, clickchain_flags, list/params)
+	if(!(clickchain_flags & CLICKCHAIN_HAS_PROXIMITY))	return
+	if(istype(target, /obj/structure/table))
 		src.pixel_y = 3 // Shift it up slightly to look better on table
 		src.dir = get_dir(src, user)
 	else
-		scan_item_price(AM)
+		scan_item_price(target)
 
 // Reset dir when picked back up
-/obj/item/retail_scanner/pickup(mob/user)
+/obj/item/retail_scanner/pickup(mob/user, flags, atom/oldLoc)
 	. = ..()
 	setDir(SOUTH)
 	pixel_y = 0
 
-/obj/item/retail_scanner/attack_self(mob/user as mob)
+/obj/item/retail_scanner/attack_self(mob/user, datum/event_args/actor/actor)
+	. = ..()
+	if(.)
+		return
 	user.set_machine(src)
 	interact(user)
 
@@ -76,7 +80,7 @@
 		dat += locked ? "<br>" : "<a href='?src=\ref[src];choice=reset_log'>Reset Log</a><br>"
 		dat += "<br>"
 	dat += "<i>Device ID:</i> [machine_id]"
-	user << browse(dat, "window=retail;size=350x500")
+	user << browse(HTML_SKELETON(dat), "window=retail;size=350x500")
 	onclose(user, "retail")
 
 
@@ -228,7 +232,7 @@
 					T.purpose = transaction_purpose
 					T.amount = "([transaction_amount])"
 					T.source_terminal = machine_id
-					T.date = current_date_string
+					T.date = GLOB.current_date_string
 					T.time = stationtime2text()
 					D.transaction_log.Add(T)
 
@@ -238,7 +242,7 @@
 					T.purpose = transaction_purpose
 					T.amount = "[transaction_amount]"
 					T.source_terminal = machine_id
-					T.date = current_date_string
+					T.date = GLOB.current_date_string
 					T.time = stationtime2text()
 					linked_account.transaction_log.Add(T)
 
@@ -271,7 +275,7 @@
 			T.purpose = transaction_purpose
 			T.amount = "[transaction_amount]"
 			T.source_terminal = machine_id
-			T.date = current_date_string
+			T.date = GLOB.current_date_string
 			T.time = stationtime2text()
 			linked_account.transaction_log.Add(T)
 
@@ -391,29 +395,29 @@
 /obj/item/retail_scanner/emag_act(var/remaining_charges, var/mob/user)
 	if(!emagged)
 		to_chat(user, "<span class='danger'>You stealthily swipe the cryptographic sequencer through \the [src].</span>")
-		playsound(src, "sparks", 50, 1)
+		playsound(src, /datum/soundbyte/sparks, 50, 1)
 		req_access = list()
 		emagged = 1
 
 //--Premades--//
 
 /obj/item/retail_scanner/command
-	account_to_connect = "Command"
+	account_to_connect = DEPARTMENT_COMMAND
 
 /obj/item/retail_scanner/medical
-	account_to_connect = "Medical"
+	account_to_connect = DEPARTMENT_MEDICAL
 
 /obj/item/retail_scanner/engineering
-	account_to_connect = "Engineering"
+	account_to_connect = DEPARTMENT_ENGINEERING
 
 /obj/item/retail_scanner/science
-	account_to_connect = "Science"
+	account_to_connect = DEPARTMENT_RESEARCH
 
 /obj/item/retail_scanner/security
-	account_to_connect = "Security"
+	account_to_connect = DEPARTMENT_SECURITY
 
 /obj/item/retail_scanner/cargo
-	account_to_connect = "Cargo"
+	account_to_connect = DEPARTMENT_CARGO
 
 /obj/item/retail_scanner/civilian
-	account_to_connect = "Civilian"
+	account_to_connect = DEPARTMENT_CIVILIAN

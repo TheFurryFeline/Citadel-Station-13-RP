@@ -75,7 +75,7 @@
 /obj/machinery/computer/HolodeckControl/attack_ai(var/mob/user as mob)
 	return src.attack_hand(user)
 
-/obj/machinery/computer/HolodeckControl/attack_hand(var/mob/user as mob)
+/obj/machinery/computer/HolodeckControl/attack_hand(mob/user, datum/event_args/actor/clickchain/e_args)
 	if(..())
 		return
 	user.set_machine(src)
@@ -157,14 +157,14 @@
 	SSnanoui.update_uis(src)
 
 /obj/machinery/computer/HolodeckControl/emag_act(var/remaining_charges, var/mob/user as mob)
-	playsound(src.loc, 'sound/effects/sparks4.ogg', 75, 1)
+	playsound(src.loc, /datum/soundbyte/sparks, 75, 1)
 	last_to_emag = user //emag again to change the owner
 	if (!emagged)
 		emagged = 1
 		safety_disabled = 1
 		update_projections()
 		to_chat(user, "<span class='notice'>You vastly increase projector power and override the safety and security protocols.</span>")
-		to_chat(user, "Warning.  Automatic shutoff and derezing protocols have been corrupted.  Please call [GLOB.using_map.company_name] maintenance and do not use the simulator.")
+		to_chat(user, "Warning.  Automatic shutoff and derezing protocols have been corrupted.  Please call [(LEGACY_MAP_DATUM).company_name] maintenance and do not use the simulator.")
 		log_game("[key_name(usr)] emagged the Holodeck Control Computer")
 		return 1
 	return
@@ -173,11 +173,11 @@
 	if (safety_disabled)
 		item_power_usage = 2500
 		for(var/obj/item/holo/esword/H in linkedholodeck)
-			H.damtype = BRUTE
+			H.damage_type = DAMAGE_TYPE_BRUTE
 	else
 		item_power_usage = initial(item_power_usage)
 		for(var/obj/item/holo/esword/H in linkedholodeck)
-			H.damtype = initial(H.damtype)
+			H.damage_type = initial(H.damage_type)
 
 	for(var/mob/living/simple_mob/animal/space/carp/holodeck/C in holographic_mobs)
 		C.set_safety(!safety_disabled)
@@ -189,21 +189,23 @@
 	current_program = powerdown_program
 	linkedholodeck = locate(projection_area)
 	if(!linkedholodeck)
-		to_chat(world, "<span class='danger'>Holodeck computer at [x],[y],[z] failed to locate projection area.</span>")
+		log_mapping("[src] at [AREACOORD(src)] has no matching holodeck area.")
+		qdel(src)
+		return
 
 //This could all be done better, but it works for now.
 /obj/machinery/computer/HolodeckControl/Destroy()
 	emergencyShutdown()
 	..()
 
-/obj/machinery/computer/HolodeckControl/ex_act(severity)
+/obj/machinery/computer/HolodeckControl/legacy_ex_act(severity)
 	emergencyShutdown()
 	..()
 
 /obj/machinery/computer/HolodeckControl/power_change()
 	var/oldstat
 	..()
-	if (stat != oldstat && active && (stat & NOPOWER))
+	if (machine_stat != oldstat && active && (machine_stat & NOPOWER))
 		emergencyShutdown()
 
 /obj/machinery/computer/HolodeckControl/process(delta_time)
@@ -236,30 +238,25 @@
 					var/datum/effect_system/spark_spread/s = new /datum/effect_system/spark_spread
 					s.set_up(2, 1, T)
 					s.start()
-				T.ex_act(3)
+				LEGACY_EX_ACT(T, 3, null)
 				T.hotspot_expose(1000,500,1)
 
 /obj/machinery/computer/HolodeckControl/proc/derez(var/obj/obj , var/silent = 1)
-	holographic_objs.Remove(obj)
-
-	if(obj == null)
+	if(!obj)
 		return
 
-	if(isobj(obj))
-		var/mob/M = obj.loc
-		if(ismob(M))
-			M.remove_from_mob(obj)
+	holographic_objs -=obj
 
 	if(!silent)
 		var/obj/oldobj = obj
 		visible_message("The [oldobj.name] fades away!")
+
 	qdel(obj)
 
 /obj/machinery/computer/HolodeckControl/proc/checkInteg(var/area/A)
 	for(var/turf/T in A)
 		if(istype(T, /turf/space))
 			return 0
-
 	return 1
 
 //Why is it called toggle if it doesn't toggle?
@@ -312,11 +309,12 @@
 		holographic_mobs -= C
 		C.derez()
 
-	for(var/obj/effect/decal/cleanable/blood/B in linkedholodeck)
+	for(var/obj/effect/debris/cleanable/blood/B in linkedholodeck)
 		qdel(B)
 
 	holographic_objs = A.copy_contents_to(linkedholodeck , 1)
 	for(var/obj/holo_obj in holographic_objs)
+		holo_obj.obj_flags |= OBJ_HOLOGRAM
 		holo_obj.alpha *= 0.8 //give holodeck objs a slight transparency
 
 	if(HP.ambience)
@@ -331,7 +329,7 @@
 	linkedholodeck.sound_env = A.sound_env
 
 	spawn(30)
-		for(var/atom/movable/landmark/L in linkedholodeck)
+		for(var/obj/landmark/L in linkedholodeck)
 			if(L.name=="Atmospheric Test Start")
 				spawn(20)
 					var/turf/T = get_turf(L)

@@ -3,26 +3,22 @@
 	desc = "An annoying bell. Ring for service."
 	icon = 'icons/obj/items.dmi'
 	icon_state = "deskbell"
-	force = 2
-	throwforce = 2
+	damage_force = 2
+	throw_force = 2
 	w_class = 2.0
+	attack_sound = 'sound/effects/deskbell.ogg'
 	var/broken
 	attack_verb = list("annoyed")
 	var/static/radial_examine = image(icon = 'icons/mob/radial.dmi', icon_state = "radial_examine")
 	var/static/radial_use = image(icon = 'icons/mob/radial.dmi', icon_state = "radial_use")
 	var/static/radial_pickup = image(icon = 'icons/mob/radial.dmi', icon_state = "radial_pickup")
 
-/obj/item/deskbell/examine(mob/user)
+/obj/item/deskbell/examine(mob/user, dist)
 	. = ..()
 	if(broken)
 		. += "<span class = 'danger'>It looks damaged, the ringer is stuck firmly inside.</span>"
 
-/obj/item/deskbell/attack(mob/target as mob, mob/living/user as mob)
-	if(!broken)
-		playsound(user.loc, 'sound/effects/deskbell.ogg', 50, 1)
-	..()
-
-/obj/item/deskbell/attack_hand(mob/user)
+/obj/item/deskbell/attack_hand(mob/user, datum/event_args/actor/clickchain/e_args)
 
 	//This defines the radials and what call we're assiging to them.
 	var/list/options = list()
@@ -49,7 +45,7 @@
 	// Once the player has decided their option, choose the behaviour that will happen under said option.
 	switch(choice)
 		if("examine")
-			examine(user)
+			user.do_examinate(src)
 
 		if("use")
 			if(check_ability(user))
@@ -71,13 +67,6 @@
 
 /obj/item/deskbell/proc/check_ability(mob/user)
 	if (ishuman(user))
-		var/mob/living/carbon/human/H = user
-		var/obj/item/organ/external/temp = H.organs_by_name["r_hand"]
-		if (H.hand)
-			temp = H.organs_by_name["l_hand"]
-		if(temp && !temp.is_usable())
-			to_chat(H,"<span class='notice'>You try to move your [temp.name], but cannot!</span>")
-			return 0
 		return 1
 	else
 		to_chat(user,"<span class='notice'>You are not able to ring [src].</span>")

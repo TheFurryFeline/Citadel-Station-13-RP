@@ -5,16 +5,19 @@ var/jobban_keylist[0]		//to store the keys & ranks
 
 /proc/jobban_fullban(mob/M, rank, reason)
 	if (!M || !M.key) return
-	jobban_keylist.Add(text("[M.ckey] - [rank] ## [reason]"))
+	jobban_keylist.Add("[M.ckey] - [rank] ## [reason]")
 	jobban_savebanfile()
 
 /proc/jobban_client_fullban(ckey, rank)
 	if (!ckey || !rank) return
-	jobban_keylist.Add(text("[ckey] - [rank]"))
+	jobban_keylist.Add("[ckey] - [rank]")
 	jobban_savebanfile()
 
 //returns a reason if M is banned from rank, returns 0 otherwise
 /proc/jobban_isbanned(mob/M, rank)
+	// admins can do whatever the fuck they want for now
+	if(M.client?.holder)
+		return FALSE
 	if(M && rank)
 		/*
 		if(_jobban_isbanned(M, rank)) return "Reason Unspecified"	//for old jobban
@@ -50,7 +53,7 @@ DEBUG
 	jobban_loadbanfile()
 */
 
-/hook/startup/proc/loadJobBans()
+/legacy_hook/startup/proc/loadJobBans()
 	jobban_loadbanfile()
 	return 1
 
@@ -65,7 +68,7 @@ DEBUG
 			jobban_keylist=list()
 			log_admin("jobban_keylist was empty")
 	else
-		if(!establish_db_connection())
+		if(!SSdbcore.Connect())
 			log_world("Database connection failed. Reverting to the legacy ban system.")
 			log_misc("Database connection failed. Reverting to the legacy ban system.")
 			config_legacy.ban_legacy_system = 1
@@ -73,8 +76,10 @@ DEBUG
 			return
 
 		//Job permabans
-		var/DBQuery/query = dbcon.NewQuery("SELECT ckey, job FROM erro_ban WHERE bantype = 'JOB_PERMABAN' AND isnull(unbanned)")
-		query.Execute()
+		var/datum/db_query/query = SSdbcore.RunQuery(
+			"SELECT ckey, job FROM [DB_PREFIX_TABLE_NAME("ban")] WHERE bantype = 'JOB_PERMABAN' AND isnull(unbanned)",
+			list()
+		)
 
 		while(query.NextRow())
 			var/ckey = query.item[1]
@@ -83,8 +88,10 @@ DEBUG
 			jobban_keylist.Add("[ckey] - [job]")
 
 		//Job tempbans
-		var/DBQuery/query1 = dbcon.NewQuery("SELECT ckey, job FROM erro_ban WHERE bantype = 'JOB_TEMPBAN' AND isnull(unbanned) AND expiration_time > Now()")
-		query1.Execute()
+		var/datum/db_query/query1 = SSdbcore.RunQuery(
+			"SELECT ckey, job FROM [DB_PREFIX_TABLE_NAME("ban")] WHERE bantype = 'JOB_TEMPBAN' AND isnull(unbanned) AND expiration_time > Now()",
+			list()
+		)
 
 		while(query1.NextRow())
 			var/ckey = query1.item[1]

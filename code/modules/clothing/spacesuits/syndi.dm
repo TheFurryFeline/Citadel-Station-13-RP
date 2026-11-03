@@ -3,17 +3,15 @@
 	name = "red space helmet"
 	icon_state = "syndicate"
 	desc = "A crimson helmet sporting clean lines and durable plating. Engineered to look menacing."
-	armor = list(melee = 60, bullet = 50, laser = 30,energy = 15, bomb = 30, bio = 30, rad = 30)
+	armor_type = /datum/armor/agent/space
 	siemens_coefficient = 0.6
 
 /obj/item/clothing/suit/space/syndicate
 	name = "red space suit"
 	icon_state = "syndicate"
 	desc = "A crimson spacesuit sporting clean lines and durable plating. Robust, reliable, and slightly suspicious."
-	w_class = ITEMSIZE_NORMAL
-	allowed = list(/obj/item/gun,/obj/item/ammo_magazine,/obj/item/ammo_casing,/obj/item/melee/baton,/obj/item/melee/energy/sword,/obj/item/handcuffs,/obj/item/tank/emergency/oxygen)
-	slowdown = 1
-	armor = list(melee = 60, bullet = 50, laser = 30,energy = 15, bomb = 30, bio = 30, rad = 30)
+	w_class = WEIGHT_CLASS_NORMAL
+	armor_type = /datum/armor/agent/space
 	siemens_coefficient = 0.6
 
 //Green syndicate space suit
@@ -135,3 +133,15 @@
 	name = "black engineering space suit"
 	desc = "A black spacesuit sporting red and yellow stripes and durable plating. Robust, reliable, and slightly suspicious."
 	icon_state = "syndicate-black-engie"
+
+/obj/item/clothing/head/helmet/space/syndicate/orange/sdf
+	name = "SDF space helmet"
+	desc = "An orange helmet sporting clean lines and durable plating."
+	icon_state = "syndicate-helm-orange"
+	armor_type = /datum/armor/pirate/medium
+
+/obj/item/clothing/suit/space/syndicate/orange/sdf
+	name = "SDF space suit"
+	desc = "An orange spacesuit sporting clean lines and durable plating."
+	icon_state = "syndicate-orange"
+	armor_type = /datum/armor/pirate/medium

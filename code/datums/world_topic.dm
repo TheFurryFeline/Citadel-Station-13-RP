@@ -26,13 +26,17 @@
 	var/require_comms_key = FALSE
 
 /datum/world_topic/proc/TryRun(list/input)
-	key_valid = config && config_legacy.comms_key == input["key"] && (config_legacy.comms_key != initial(config_legacy.comms_key))		//no fucking defaults allowed.
-	//key_valid = config && (CONFIG_GET(string/comms_key) == input["key"])
-	if(require_comms_key && !key_valid)
-		return "Bad Key"
+	key_valid = (config_legacy.comms_key == input["key"]) && (config_legacy.comms_key != initial(config_legacy.comms_key)) && config_legacy.comms_key && input["key"]	//no fucking defaults allowed.
 	input -= "key"
-	. = Run(input)
-	if(islist(.))
+	if(require_comms_key && !key_valid)
+		. = "Bad Key"
+		if (input["format"] == "json")
+			. = list("error" = .)
+	else
+		. = Run(input)
+	if (input["format"] == "json")
+		. = json_encode(.)
+	else if(islist(.))
 		. = list2params(.)
 
 /datum/world_topic/proc/Run(list/input)
@@ -54,7 +58,7 @@
 	log = FALSE
 
 /datum/world_topic/playing/Run(list/input)
-	return length(player_list)
+	return GLOB.player_list.len
 
 /datum/world_topic/pr_announce
 	keyword = "announce"
@@ -71,92 +75,9 @@
 		if(PRcounts[id] > PR_ANNOUNCEMENTS_PER_ROUND)
 			return
 
-	var/final_composed = "<span class='announce'>PR: [input[keyword]]</span>"
+	var/final_composed = SPAN_ANNOUNCE("PR: [input[keyword]]")
 	for(var/client/C in GLOB.clients)
 		C.AnnouncePR(final_composed)
-
-/datum/world_topic/auto_bunker_passthrough
-	keyword = "auto_bunker_override"
-	require_comms_key = TRUE
-
-/datum/world_topic/auto_bunker_passthrough/Run(list/input)
-	if(!CONFIG_GET(flag/allow_cross_server_bunker_override))
-		return "Function Disabled"
-	var/ckeytobypass = input["ckey"]
-	var/is_new_ckey = !(ckey(ckeytobypass) in GLOB.bunker_passthrough)
-	var/sender = input["source"] || "UNKNOWN"
-	GLOB.bunker_passthrough |= ckey(ckeytobypass)
-	GLOB.bunker_passthrough[ckey(ckeytobypass)] = world.realtime
-	SSpersistence.SavePanicBunker() //we can do this every time, it's okay
-	if(!is_new_ckey)
-		log_admin("AUTO BUNKER: [ckeytobypass] given access (incoming comms from [sender]).")
-		message_admins("AUTO BUNKER: [ckeytobypass] given access (incoming comms from [sender]).")
-		send2irc("Panic Bunker", "AUTO BUNKER: [ckeytobypass] given access (incoming comms from [sender]).")
-	return "Success"
-
-
-/*
-/datum/world_topic/ahelp_relay
-	keyword = "Ahelp"
-	require_comms_key = TRUE
-
-/datum/world_topic/ahelp_relay/Run(list/input)
-	relay_msg_admins("<span class='adminnotice'><b><font color=red>HELP: </font> [input["source"]] [input["message_sender"]]: [input["message"]]</b></span>")
-
-/datum/world_topic/comms_console
-	keyword = "Comms_Console"
-	require_comms_key = TRUE
-
-/datum/world_topic/comms_console/Run(list/input)
-	minor_announce(input["message"], "Incoming message from [input["message_sender"]]")
-	for(var/obj/machinery/computer/communications/CM in GLOB.machines)
-		CM.overrideCooldown()
-
-/datum/world_topic/news_report
-	keyword = "News_Report"
-	require_comms_key = TRUE
-
-/datum/world_topic/news_report/Run(list/input)
-	minor_announce(input["message"], "Breaking Update From [input["message_sender"]]")
-
-/datum/world_topic/server_hop
-	keyword = "server_hop"
-
-/datum/world_topic/server_hop/Run(list/input)
-	var/expected_key = input[keyword]
-	for(var/mob/dead/observer/O in GLOB.player_list)
-		if(O.key == expected_key)
-			if(O.client)
-				new /atom/movable/screen/splash(O.client, TRUE)
-			break
-
-/datum/world_topic/adminmsg
-	keyword = "adminmsg"
-	require_comms_key = TRUE
-
-/datum/world_topic/adminmsg/Run(list/input)
-	return IrcPm(input[keyword], input["msg"], input["sender"])
-
-/datum/world_topic/namecheck
-	keyword = "namecheck"
-	require_comms_key = TRUE
-
-/datum/world_topic/namecheck/Run(list/input)
-	//Oh this is a hack, someone refactor the functionality out of the chat command PLS
-	var/datum/tgs_chat_command/namecheck/NC = new
-	var/datum/tgs_chat_user/user = new
-	user.friendly_name = input["sender"]
-	user.mention = user.friendly_name
-	return NC.Run(user, input["namecheck"])
-
-/datum/world_topic/adminwho
-	keyword = "adminwho"
-	require_comms_key = TRUE
-
-/datum/world_topic/adminwho/Run(list/input)
-	return ircadminwho()
-
-*/
 
 /datum/world_topic/jsonstatus
 	keyword = "jsonstatus"
@@ -164,7 +85,7 @@
 /datum/world_topic/jsonstatus/Run(list/input, addr)
 	. = list()
 	.["mode"] = master_mode
-	// .["round_id"] = null // GLOB.round_id
+	.["round_id"] = GLOB.round_id
 	.["players"] = GLOB.clients.len
 	var/list/adm = get_admin_counts()
 	var/list/presentmins = adm["present"]
@@ -172,7 +93,7 @@
 	.["admins"] = presentmins.len + afkmins.len //equivalent to the info gotten from adminwho
 	.["security_level"] = get_security_level()
 	.["round_duration"] = roundduration2text()
-	.["map"] = SSmapping.config.map_name
+	.["map"] = (LEGACY_MAP_DATUM).name
 	return json_encode(.)
 
 /datum/world_topic/jsonplayers
@@ -181,10 +102,7 @@
 /datum/world_topic/jsonplayers/Run(list/input, addr)
 	. = list()
 	for(var/client/C in GLOB.clients)
-		if(C.holder?.fakekey)
-			. += C.holder.fakekey
-			continue
-		. += C.key
+		. += C.get_public_key()
 	return json_encode(.)
 
 /datum/world_topic/jsonmanifest
@@ -236,14 +154,20 @@
 		if(SSjob.is_job_in_department(real_rank, DEPARTMENT_OFFDUTY))
 			offduty[name] = rank
 
-	// Synthetics don't have actual records, so we will pull them from here.
+	// Synthetics don't have actual records, so we will pull them from here
+
+	// add pAIs	to the returned manifest, we do this first to just avoid a ghost overwriting a robot or AI name in the list
+	for(var/mob/living/silicon/pai/pai in GLOB.mob_list)
+		silicons[pai.name] = "pAI"
+
 	for(var/mob/living/silicon/ai/ai in GLOB.mob_list)
 		silicons[ai.name] = "Artificial Intelligence"
 
 	for(var/mob/living/silicon/robot/robot in GLOB.mob_list)
 		// No combat/syndicate cyborgs, no drones, and no AI shells.
-		if(!robot.scrambledcodes && !robot.shell && !(robot.module && robot.module.hide_on_manifest))
+		if(!robot.scrambledcodes && !robot.shell && robot.module?.legacy_show_on_manifest)
 			silicons[robot.name] = "[robot.modtype] [robot.braintype]"
+
 	. = list()
 	if(command.len)
 		.["Command"] = command
@@ -312,31 +236,28 @@
 	.["enter"] = config_legacy.enter_allowed
 	.["vote"] = config_legacy.allow_vote_mode
 	.["ai"] = config_legacy.allow_ai
-	.["host"] = host || null
+	.["host"] = world.host ? world.host : null
 	.["round_id"] = GLOB.round_id
 	.["players"] = GLOB.clients.len
 	.["revision"] = GLOB.revdata.commit
 	.["revision_date"] = GLOB.revdata.date
+	.["hub"] = GLOB.hub_visibility
 
 	var/list/adm = get_admin_counts()
 	var/list/presentmins = adm["present"]
 	var/list/afkmins = adm["afk"]
 	.["admins"] = presentmins.len + afkmins.len //equivalent to the info gotten from adminwho
-	//.["gamestate"] = SSticker.current_state
+	.["gamestate"] = SSticker.current_state
 
-	//.["map_name"] = SSmapping.config?.map_name || "Loading..."
+	.["map_name"] = (LEGACY_MAP_DATUM)?.name || "Loading..."
 
-	//if(key_valid)
-		//.["active_players"] = get_active_player_count()
-		/*
-		if(SSticker.HasRoundStarted())
-			.["real_mode"] = SSticker.mode.name
-			// Key-authed callers may know the truth behind the "secret"
-		*/
+	if(key_valid)
+		.["active_players"] = get_active_player_count()
 
 	.["security_level"] = get_security_level()
-//	.["round_duration"] = SSticker ? round((world.time-SSticker.SSticker.round_start_time)/10) : 0
-//	// Amount of world's ticks in seconds, useful for calculating round duration
+	.["round_duration"] = SSticker ? round(STATION_TIME_PASSED() / 10) : 0
+	// Amount of world's ticks in seconds, useful for calculating round duration
+
 	.["stationtime"] = stationtime2text()
 	.["roundduration"] = roundduration2text()
 

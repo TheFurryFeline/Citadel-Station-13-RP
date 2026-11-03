@@ -3,7 +3,7 @@
 
 /obj/machinery/organ_printer
 	name = "organ printer"
-	desc = "It's a machine that prints organs."
+	desc = "It's a machine that prints organs.\n <span class='notice'>\[Accepts Upgrades\]</span>"
 	icon = 'icons/obj/machines/fabricators/bioprinter.dmi'
 	icon_state = "bioprinter"
 	base_icon_state = "bioprinter"
@@ -21,8 +21,8 @@
 	var/base_print_delay = 100
 	///Is the bioprinter printing
 	var/printing = FALSE
-	///Blood sample for DNA hashing.
-	var/loaded_dna
+	/// Blood sample for DNA hashing.
+	var/datum/blood_mixture/loaded_blood_mixture
 	///May cause rejection, or the printing of some alien limb instead!
 	var/malfunctioning = FALSE
 	///Can it print more 'complex' organs?
@@ -61,14 +61,9 @@
 		"Adrenal Valve Cluster" = list(/obj/item/organ/internal/heart/replicant/rage, 80)
 		)
 
-/obj/machinery/organ_printer/Initialize(mapload, newdir)
-	. = ..()
-	default_apply_parts()
-	RefreshParts()
-
 /obj/machinery/organ_printer/update_icon_state()
 	. = ..()
-	if(stat & NOPOWER)
+	if(machine_stat & NOPOWER)
 		icon_state = "[base_icon_state]-off"
 	else
 		icon_state = base_icon_state
@@ -81,7 +76,7 @@
 	if(printing)
 		add_overlay("[base_icon_state]-active")
 
-/obj/machinery/organ_printer/attackby(var/obj/item/O, var/mob/user)
+/obj/machinery/organ_printer/attackby(obj/item/O, mob/user)
 	if(default_deconstruction_screwdriver(user, O))
 		updateUsrDialog()
 		return
@@ -93,7 +88,7 @@
 		return
 	return ..()
 
-/obj/machinery/organ_printer/examine(var/mob/user)
+/obj/machinery/organ_printer/examine(mob/user, dist)
 	. = ..()
 	var/biomass = get_biomass_volume()
 	if(biomass)
@@ -130,21 +125,21 @@
 
 	. = ..()
 
-/obj/machinery/organ_printer/attack_hand(mob/user)
+/obj/machinery/organ_printer/attack_hand(mob/user, datum/event_args/actor/clickchain/e_args)
 
-	if(stat & (BROKEN|NOPOWER))
+	if(machine_stat & (BROKEN|NOPOWER))
 		return
 
 	if(panel_open)
-		to_chat(user, "<span class='warning'>Close the panel first!</span>")
+		to_chat(user, SPAN_WARNING("Close the panel first!"))
 		return
 
 	if(printing)
-		to_chat(user, "<span class='notice'>\The [src] is busy!</span>")
+		to_chat(user, SPAN_NOTICE("\The [src] is busy!"))
 		return
 
 	if(container)
-		var/response = alert(user, "What do you want to do?", "Bioprinter Menu", "Print Limbs", "Cancel")
+		var/response = tgui_alert(user, "What do you want to do?", "Bioprinter Menu", list("Print Limbs", "Cancel"))
 		if(response == "Print Limbs")
 			printing_menu(user)
 	else
@@ -161,9 +156,9 @@
 	if(anomalous_organs)
 		possible_list |= anomalous_products
 
-	var/choice = input("What would you like to print?") as null|anything in possible_list
+	var/choice = tgui_input_list(usr, "What would you like to print?", "Print Choice", possible_list)
 
-	if(!choice || printing || (stat & (BROKEN|NOPOWER)))
+	if(!choice || printing || (machine_stat & (BROKEN|NOPOWER)))
 		return
 
 	if(!can_print(choice, possible_list[choice][2]))
@@ -183,7 +178,7 @@
 	printing = FALSE
 	update_appearance()
 
-	if(!choice || !src || (stat & (BROKEN|NOPOWER)))
+	if(!choice || !src || (machine_stat & (BROKEN|NOPOWER)))
 		return
 
 	print_organ(possible_list[choice][1])
@@ -192,51 +187,45 @@
 
 /obj/machinery/organ_printer/verb/eject_beaker()
 	set name = "Eject Beaker"
-	set category = "Object"
+	set category = VERB_CATEGORY_OBJECT
 	set src in oview(1)
 
-	if(usr.stat != 0)
+	if(usr.stat != NONE)
 		return
 	add_fingerprint(usr)
 	remove_beaker()
 	return
 
-// Does exactly what it says it does
-// Returns 1 if it succeeds, 0 if it fails. Added in case someone wants to add messages to the user.
+/// Returns TRUE if it succeeds, FALSE if it fails. Added in case someone wants to add messages to the user.
 /obj/machinery/organ_printer/proc/remove_beaker()
 	if(container)
 		container.forceMove(get_turf(src))
 		container = null
-		return 1
-	return 0
+		return TRUE
+	return FALSE
 
-// Checks for reagents, then reports how much biomass it has in it
+/// Checks for reagents, then reports how much biomass it has in it.
 /obj/machinery/organ_printer/proc/get_biomass_volume()
-	var/biomass_count = 0
-	if(container && container.reagents)
-		for(var/datum/reagent/R in container.reagents.reagent_list)
-			if(R.id == "biomass")
-				biomass_count += R.volume
+	return container.reagents?.reagent_volumes?[/datum/reagent/nutriment/biomass::id]
 
-	return biomass_count
-
-/obj/machinery/organ_printer/proc/can_print(var/choice, var/biomass_needed = 0)
+/obj/machinery/organ_printer/proc/can_print(choice, biomass_needed = 0)
 	var/biomass = get_biomass_volume()
 	if(biomass < biomass_needed)
 		visible_message(SPAN_INFO("\The [src] displays a warning: 'Not enough biomass. [biomass] stored and [biomass_needed] needed.'"))
-		return 0
+		return FALSE
 
-	if(!loaded_dna || !loaded_dna["donor"])
+	var/datum/blood_fragment/using_fragment = loaded_blood_mixture.unsafe_get_fragment_ref(1)
+	if(!using_fragment)
 		visible_message(SPAN_INFO("\The [src] displays a warning: 'No DNA saved. Insert a blood sample.'"))
-		return 0
-
-	return 1
+		return FALSE
+	return TRUE
 
 /obj/machinery/organ_printer/proc/print_organ(var/choice)
 	var/new_organ = choice
 	var/obj/item/organ/O = new new_organ(get_turf(src))
 	O.status |= ORGAN_CUT_AWAY
-	var/mob/living/carbon/human/C = loaded_dna["donor"]
+	var/datum/blood_fragment/using_fragment = loaded_blood_mixture.unsafe_get_fragment_ref(1)
+	var/mob/living/carbon/human/C = using_fragment.legacy_donor
 	O.set_dna(C.dna)
 	O.species = C.species
 
@@ -244,11 +233,12 @@
 
 	if(malfunctioning && prob(30)) // Alien Tech is a hell of a drug.
 		malfunctioned = TRUE
-		var/possible_species = list(SPECIES_HUMAN, SPECIES_VOX, SPECIES_SKRELL, SPECIES_ZADDAT, SPECIES_UNATHI, SPECIES_GOLEM, SPECIES_SHADOW)
+		var/possible_species = list(SPECIES_HUMAN, SPECIES_VOX, SPECIES_SKRELL, SPECIES_ZADDAT, SPECIES_UNATHI, SPECIES_UNATHI_DIGI, SPECIES_GOLEM, SPECIES_SHADOW)
 		var/new_species = pick(possible_species)
-		if(!GLOB.all_species[new_species])
-			new_species = SPECIES_HUMAN
-		O.species = GLOB.all_species[new_species]
+		var/datum/species/S = SScharacters.resolve_species_name(new_species)
+		if(!S)
+			new_species = SScharacters.resolve_species_name(/datum/species/human)
+		O.species = new_species
 
 	if(istype(O, /obj/item/organ/external) && !malfunctioned)
 		var/obj/item/organ/external/E = O
@@ -259,7 +249,7 @@
 
 	if(O.species)
 		// This is a very hacky way of doing of what organ/New() does if it has an owner
-		O.w_class = max(O.w_class + mob_size_difference(O.species.mob_size, MOB_MEDIUM), 1)
+		O.set_weight_class(max(O.w_class + mob_size_difference(O.species.mob_size, MOB_MEDIUM), 1))
 
 	return O
 // END GENERIC PRINTER
@@ -271,9 +261,10 @@
 	board_type = new /datum/frame/frame_types/machine
 	origin_tech = list(TECH_DATA = 3, TECH_BIO = 3)
 	req_components = list(
-							/obj/item/stack/cable_coil = 2,
-							/obj/item/stock_parts/matter_bin = 2,
-							/obj/item/stock_parts/manipulator = 2)
+		/obj/item/stack/cable_coil = 2,
+		/obj/item/stock_parts/matter_bin = 2,
+		/obj/item/stock_parts/manipulator = 2
+		)
 
 // FLESH ORGAN PRINTER
 /obj/machinery/organ_printer/flesh
@@ -293,7 +284,7 @@
 			container = null
 	return ..()
 
-/obj/machinery/organ_printer/flesh/print_organ(var/choice)
+/obj/machinery/organ_printer/flesh/print_organ(choice)
 	var/obj/item/organ/O = ..()
 
 	playsound(src.loc, 'sound/machines/ding.ogg', 50, TRUE)
@@ -304,10 +295,9 @@
 	// DNA sample from syringe.
 	if(istype(W,/obj/item/reagent_containers/syringe))	//TODO: Make this actually empty the syringe
 		var/obj/item/reagent_containers/syringe/S = W
-		var/datum/reagent/blood/injected = locate() in S.reagents.reagent_list //Grab some blood
-		if(injected && injected.data)
-			loaded_dna = injected.data
-			S.reagents.remove_reagent("blood", injected.volume)
+		var/datum/blood_mixture/mixture = S.reagents?.reagent_datas[/datum/reagent/blood::id]
+		if((loaded_blood_mixture = mixture))
+			S.reagents.del_reagent(/datum/reagent/blood)
 			to_chat(user, SPAN_INFO("You scan the blood sample into the bioprinter."))
 		return
 	else if(istype(W,/obj/item/reagent_containers/glass))
@@ -316,13 +306,13 @@
 			to_chat(user, SPAN_WARNING("\The [src] already has a container loaded!"))
 			return
 		else if(do_after(user, 1 SECOND))
+			if(!user.attempt_insert_item_for_installation(G, src))
+				return
 			user.visible_message("[user] has loaded \the [G] into \the [src].", "You load \the [G] into \the [src].")
 			container = G
-			user.drop_item()
-			G.forceMove(src)
 		return
-
 	return ..()
+
 // END FLESH ORGAN PRINTER
 
 

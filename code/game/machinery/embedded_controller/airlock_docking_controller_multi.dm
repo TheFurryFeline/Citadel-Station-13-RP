@@ -7,7 +7,7 @@
 	var/child_names_txt
 	var/list/child_names = list()
 
-/obj/machinery/embedded_controller/radio/docking_port_multi/Initialize()
+/obj/machinery/embedded_controller/radio/docking_port_multi/Initialize(mapload)
 	. = ..()
 	var/list/names = splittext(child_names_txt, ";")
 	var/list/tags = splittext(child_tags_txt, ";")
@@ -15,7 +15,7 @@
 		for (var/i = 1; i <= tags.len; i++)
 			child_names[tags[i]] = names[i]
 
-/obj/machinery/embedded_controller/radio/docking_port_multi/ui_data(mob/user)
+/obj/machinery/embedded_controller/radio/docking_port_multi/ui_data(mob/user, datum/tgui/ui)
 	var/datum/computer/file/embedded_program/docking/multi/docking_program = program // Cast to proper type
 
 	var/list/airlocks[child_names.len]
@@ -29,7 +29,8 @@
 		"internalTemplateName" = "DockingConsoleMulti",
 	)
 
-/obj/machinery/embedded_controller/radio/docking_port_multi/ui_act(action, params)
+/obj/machinery/embedded_controller/radio/docking_port_multi/ui_act(action, list/params, datum/tgui/ui, datum/ui_state/state, datum/event_args/actor/actor)
+	. = ..()
 	return //Apparently we swallow all input (this is corrected legacy code)
 
 //a docking port based on an airlock
@@ -42,7 +43,7 @@
 	valid_actions = list("cycle_ext", "cycle_int", "force_ext", "force_int", "abort", "toggle_override")
 
 
-/obj/machinery/embedded_controller/radio/airlock/docking_port_multi/ui_data(mob/user)
+/obj/machinery/embedded_controller/radio/airlock/docking_port_multi/ui_data(mob/user, datum/tgui/ui)
 	var/datum/computer/file/embedded_program/airlock/multi_docking/airlock_program = program // Cast to proper type
 
 	. = list(
@@ -59,16 +60,16 @@
 /*** DEBUG VERBS ***
 
 /datum/computer/file/embedded_program/docking/multi/proc/print_state()
-	to_world("id_tag: [id_tag]")
-	to_world("dock_state: [dock_state]")
-	to_world("control_mode: [control_mode]")
-	to_world("tag_target: [tag_target]")
-	to_world("response_sent: [response_sent]")
+	TO_WORLD("id_tag: [id_tag]")
+	TO_WORLD("dock_state: [dock_state]")
+	TO_WORLD("control_mode: [control_mode]")
+	TO_WORLD("tag_target: [tag_target]")
+	TO_WORLD("response_sent: [response_sent]")
 
 /datum/computer/file/embedded_program/docking/multi/post_signal(datum/signal/signal, comm_line)
-	to_world("Program [id_tag] sent a message!")
+	TO_WORLD("Program [id_tag] sent a message!")
 	print_state()
-	to_world("[id_tag] sent command \"[signal.data["command"]]\" to \"[signal.data["recipient"]]\"")
+	TO_WORLD("[id_tag] sent command \"[signal.data["command"]]\" to \"[signal.data["recipient"]]\"")
 	..(signal)
 
 /obj/machinery/embedded_controller/radio/docking_port_multi/verb/view_state()

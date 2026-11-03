@@ -8,13 +8,19 @@
 	opacity = FALSE
 	var/mob/living/occupant
 
+/obj/structure/adherent_bath/examine(mob/user, dist)
+	. = ..()
+	var/mob/living/carbon/human/H = user
+	if(istype(H) && H.species.get_species_id() != SPECIES_ID_ADHERENT)
+		. += "It appears quite hot, taking a dip would be quite hazardous."
+
 /obj/structure/adherent_bath/Destroy()
 	eject_occupant()
 	. = ..()
 
 /obj/structure/adherent_bath/return_air()
 	var/datum/gas_mixture/venus = new(CELL_VOLUME)
-	venus.adjust_multi(/datum/gas/nitrogen, MOLES_N2STANDARD, /datum/gas/oxygen, MOLES_O2STANDARD)
+	venus.adjust_multi(GAS_ID_NITROGEN, MOLES_N2STANDARD, GAS_ID_OXYGEN, MOLES_O2STANDARD)
 	venus.temperature = 490
 	return venus
 
@@ -66,7 +72,7 @@
 	START_PROCESSING(SSobj, src)
 	return TRUE
 
-/obj/structure/adherent_bath/attack_hand(var/mob/user)
+/obj/structure/adherent_bath/attack_hand(mob/user, datum/event_args/actor/clickchain/e_args)
 	eject_occupant()
 
 /obj/structure/adherent_bath/proc/eject_occupant()
@@ -79,7 +85,7 @@
 	occupant = null
 	STOP_PROCESSING(SSobj, src)
 
-/obj/structure/adherent_bath/MouseDrop_T(var/atom/movable/O, var/mob/user)
+/obj/structure/adherent_bath/MouseDroppedOnLegacy(var/atom/movable/O, var/mob/user)
 	enter_bath(O, user)
 
 /obj/structure/adherent_bath/relaymove(var/mob/user)
@@ -102,7 +108,7 @@
 		//var/repaired_organ
 
 		// Replace limbs for crystalline species.
-		if((H.species.name == SPECIES_ADHERENT || H.species.name == SPECIES_GOLEM) && prob(30))
+		if((H.species.get_species_id() == SPECIES_ID_ADHERENT || H.species.get_species_id() == SPECIES_ID_GOLEM) && prob(30))
 			if(!crystal_heal_damage(H))
 				if(!crystal_restore_limbs(H))
 					if(!crystal_heal_internal_organs(H))
@@ -132,13 +138,12 @@
 	for(var/thing in patient.internal_organs)
 		var/obj/item/organ/internal/I = thing
 		if(BP_IS_CRYSTAL(I) && I.damage)
-			I.heal_damage_a(rand(3,5))
+			I.heal_damage_i(rand(3,5))
 			to_chat(patient, "<span class='notice'>The mineral-rich bath mends your [I.name].</span>")
 			return TRUE
 
 /obj/structure/adherent_bath/proc/crystal_heal_damage(mob/living/carbon/human/patient)
-	if(patient.radiation > 0)
-		patient.radiation = max(patient.radiation - rand(5, 15), 0)
+	patient.cure_radiation(RAD_MOB_CURE_ADHERENT_BATH)
 	for(var/thing in patient.organs)
 		var/obj/item/organ/external/E = thing
 		if(BP_IS_CRYSTAL(E))

@@ -22,13 +22,13 @@
 	icon_scale_x = 2 // Twice as big as the xenobio variant.
 	icon_scale_y = 2
 	pixel_y = -10 // Since the base sprite isn't centered properly, the pixel auto-adjustment needs some help.
-	default_pixel_y = -10 // To prevent resetting above var.
+	base_pixel_y = -10 // To prevent resetting above var.
 
 	maxHealth = 300
-	movement_cooldown = 10
+	movement_base_speed = 10 / 10
 	melee_attack_delay = 0.5 SECONDS
 
-	ai_holder_type = /datum/ai_holder/simple_mob/ranged/pointblank
+	ai_holder_type = /datum/ai_holder/polaris/simple_mob/ranged/pointblank
 
 
 // Slimebatoning/xenotasing it just makes it mad at you (which can be good if you're heavily armored and your friends aren't).
@@ -53,7 +53,7 @@
 	minbodytemp = 0
 	cold_damage_per_tick = 0
 
-	projectiletype = /obj/item/projectile/icicle
+	projectiletype = /obj/projectile/icicle
 	base_attack_cooldown = 2 SECONDS
 	ranged_attack_delay = 1 SECOND
 
@@ -61,24 +61,26 @@
 	You are also immune to the cold, and you cause enemies around you to suffer periodic harm from the cold, if unprotected.<br>\
 	Unprotected enemies are also Chilled, making them slower and less evasive, and disabling effects last longer."
 
-/obj/item/projectile/icicle
+/obj/projectile/icicle
 	name = "icicle"
 	icon_state = "ice_2"
-	damage = 40
-	damage_type = BRUTE
-	check_armour = "melee"
-	armor_penetration = 30
-	speed = 2
+	damage_force = 40
+	damage_type = DAMAGE_TYPE_BRUTE
+	damage_flag = ARMOR_MELEE
+	damage_tier = 4
+	speed = 7.5 * WORLD_ICON_SIZE
 	icon_scale_x = 2 // It hits like a truck.
 	icon_scale_y = 2
-	sharp = TRUE
+	damage_mode = DAMAGE_MODE_SHARP | DAMAGE_MODE_PIERCE
 
-/obj/item/projectile/icicle/on_impact(atom/A)
-	playsound(get_turf(A), "shatter", 70, 1)
-	return ..()
+/obj/projectile/icicle/on_impact(atom/target, impact_flags, def_zone, efficiency)
+	. = ..()
+	if(. & PROJECTILE_IMPACT_FLAGS_UNCONDITIONAL_ABORT)
+		return
+	playsound(get_turf(target), "shatter", 70, 1)
 
-/obj/item/projectile/icicle/get_structure_damage()
-	return damage / 2 // They're really deadly against mobs, but less effective against solid things.
+/obj/projectile/icicle/get_structure_damage()
+	return damage_force / 2 // They're really deadly against mobs, but less effective against solid things.
 
 /mob/living/simple_mob/slime/feral/dark_blue/handle_special()
 	if(stat != DEAD)
@@ -98,6 +100,6 @@
 	if(L.get_cold_protection() < 1)
 		L.add_modifier(/datum/modifier/chilled, 5 SECONDS, src)
 
-	if(L.has_AI()) // Other AIs should react to hostile auras.
-		L.ai_holder.react_to_attack(src)
+	if(L.has_polaris_AI()) // Other AIs should react to hostile auras.
+		L.ai_holder.react_to_attack_polaris(src)
 

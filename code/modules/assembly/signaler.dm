@@ -4,13 +4,13 @@
 	icon_state = "signaller"
 	item_state = "signaler"
 	origin_tech = list(TECH_MAGNET = 1)
-	matter = list(MAT_STEEL = 1000, MAT_GLASS = 200)
+	materials_base = list(MAT_STEEL = 1000, MAT_GLASS = 200)
 	wires = WIRE_RECEIVE | WIRE_PULSE | WIRE_RADIO_PULSE | WIRE_RADIO_RECEIVE
 
 	secured = TRUE
 
 	var/code = 30
-	var/frequency = 1457
+	var/frequency = FREQ_SIGNALER
 	var/delay = 0
 	var/hearing_range = 1
 	var/airlock_wire = null
@@ -23,7 +23,6 @@
 	return INITIALIZE_HINT_LATELOAD
 
 /obj/item/assembly/signaler/LateInitialize()
-	. = ..()
 	set_frequency(frequency)
 
 /obj/item/assembly/signaler/activate()
@@ -42,25 +41,25 @@
 		ui = new(user, src, "Signaler", name)
 		ui.open()
 
-/obj/item/assembly/signaler/ui_data(mob/user)
+/obj/item/assembly/signaler/ui_data(mob/user, datum/tgui/ui)
 	var/list/data = list()
 	data["frequency"] = frequency
 	data["code"] = code
-	data["minFrequency"] = RADIO_LOW_FREQ
-	data["maxFrequency"] = RADIO_HIGH_FREQ
+	data["minFrequency"] = MIN_FREE_FREQ
+	data["maxFrequency"] = MAX_FREE_FREQ
 	return data
 
-/obj/item/assembly/signaler/ui_act(action, params)
+/obj/item/assembly/signaler/ui_act(action, list/params, datum/tgui/ui, datum/ui_state/state, datum/event_args/actor/actor)
 	if(..())
 		return TRUE
 
 	switch(action)
 		if("signal")
-			INVOKE_ASYNC(src, .proc/signal)
+			INVOKE_ASYNC(src, PROC_REF(signal))
 			. = TRUE
 		if("freq")
 			frequency = unformat_frequency(params["freq"])
-			frequency = sanitize_frequency(frequency, RADIO_LOW_FREQ, RADIO_HIGH_FREQ)
+			frequency = sanitize_frequency(frequency, free = TRUE)
 			set_frequency(frequency)
 			. = TRUE
 		if("code")
@@ -155,7 +154,7 @@
 	set src in usr
 	set name = "Threaten to push the button!"
 	set desc = "BOOOOM!"
-	set category = "IC"
+	set category = VERB_CATEGORY_IC
 	deadman = TRUE
 	START_PROCESSING(SSobj, src)
 	log_and_message_admins("is threatening to trigger a signaler deadman's switch")

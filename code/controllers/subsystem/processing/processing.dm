@@ -1,30 +1,42 @@
-//Used to process objects.
-
+/**
+ * Base of processing subsystems.
+ * This is a generic processing subsystem that ticks once per second.
+ */
 SUBSYSTEM_DEF(processing)
-	name = "Processing"
+	name = "Processing - 1 fps"
 	priority = FIRE_PRIORITY_PROCESS
-	flags = SS_BACKGROUND|SS_POST_FIRE_TIMING|SS_NO_INIT
+	subsystem_flags = SS_BACKGROUND|SS_POST_FIRE_TIMING|SS_NO_INIT
 	wait = 1 SECONDS
 
-	var/stat_tag = "P" //Used for logging
+	var/stat_tag = "P_DEF" //Used for logging
 	var/list/processing = list()
 	var/list/currentrun = list()
 
-/datum/controller/subsystem/processing/stat_entry(msg)
-	msg = "[stat_tag]:[length(processing)]"
-	return ..()
+/datum/controller/subsystem/processing/stat_entry()
+	return ..() + " [stat_tag]:[length(processing)]"
 
 /datum/controller/subsystem/processing/fire(resumed = FALSE)
 	if (!resumed)
 		currentrun = processing.Copy()
 	//cache for sanic speed (lists are references anyways)
 	var/list/current_run = currentrun
-	var/dt = (flags & SS_TICKER)? (wait * world.tick_lag * 0.1) : (wait * 0.1)
+	// tick_lag is in deciseconds
+	// in ticker, our wait is that many ds
+	// in non-ticker, our wait is either wait in ds, or a minimum of tick_lag in ds
+	// we convert it to seconds with * 0.1
+	var/dt = (subsystem_flags & SS_TICKER? (wait * world.tick_lag) : max(world.tick_lag, wait)) * 0.1
 
 	while(current_run.len)
 		var/datum/thing = current_run[current_run.len]
 		current_run.len--
 		if(QDELETED(thing))
+			log_world("GC-TRACE: Deleted entity found in [src] - [thing ? thing.type : "-- null value --"]")
+			if(thing)
+				var/list/trace = thing.gc_trace_data()
+				trace["type"] = thing.type
+				trace["refcount"] = refcount(thing)
+				log_world("GC-TRACE: From [src], [thing.type] had trace: [json_encode(trace)]")
+			stack_trace("deleted entity found in [src]; check logs.")
 			processing -= thing
 		else if(thing.process(dt) == PROCESS_KILL)
 			// fully stop so that a future START_PROCESSING will work
@@ -45,6 +57,9 @@ SUBSYSTEM_DEF(processing)
  * - Probability of something happening, do `if(DT_PROB(25, delta_time))`, not `if(prob(25))`. This way, if the subsystem wait is e.g. lowered, there won't be a higher chance of this event happening per second
  *
  * If you override this do not call parent, as it will return PROCESS_KILL. This is done to prevent objects that dont override process() from staying in the processing list
+ *
+ * @params
+ * * delta_time - time that should have elapsed, in seconds
  */
 /datum/proc/process(delta_time)
 	set waitfor = FALSE

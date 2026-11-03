@@ -4,76 +4,93 @@
 /obj/item/reagent_containers/pill
 	name = "pill"
 	desc = "A pill."
-	icon = 'icons/obj/chemical.dmi'
-	icon_state = null
+	icon = 'icons/obj/medical/chemical.dmi'
+	icon_state = "pill"
+	base_icon_state = "pill"
 	item_state = "pill"
 	drop_sound = 'sound/items/drop/food.ogg'
 	pickup_sound = 'sound/items/pickup/food.ogg'
-
-	var/base_state = "pill"
+	rad_flags = RAD_NO_CONTAMINATE
+	suit_storage_class = SUIT_STORAGE_CLASS_SOFTWEAR
+	belt_storage_class = BELT_CLASS_SMALL
+	belt_storage_size = BELT_SIZE_FOR_PILL
 
 	possible_transfer_amounts = null
-	w_class = ITEMSIZE_TINY
+	w_class = WEIGHT_CLASS_TINY
+	weight_volume = ITEM_VOLUME_PILL
 	slot_flags = SLOT_EARS
 	volume = 60
 
+	/// When set, we allow automatic naming on init.
+	var/rename_with_volume = FALSE
+
 /obj/item/reagent_containers/pill/Initialize(mapload)
+	randomize_pixel_offsets()
 	. = ..()
 	if(!icon_state)
-		icon_state = "[base_state][rand(1, 4)]" //preset pills only use colour changing or unique icons
+		icon_state = "pill[rand(1,20)]"
+	if(reagents.total_volume && rename_with_volume)
+		name += " ([reagents.total_volume]u)"
 
-/obj/item/reagent_containers/pill/attack(mob/M as mob, mob/user as mob)
-	if(M == user)
-		if(istype(M, /mob/living/carbon/human))
-			var/mob/living/carbon/human/H = M
+/obj/item/reagent_containers/pill/dropped(mob/user, flags, atom/newLoc)
+	. = ..()
+	if(. != NONE)
+		return
+	randomize_pixel_offsets()
+
+// todo: generic /obj/item pixel randomization
+// todo: randomization must be called **before** ..() on initialize.
+/obj/item/reagent_containers/pill/proc/randomize_pixel_offsets()
+	set_pixel_offsets(rand(-10, 10), rand(-10, 10))
+
+/obj/item/reagent_containers/pill/legacy_mob_melee_hook(mob/target, mob/user, clickchain_flags, list/params, mult, target_zone, intent)
+	if(target == user)
+		if(istype(target, /mob/living/carbon/human))
+			var/mob/living/carbon/human/H = target
 			if(!H.check_has_mouth())
 				to_chat(user, "Where do you intend to put \the [src]? You don't have a mouth!")
-				return
+				return CLICKCHAIN_DO_NOT_PROPAGATE
 			var/obj/item/blocked = H.check_mouth_coverage()
 			if(blocked)
 				to_chat(user, "<span class='warning'>\The [blocked] is in the way!</span>")
-				return
+				return CLICKCHAIN_DO_NOT_PROPAGATE
+			if(!user.attempt_void_item_for_installation(src))
+				return CLICKCHAIN_DO_NOT_PROPAGATE
 
-			to_chat(M, "<span class='notice'>You swallow \the [src].</span>")
-			M.drop_from_inventory(src) //icon update
+			to_chat(target, "<span class='notice'>You swallow \the [src].</span>")
 			if(reagents.total_volume)
-				reagents.trans_to_mob(M, reagents.total_volume, CHEM_INGEST)
+				reagents.trans_to_mob(target, reagents.total_volume, CHEM_INGEST)
 			qdel(src)
-			return 1
+			return CLICKCHAIN_DO_NOT_PROPAGATE
 
-	else if(istype(M, /mob/living/carbon/human))
+	else if(istype(target, /mob/living/carbon/human))
 
-		var/mob/living/carbon/human/H = M
+		var/mob/living/carbon/human/H = target
 		if(!H.check_has_mouth())
 			to_chat(user, "Where do you intend to put \the [src]? \The [H] doesn't have a mouth!")
-			return
+			return CLICKCHAIN_DO_NOT_PROPAGATE
 		var/obj/item/blocked = H.check_mouth_coverage()
 		if(blocked)
 			to_chat(user, "<span class='warning'>\The [blocked] is in the way!</span>")
-			return
+			return CLICKCHAIN_DO_NOT_PROPAGATE
 
-		user.visible_message("<span class='warning'>[user] attempts to force [M] to swallow \the [src].</span>")
+		user.visible_message("<span class='warning'>[user] attempts to force [target] to swallow \the [src].</span>")
 
-		user.setClickCooldown(user.get_attack_speed(src))
-		if(!do_mob(user, M))
-			return
-
-		user.drop_from_inventory(src) //icon update
-		user.visible_message("<span class='warning'>[user] forces [M] to swallow \the [src].</span>")
-
+		user.setClickCooldownLegacy(user.get_attack_speed_legacy(src))
+		if(!do_mob(user, target))
+			return CLICKCHAIN_DO_NOT_PROPAGATE
+		if(!user.attempt_void_item_for_installation(src))
+			return CLICKCHAIN_DO_NOT_PROPAGATE
+		user.visible_message("<span class='warning'>[user] forces [target] to swallow \the [src].</span>")
 		var/contained = reagentlist()
-		add_attack_logs(user,M,"Fed a pill containing [contained]")
-
+		add_attack_logs(user,target,"Fed a pill containing [contained]")
 		if(reagents && reagents.total_volume)
-			reagents.trans_to_mob(M, reagents.total_volume, CHEM_INGEST)
+			reagents.trans_to_mob(target, reagents.total_volume, CHEM_INGEST)
 		qdel(src)
+		return CLICKCHAIN_DO_NOT_PROPAGATE
 
-		return 1
-
-	return 0
-
-/obj/item/reagent_containers/pill/afterattack(obj/target, mob/user, proximity)
-	if(!proximity) return
+/obj/item/reagent_containers/pill/afterattack(atom/target, mob/user, clickchain_flags, list/params)
+	if(!(clickchain_flags & CLICKCHAIN_HAS_PROXIMITY)) return
 
 	if(target.is_open_container() && target.reagents)
 		if(!target.reagents.total_volume)
@@ -290,13 +307,12 @@
 /obj/item/reagent_containers/pill/happy
 	name = "Happy pill"
 	desc = "Happy happy joy joy!"
-	icon_state = "pill4"
+	icon_state = "pill_happy"
 
 /obj/item/reagent_containers/pill/happy/Initialize(mapload)
 	. = ..()
 	reagents.add_reagent("space_drugs", 15)
 	reagents.add_reagent("sugar", 15)
-	color = reagents.get_color()
 
 /obj/item/reagent_containers/pill/zoom
 	name = "Zoom pill"
@@ -305,10 +321,10 @@
 
 /obj/item/reagent_containers/pill/zoom/Initialize(mapload)
 	. = ..()
-	if(prob(50))						//VOREStation edit begin: Zoom pill adjustments
+	if(prob(50))
 		reagents.add_reagent("mold", 2)	//Chance to be more dangerous
 	reagents.add_reagent("expired_medicine", 5)
-	reagents.add_reagent("stimm", 5)	//VOREStation edit end: Zoom pill adjustments
+	reagents.add_reagent("stimm", 5)
 	color = reagents.get_color()
 
 /obj/item/reagent_containers/pill/diet
@@ -318,5 +334,59 @@
 
 /obj/item/reagent_containers/pill/diet/Initialize(mapload)
 	. = ..()
-	reagents.add_reagent("lipozine", 15) //VOREStation Edit
+	reagents.add_reagent("lipozine", 15)
 	color = reagents.get_color()
+
+/obj/item/reagent_containers/pill/polonium
+	name = "pill"
+	desc = "A unlabeled pill, it seems slightly warm to the touch."
+	icon_state = "yellow"
+
+/obj/item/reagent_containers/pill/polonium/Initialize(mapload)
+	. = ..()
+	reagents.add_reagent(/datum/reagent/polonium, 5)
+
+/obj/item/reagent_containers/pill/shredding_nanites
+	name = "nanite release capsule"
+	desc = "A small 'pill' full of nanites designed to be ingested. Its impossible to tell what they do while they remain in the container."
+	icon_state = "pill_syndie"
+
+/obj/item/reagent_containers/pill/shredding_nanites/Initialize(mapload)
+	. = ..()
+	reagents.add_reagent(/datum/reagent/nanite/shredding, 5)
+
+/obj/item/reagent_containers/pill/neurophage_nanites
+	name = "nanite release capsule"
+	desc = "A small 'pill' full of nanites designed to be ingested. Its impossible to tell what they do while they remain in the container."
+	icon_state = "pill_syndie"
+
+/obj/item/reagent_containers/pill/neurophage_nanites/Initialize(mapload)
+	. = ..()
+	reagents.add_reagent(/datum/reagent/nanite/neurophage, 5)
+
+/obj/item/reagent_containers/pill/irradiated_nanites
+	name = "nanite release capsule"
+	desc = "A small 'pill' full of nanites designed to be ingested. Its impossible to tell what they do while they remain in the container."
+	icon_state = "pill_syndie"
+
+/obj/item/reagent_containers/pill/irradiated_nanites/Initialize(mapload)
+	. = ..()
+	reagents.add_reagent(/datum/reagent/nanite/irradiated, 5)
+
+/obj/item/reagent_containers/pill/heartkill_nanites
+	name = "nanite release capsule"
+	desc = "A small 'pill' full of nanites designed to be ingested. Its impossible to tell what they do while they remain in the container."
+	icon_state = "pill_syndie"
+
+/obj/item/reagent_containers/pill/heartkill_nanites/Initialize(mapload)
+	. = ..()
+	reagents.add_reagent(/datum/reagent/nanite/heartkill, 5)
+
+/obj/item/reagent_containers/pill/healing_nanites
+	name = "nanite release capsule"
+	desc = "A small 'pill' full of nanites designed to be ingested. Its impossible to tell what they do while they remain in the container."
+	icon_state = "pill_syndie"
+
+/obj/item/reagent_containers/pill/healing_nanites/Initialize(mapload)
+	. = ..()
+	reagents.add_reagent(/datum/reagent/nanite/healing, 5)

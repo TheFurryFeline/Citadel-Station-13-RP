@@ -51,9 +51,9 @@
 	var/badness = 1
 	var/data = null // For semi-procedural effects; this should be generated in generate() if used
 
-	proc/activate(var/mob/living/carbon/mob,var/multiplier)
-	proc/deactivate(var/mob/living/carbon/mob)
-	proc/generate(copy_data) // copy_data will be non-null if this is a copy; it should be used to initialise the data for this effect if present
+/datum/disease2/effect/proc/activate(mob/living/carbon/mob, multiplier)
+/datum/disease2/effect/proc/deactivate(mob/living/carbon/mob)
+/datum/disease2/effect/proc/generate(copy_data) // copy_data will be non-null if this is a copy; it should be used to initialise the data for this effect if present
 
 /datum/disease2/effect/invisible
 	name = "Waiting Syndrome"
@@ -104,7 +104,7 @@
 
 // Nerfing the value of the base rad to adjust and not cause immediate rad poisoning to a crew member.
 /datum/disease2/effect/radian/activate(var/mob/living/carbon/mob,var/multiplier)
-	mob.apply_effect(1.10*multiplier, IRRADIATE, check_protection = 0)
+	mob.afflict_radiation(RAD_MOB_AFFLICT_VIRUS_RADIAN(multiplier))
 
 /datum/disease2/effect/deaf
 	name = "Deafness"
@@ -140,10 +140,10 @@
 	badness = 3
 
 /datum/disease2/effect/suicide/activate(var/mob/living/carbon/mob,var/multiplier)
-	var/datum/gender/TM = gender_datums[mob.get_visible_gender()]
+	var/datum/gender/TM = GLOB.gender_datums[mob.get_visible_gender()]
 	if(prob(25))
 		mob.visible_message("<font color='red'><b>[mob.name] is holding [TM.his] breath. It looks like [TM.his] ability to breath [TM.is] constricted!</b></font>")
-		mob.apply_damage(15, OXY)
+		mob.apply_damage(15, DAMAGE_TYPE_OXY)
 
 // Nerfing from 15 to 10
 /datum/disease2/effect/killertoxins
@@ -163,7 +163,7 @@
 /datum/disease2/effect/dna/activate(var/mob/living/carbon/mob,var/multiplier)
 	mob.bodytemperature = max(mob.bodytemperature, 350)
 	scramble(0,mob,10)
-	mob.apply_damage(10, CLONE)
+	mob.apply_damage(10, DAMAGE_TYPE_CLONE)
 
 /datum/disease2/effect/organs
 	name = "Limb Paralysis"
@@ -205,7 +205,7 @@
 		var/obj/item/organ/internal/O = H.organs_by_name[organ]
 		if (O.robotic != ORGAN_ROBOT)
 			if(prob(15))
-				O.damage += (5*multiplier)
+				O.take_damage(5 * multiplier)
 				to_chat(H, "<span class='notice'>You feel a cramp in your guts.</span>")
 			else
 				to_chat(H, "<span class='warning'>You feel like doom is coming.. you should head to medical!</span>")
@@ -294,7 +294,7 @@
 		data = c_data
 	else
 		data = pick("bicaridine", "kelotane", "anti_toxin", "tricordrazine")
-	var/datum/reagent/R = SSchemistry.chemical_reagents[data]
+	var/datum/reagent/R = SSchemistry.reagent_lookup[data]
 	name = "[initial(name)] ([initial(R.name)])"
 
 /datum/disease2/effect/improved_chem_synthesis/activate(var/mob/living/carbon/mob,var/multiplier)
@@ -345,7 +345,7 @@
 	stage = 3
 
 /datum/disease2/effect/telepathic/activate(var/mob/living/carbon/mob,var/multiplier)
-		mob.dna.SetSEState(REMOTETALKBLOCK,1)
+		mob.dna.SetSEState(DNABLOCK_REMOTETALK,1)
 		domutcheck(mob, null, MUTCHK_FORCED)
 
 /datum/disease2/effect/mind
@@ -366,7 +366,7 @@
 	stage = 3
 
 /datum/disease2/effect/hallucinations/activate(var/mob/living/carbon/mob,var/multiplier)
-	mob.hallucination += 25
+	mob.adjustHallucination(25)
 
 /datum/disease2/effect/minordeaf
 	name = "Hearing Loss"
@@ -399,7 +399,7 @@
 	stage = 3
 
 /datum/disease2/effect/mutation/activate(var/mob/living/carbon/mob,var/multiplier)
-	mob.apply_damage(2, CLONE)
+	mob.apply_damage(2, DAMAGE_TYPE_CLONE)
 
 /datum/disease2/effect/groan
 	name = "Phantom Aches"
@@ -426,7 +426,7 @@
 		data = pick("bicaridine", "kelotane", "anti_toxin", "inaprovaline", "space_drugs", "sugar",
 					"tramadol", "dexalin", "cryptobiolin", "impedrezene", "hyperzine", "ethylredoxrazine",
 					"mindbreaker", "glucose")
-	var/datum/reagent/R = SSchemistry.chemical_reagents[data]
+	var/datum/reagent/R = SSchemistry.reagent_lookup[data]
 	name = "[initial(name)] ([initial(R.name)])"
 
 /datum/disease2/effect/chem_synthesis/activate(var/mob/living/carbon/mob,var/multiplier)
@@ -489,7 +489,7 @@
 	stage = 2
 
 /datum/disease2/effect/blind/activate(var/mob/living/carbon/mob,var/multiplier)
-	mob.SetBlinded(4)
+	mob.apply_status_effect(/datum/status_effect/sight/blindness, 4 SECONDS)
 
 /datum/disease2/effect/cough
 	name = "Severe Cough"
@@ -526,7 +526,7 @@
 /datum/disease2/effect/hair/activate(var/mob/living/carbon/mob,var/multiplier)
 	if(istype(mob, /mob/living/carbon/human))
 		var/mob/living/carbon/human/H = mob
-		if(H.species.name == SPECIES_HUMAN && !(H.h_style == "Bald") && !(H.h_style == "Balding Hair"))
+		if(H.species.get_species_id() == SPECIES_ID_HUMAN && !(H.h_style == "Bald") && !(H.h_style == "Balding Hair"))
 			to_chat(H, "<span class='danger'>Your hair starts to fall out in clumps...</span>")
 			spawn(50)
 				H.h_style = "Balding Hair"
@@ -636,7 +636,7 @@
 			for(var/mob/living/carbon/M in get_step(mob,mob.dir))
 				mob.spread_disease_to(M)
 			if (prob(50))
-				var/obj/effect/decal/cleanable/mucus/M = new(get_turf(mob))
+				var/obj/effect/debris/cleanable/mucus/M = new(get_turf(mob))
 				M.virus2 = virus_copylist(mob.virus2)
 
 /datum/disease2/effect/gunck
@@ -654,7 +654,7 @@
 /datum/disease2/effect/drool/activate(var/mob/living/carbon/mob,var/multiplier)
 	mob.say("*drool")
 	if (prob(30))
-		var/obj/effect/decal/cleanable/mucus/M = new(get_turf(mob))
+		var/obj/effect/debris/cleanable/mucus/M = new(get_turf(mob))
 		M.virus2 = virus_copylist(mob.virus2)
 
 /datum/disease2/effect/twitch

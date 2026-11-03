@@ -3,7 +3,7 @@
 	desc = "Used to control a linked shuttle."
 	icon_keyboard = "atmos_key"
 	icon_screen = "shuttle"
-	circuit = null
+	circuit = /obj/item/circuitboard/shuttle_console
 
 	var/shuttle_tag  // Used to coordinate data in shuttle controller.
 	var/hacked = 0   // Has been emagged, no access restrictions.
@@ -11,7 +11,7 @@
 	var/skip_act = FALSE
 	var/tgui_subtemplate = "ShuttleControlConsoleDefault"
 
-/obj/machinery/computer/shuttle_control/attack_hand(user as mob)
+/obj/machinery/computer/shuttle_control/attack_hand(mob/user, datum/event_args/actor/clickchain/e_args)
 	if(..(user))
 		return
 	if(!allowed(user))
@@ -72,7 +72,7 @@
 		return FALSE
 	return TRUE
 
-/obj/machinery/computer/shuttle_control/ui_act(action, list/params)
+/obj/machinery/computer/shuttle_control/ui_act(action, list/params, datum/tgui/ui, datum/ui_state/state, datum/event_args/actor/actor)
 	if(..())
 		return TRUE
 	if(skip_act)
@@ -113,7 +113,7 @@
 		ui.open()
 
 // We delegate populating data to another proc to make it easier for overriding types to add their data.
-/obj/machinery/computer/shuttle_control/ui_data(mob/user)
+/obj/machinery/computer/shuttle_control/ui_data(mob/user, datum/tgui/ui)
 	var/datum/shuttle/autodock/shuttle = SSshuttle.shuttles[shuttle_tag]
 	if(!istype(shuttle))
 		to_chat(user, "<span class='warning'>Unable to establish link with the shuttle.</span>")
@@ -136,18 +136,8 @@
 		to_chat(user, "You short out the console's ID checking system. It's now available to everyone!")
 		return 1
 
-/obj/machinery/computer/shuttle_control/bullet_act(var/obj/item/projectile/Proj)
-	visible_message("\The [Proj] ricochets off \the [src]!")
-
-/obj/machinery/computer/shuttle_control/ex_act()
-	return
-
-/obj/machinery/computer/shuttle_control/emp_act()
-	return
-
-
 GLOBAL_LIST_BOILERPLATE(papers_dockingcode, /obj/item/paper/dockingcodes)
-/hook/roundstart/proc/populate_dockingcodes()
+/legacy_hook/roundstart/proc/populate_dockingcodes()
 	for(var/paper in GLOB.papers_dockingcode)
 		var/obj/item/paper/dockingcodes/dcp = paper
 		dcp.populate_info()
@@ -160,8 +150,8 @@ GLOBAL_LIST_BOILERPLATE(papers_dockingcode, /obj/item/paper/dockingcodes)
 /obj/item/paper/dockingcodes/proc/populate_info()
 	var/dockingcodes = null
 	var/z_to_check = codes_from_z ? codes_from_z : z
-	if(GLOB.using_map.use_overmap)
-		var/obj/effect/overmap/visitable/location = get_overmap_sector(z_to_check)
+	if((LEGACY_MAP_DATUM).use_overmap)
+		var/obj/overmap/entity/visitable/location = get_overmap_sector(z_to_check)
 		if(location && location.docking_codes)
 			dockingcodes = location.docking_codes
 

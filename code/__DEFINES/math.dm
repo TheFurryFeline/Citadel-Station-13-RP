@@ -2,13 +2,22 @@
 // This file is quadruple wrapped for your pleasure
 // (
 
+/// The value of the mathematical constant 'e', also known as Euler's number. Not to be confused with Euler's constant.
 #define NUM_E 2.71828183
-
+/// The value of sqrt(2); defined for speed
 #define SQRT_2 1.414214
+/// The value of the mathematical constant 'Pi'
+#define M_PI 3.14159265
 
-#define M_PI						(3.14159265)
-#define INFINITY				(1.#INF)	//closer then enough
+/// A quick way to write (1.#INF)
+#define INFINITY (1.#INF)
 
+/// the highest number that does not lose precision when only using the one's place
+///
+/// * floating point has serious inaccuracies; after this limit, we can no longer track to one's place
+/// * you usually don't have to worry about this if you're not writing anything that requires accuracy
+/// * if you are, note that accuracy is lost even below this limit for fractionals.
+/// * please look up how IEEE single precision floats work for more details.
 #define SHORT_REAL_LIMIT 16777216
 
 //"fancy" math for calculating time in ms from tick_usage percentage and the length of ticks
@@ -20,32 +29,47 @@
 #define PERCENT(val) (round((val)*100, 0.1))
 #define CLAMP01(x) (clamp(x, 0, 1))
 
-//time of day but automatically adjusts to the server going into the next day within the same round.
-//for when you need a reliable time number that doesn't depend on byond time.
-#define REALTIMEOFDAY (world.timeofday + (MIDNIGHT_ROLLOVER * MIDNIGHT_ROLLOVER_CHECK))
-#define MIDNIGHT_ROLLOVER_CHECK ( rollovercheck_last_timeofday != world.timeofday ? update_midnight_rollover() : midnight_rollovers )
-
 #define SIGN(x) ( (x)!=0 ? (x) / abs(x) : 0 )
 
+/// ceil()
+//
+// todo: get rid of this, this is native now
+#define ROUND_UP(x) ( -round(-(x)))
+/// floor()
+//
+// todo: get rid of this, this is native now
+#define ROUND_DOWN(x) (round(x))
+
+/// x to the nearest higher multiple of y
+///
+/// * This is not replaced by native ceil(), as that is always CEILING(x, 1)!
 #define CEILING(x, y) ( -round(-(x) / (y)) * (y) )
 
-// round() acts like floor(x, 1) by default but can't handle other values
+/// round() acts like floor(x, 1) by default but can't handle other values
 #define FLOOR(x, y) ( round((x) / (y)) * (y) )
 
 // Similar to clamp but the bottom rolls around to the top and vice versa. min is inclusive, max is exclusive
 #define WRAP(val, min, max) ( min == max ? min : (val) - (round(((val) - (min))/((max) - (min))) * ((max) - (min))) )
 
 // Real modulus that handles decimals
-#define MODULUS(x, y) ( (x) - (y) * round((x) / (y)) )
+#define MODULUS_F(x, y) ( (x) - (y) * round((x) / (y)) )
 
-// Cotangent
+/// Cotangent
 #define COT(x) (1 / tan(x))
-
-// Secant
+/// Secant
 #define SEC(x) (1 / cos(x))
-
-// Cosecant
+/// Cosecant
 #define CSC(x) (1 / sin(x))
+
+// ArcTan2. Returns the degree between two points in an x and y system.
+// todo: get rid of this, this is native now
+/proc/arctantwo(x1,y1,x2,y2)
+  var/dx = x2-x1
+  var/dy = y2-y1
+  if(!dy) return (dx>=0) ? 90 : 270
+  . = arctan(dx/dy)
+  if(dy<0) return .+180
+  if(dx<0) return .+360
 
 // Greatest Common Divisor - Euclid's algorithm
 /proc/GCD(a, b)
@@ -53,8 +77,6 @@
 
 // Least Common Multiple
 #define LCM(a, b) (abs(a) / GCD(a, b) * abs(b))
-
-#define IS_CARDINAL(x) ((x & (x - 1)) == 0)
 
 #define INVERSE(x) ( 1/(x) )
 
@@ -116,12 +138,13 @@
 
 // Will filter out extra rotations and negative rotations
 // E.g: 540 becomes 180. -180 becomes 180.
-#define SIMPLIFY_DEGREES(degrees) (MODULUS((degrees), 360))
+#define SIMPLIFY_DEGREES(degrees) (MODULUS_F((degrees), 360))
 
-#define GET_ANGLE_OF_INCIDENCE(face, input) (MODULUS((face) - (input), 360))
+#define GET_ANGLE_OF_INCIDENCE(face, input) (MODULUS_F((face) - (input), 360))
 
 //Finds the shortest angle that angle A has to change to get to angle B. Aka, whether to move clock or counterclockwise.
 /proc/closer_angle_difference(a, b)
+	// todo: optimize this shit
 	if(!isnum(a) || !isnum(b))
 		return
 	a = SIMPLIFY_DEGREES(a)
@@ -164,6 +187,7 @@
 	return (mean + stddev * R1)
 #undef ACCURACY
 
+// TODO: rework
 /proc/get_turf_in_angle(angle, turf/starting, increments)
 	var/pixel_x = 0
 	var/pixel_y = 0
@@ -210,6 +234,7 @@
 
 // )
 
+/// random but float
 #define RAND_F(LOW, HIGH) (rand()*(HIGH-LOW) + LOW)
 
 #define SQUARE(x) (x*x)
@@ -219,3 +244,9 @@
 #define NORM(x, y) (sqrt(SQUAREDNORM(x,y)))
 #define ISPOWEROFTWO(x) ((x & (x - 1)) == 0)
 #define ROUNDUPTOPOWEROFTWO(x) (2 ** -round(-log(2,x)))
+
+/// get highest magnitude of two numbers, magnitude is abs value
+#define BIGGER_MAGNITUDE(a, b) ((abs(a) > abs(b))? a : b)
+
+#define SI_COEFFICIENT "coefficient"
+#define SI_UNIT "unit"

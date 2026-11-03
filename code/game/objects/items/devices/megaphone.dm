@@ -3,7 +3,9 @@
 	desc = "A device used to project your voice. Loudly."
 	icon = 'icons/obj/device.dmi'
 	icon_state = "megaphone"
-	w_class = ITEMSIZE_SMALL
+	w_class = WEIGHT_CLASS_SMALL
+	suit_storage_class = SUIT_STORAGE_CLASS_SOFTWEAR | SUIT_STORAGE_CLASS_HARDWEAR
+	belt_storage_class = BELT_CLASS_SMALL
 
 	var/spamcheck = 0
 	var/emagged = 0
@@ -41,7 +43,10 @@
 			spamcheck = 0
 		return
 
-/obj/item/megaphone/attack_self(mob/living/user as mob)
+/obj/item/megaphone/attack_self(mob/user, datum/event_args/actor/actor)
+	. = ..()
+	if(.)
+		return
 	if(!can_broadcast(user))
 		return
 
@@ -67,7 +72,7 @@
 	var/broadcast_font = "verdana"
 	var/broadcast_size = 3
 	var/broadcast_color = "#000000" //Black by default.
-	var/list/volume_options = list(2, 3, 4)
+	var/list/volume_options = list(2, 3, 4, 8)
 	var/list/font_options = list("times new roman", "times", "verdana", "sans-serif", "serif", "georgia")
 	var/list/color_options= list("#000000", "#ff0000", "#00ff00", "#0000ff")
 
@@ -94,7 +99,7 @@
 /obj/item/megaphone/super/verb/turn_volume_dial()
 	set name = "Change Volume"
 	set desc = "Allows you to change the megaphone's volume."
-	set category = "Object"
+	set category = VERB_CATEGORY_OBJECT
 
 	adjust_volume(usr)
 
@@ -107,7 +112,7 @@
 /obj/item/megaphone/super/verb/change_font()
 	set name = "Change... Pronunciation?"
 	set desc = "Allows you to change the megaphone's font."
-	set category = "Object"
+	set category = VERB_CATEGORY_OBJECT
 
 	adjust_font(usr)
 
@@ -120,7 +125,7 @@
 /obj/item/megaphone/super/verb/change_color()
 	set name = "Change... Tune?"
 	set desc = "Allows you to change the megaphone's color."
-	set category = "Object"
+	set category = VERB_CATEGORY_OBJECT
 
 	adjust_color(usr)
 
@@ -141,13 +146,13 @@
 					for(var/mob/living/carbon/M in oviewers(4, T))
 						if(M.get_ear_protection() >= 2)
 							continue
-						M.SetSleeping(0)
+						M.set_sleeping(0)
 						M.stuttering += 20
 						M.ear_deaf += 30
-						M.Weaken(3)
+						M.afflict_paralyze(20 * 3)
 						if(prob(30))
-							M.Stun(10)
-							M.Paralyse(4)
+							M.afflict_stun(20 * 10)
+							M.afflict_unconscious(20 * 4)
 						else
 							M.make_jittery(50)
 				insults--

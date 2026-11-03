@@ -5,7 +5,7 @@
 	icon_state = "dispenser"
 	density = 1
 	anchored = 1.0
-	w_class = ITEMSIZE_HUGE
+	w_class = WEIGHT_CLASS_HUGE
 	var/oxygentanks = 10
 	var/phorontanks = 10
 	var/list/oxytanks = list()	//sorry for the similar var names
@@ -22,25 +22,34 @@
 	update_icon()
 
 /obj/structure/dispenser/update_icon()
-	overlays.Cut()
+	cut_overlays()
+	var/list/overlays_to_add = list()
+
 	switch(oxygentanks)
-		if(1 to 3)	overlays += "oxygen-[oxygentanks]"
-		if(4 to INFINITY) overlays += "oxygen-4"
+		if(1 to 3)
+			overlays_to_add += "oxygen-[oxygentanks]"
+		if(4 to INFINITY)
+			overlays_to_add += "oxygen-4"
+
 	switch(phorontanks)
-		if(1 to 4)	overlays += "phoron-[phorontanks]"
-		if(5 to INFINITY) overlays += "phoron-5"
+		if(1 to 4)
+			overlays_to_add += "phoron-[phorontanks]"
+		if(5 to INFINITY)
+			overlays_to_add += "phoron-5"
+
+	add_overlay(overlays_to_add)
 
 /obj/structure/dispenser/attack_ai(mob/user as mob)
 	if(user.Adjacent(src))
 		return attack_hand(user)
 	..()
 
-/obj/structure/dispenser/attack_hand(mob/user as mob)
+/obj/structure/dispenser/attack_hand(mob/user, datum/event_args/actor/clickchain/e_args)
 	user.set_machine(src)
 	var/dat = "[src]<br><br>"
 	dat += "Oxygen tanks: [oxygentanks] - [oxygentanks ? "<A href='?src=\ref[src];oxygen=1'>Dispense</A>" : "empty"]<br>"
 	dat += "Phoron tanks: [phorontanks] - [phorontanks ? "<A href='?src=\ref[src];phoron=1'>Dispense</A>" : "empty"]"
-	user << browse(dat, "window=dispenser")
+	user << browse(HTML_SKELETON(dat), "window=dispenser")
 	onclose(user, "dispenser")
 	return
 
@@ -48,8 +57,8 @@
 /obj/structure/dispenser/attackby(obj/item/I as obj, mob/user as mob)
 	if(istype(I, /obj/item/tank/oxygen) || istype(I, /obj/item/tank/air) || istype(I, /obj/item/tank/anesthetic))
 		if(oxygentanks < 10)
-			user.drop_item()
-			I.loc = src
+			if(!user.attempt_insert_item_for_installation(I, src))
+				return
 			oxytanks.Add(I)
 			oxygentanks++
 			to_chat(user, "<span class='notice'>You put [I] in [src].</span>")
@@ -61,8 +70,8 @@
 		return
 	if(istype(I, /obj/item/tank/phoron))
 		if(phorontanks < 10)
-			user.drop_item()
-			I.loc = src
+			if(!user.attempt_insert_item_for_installation(I, src))
+				return
 			platanks.Add(I)
 			phorontanks++
 			to_chat(user, "<span class='notice'>You put [I] in [src].</span>")

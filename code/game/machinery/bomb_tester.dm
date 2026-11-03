@@ -4,7 +4,7 @@
 
 /obj/machinery/bomb_tester
 	name = "explosive effect simulator"
-	desc = "A device that can calculate the potential explosive yield of provided gases."
+	desc = "A device that can calculate the potential explosive yield of provided gases.\n <span class='notice'>\[Accepts Upgrades\]</span>"
 	icon = 'icons/obj/machines/bomb_tester_vr.dmi'
 	icon_state = "generic"
 	anchored = TRUE
@@ -36,9 +36,7 @@
 	var/faketank_integrity
 
 /obj/machinery/bomb_tester/Initialize(mapload)
-	.=..()
-	default_apply_parts()
-	RefreshParts()
+	. = ..()
 	faketank = new
 
 /obj/machinery/bomb_tester/Destroy()
@@ -47,15 +45,13 @@
 	test_canister = null
 	..()
 
-/obj/machinery/bomb_tester/dismantle()
-	if(tank1)
-		tank1.forceMove(get_turf(src))
-		tank1 = null
-	if(tank2)
-		tank2.forceMove(get_turf(src))
-		tank2 = null
-	simulation_finish(1)
-	return ..()
+/obj/machinery/bomb_tester/drop_products(method, atom/where)
+	. = ..()
+	tank1?.forceMove(where)
+	tank1 = null
+	tank2?.forceMove(where)
+	tank2 = null
+	simulation_finish(TRUE)
 
 /obj/machinery/bomb_tester/process(delta_time)
 	..()
@@ -65,20 +61,23 @@
 		simulation_finish()
 
 /obj/machinery/bomb_tester/update_icon()
-	overlays.Cut()
+	cut_overlays()
+	. = ..()
+	var/list/overlays_to_add = list()
 	if(tank1)
-		overlays += image(icon, "[icon_name]-tank1")
+		overlays_to_add += image(icon, "[icon_name]-tank1")
 	if(tank2)
-		overlays += image(icon, "[icon_name]-tank2")
-	if(stat & NOPOWER)
+		overlays_to_add += image(icon, "[icon_name]-tank2")
+	if(machine_stat & NOPOWER)
 		icon_state = "[icon_name]-p"
 	else
 		icon_state = "[icon_name][simulating]"
+	add_overlay(overlays_to_add)
 
 /obj/machinery/bomb_tester/power_change()
 	..()
 	update_icon()
-	if(simulating && stat & NOPOWER)
+	if(simulating && machine_stat & NOPOWER)
 		simulation_finish(1)
 
 /obj/machinery/bomb_tester/RefreshParts()
@@ -88,7 +87,7 @@
 		scan_rating += S.rating
 	simulation_delay = 25 SECONDS - scan_rating SECONDS
 
-/obj/machinery/bomb_tester/attackby(var/obj/item/I, var/mob/user)
+/obj/machinery/bomb_tester/attackby(obj/item/I, mob/user)
 	if(default_deconstruction_screwdriver(user, I))
 		return
 	if(default_deconstruction_crowbar(user, I))
@@ -97,8 +96,8 @@
 		return
 	if(istype(I, /obj/item/tank))
 		if(!tank1 || !tank2)
-			user.drop_item(I)
-			I.forceMove(src)
+			if(!user.attempt_insert_item_for_installation(I, src))
+				return
 			if(!tank1)
 				tank1 = I
 			else
@@ -109,7 +108,7 @@
 			return
 	..()
 
-/obj/machinery/bomb_tester/attack_hand(var/mob/user)
+/obj/machinery/bomb_tester/attack_hand(mob/user, datum/event_args/actor/clickchain/e_args)
 	add_fingerprint(user)
 	ui_interact(user)
 
@@ -119,7 +118,7 @@
 		ui = new(user, src, "BombTester", name)
 		ui.open()
 
-/obj/machinery/bomb_tester/ui_data(mob/user, datum/tgui/ui, datum/ui_state/state)
+/obj/machinery/bomb_tester/ui_data(mob/user, datum/tgui/ui)
 	var/list/data = ..()
 
 	data["simulating"] = simulating
@@ -134,7 +133,7 @@
 
 	return data
 
-/obj/machinery/bomb_tester/ui_act(action, list/params, datum/tgui/ui, datum/ui_state/state)
+/obj/machinery/bomb_tester/ui_act(action, list/params, datum/tgui/ui, datum/ui_state/state, datum/event_args/actor/actor)
 	if(..())
 		return TRUE
 
@@ -156,8 +155,8 @@
 			return TRUE
 
 		if("add_tank")
-			if(istype(usr.get_active_hand(), /obj/item/tank))
-				var/obj/item/tank/T = usr.get_active_hand()
+			if(istype(usr.get_active_held_item(), /obj/item/tank))
+				var/obj/item/tank/T = usr.get_active_held_item()
 				var/slot = params["slot"]
 				if(slot == 1 && !tank1)
 					tank1 = T
@@ -166,9 +165,8 @@
 				else
 					to_chat(usr, SPAN_WARNING("Slot [slot] is full."))
 					return
-
-				usr.drop_item(T)
-				T.forceMove(src)
+				if(!usr.attempt_insert_item_for_installation(T, src))
+					return
 				return TRUE
 			else
 				to_chat(usr, SPAN_WARNING("You must be wielding a tank to insert it!"))
@@ -274,7 +272,7 @@
 
 	simulation_results += "<br>Initial gas tank status:<br>[format_gas_for_results(faketank)]"
 
-	faketank.add_thermal_energy(15000)
+	faketank.adjust_thermal_energy(15000)
 
 	var/intervals = 0
 	while(intervals < 10)
@@ -344,7 +342,7 @@
 	if(intervals == 10)
 		simulation_results += "<hr>Final Result: No detonation."
 
-/obj/machinery/bomb_tester/proc/simulation_finish(cancelled = 0)
+/obj/machinery/bomb_tester/proc/simulation_finish(cancelled = FALSE)
 	simulating = 0
 	update_use_power(USE_POWER_IDLE)
 	update_icon()
@@ -353,16 +351,16 @@
 	if(cancelled)
 		return
 	if(simulation_results == "Error")
-		playsound(get_turf(src), 'sound/machines/buzz-sigh.ogg', 50, 0)
+		playsound(get_turf(src), 'sound/machines/buzz-sigh.ogg', 50, FALSE)
 		state("Invalid parameters.")
 	else
 		ping("Simulation complete!")
-		playsound(src, "sound/machines/printer.ogg", 50, 1)
+		playsound(src, "sound/machines/printer.ogg", 50, TRUE)
 		var/obj/item/paper/P = new(get_turf(src))
 		P.name = "Explosive Simulator printout"
 		P.info = simulation_results
 
-/obj/machinery/bomb_tester/proc/format_gas_for_results(var/datum/gas_mixture/G)
+/obj/machinery/bomb_tester/proc/format_gas_for_results(datum/gas_mixture/G)
 	G.update_values() //Just in case
 	var/results = ""
 	var/pressure = G.return_pressure()
@@ -371,7 +369,7 @@
 	if(G.total_moles)
 		results += "<br>Temperature: [round(G.temperature-T0C)]&deg;C"
 		for(var/mix in G.gas)
-			results += "<br>[GLOB.meta_gas_names[mix]]: [round((G.gas[mix] / G.total_moles) * 100)]%"
+			results += "<br>[global.gas_data.names[mix]]: [round((G.gas[mix] / G.total_moles) * 100)]%"
 
 	return results
 

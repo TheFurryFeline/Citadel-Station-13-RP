@@ -1,5 +1,6 @@
 //A series(?) of prisms for PoIs. The base one only works for beams.
 
+// todo: refactor to /obj/structure/reflector
 /obj/structure/prop/prism
 	name = "prismatic turret"
 	desc = "A raised, externally powered 'turret'. It seems to have a massive crystal ring around its base."
@@ -12,6 +13,12 @@
 	layer = 3.1					//Layer over projectiles.
 	plane = -10					//Layer over projectiles.
 
+	/// projectile_type's to reflect
+	/// all of these must be on a projectile
+	var/projectile_type = PROJECTILE_TYPE_BEAM | PROJECTILE_TYPE_PHOTONIC
+	/// can't reflect these
+	var/projectile_type_cant = NONE
+
 	var/rotation_lock = 0		// Can you rotate the prism at all?
 	var/free_rotate = 1			// Does the prism rotate in any direction, or only in the eight standard compass directions?
 	var/external_control_lock = 0	// Does the prism only rotate from the controls of an external switch?
@@ -19,10 +26,10 @@
 	var/compass_directions = list("North" = 0, "South" = 180, "East" = 90, "West" = 270, "Northwest" = 315, "Northeast" = 45, "Southeast" = 135, "Southwest" = 225)
 	var/interaction_sound = 'sound/mecha/mechmove04.ogg'
 
-	var/redirect_type = /obj/item/projectile/beam
-
 	var/dialID = null
 	var/obj/structure/prop/prismcontrol/remote_dial = null
+
+	var/silent = FALSE
 
 	interaction_message = "<span class='notice'>The prismatic turret seems to be able to rotate.</span>"
 
@@ -41,7 +48,7 @@
 	var/degrees_to_rotate = -1 * degrees_from_north
 	animate(src, transform = turn(src.transform, degrees_to_rotate), time = 2)
 
-/obj/structure/prop/prism/attack_hand(mob/living/user)
+/obj/structure/prop/prism/attack_hand(mob/user, datum/event_args/actor/clickchain/e_args)
 	..()
 
 	if(rotation_lock)
@@ -117,18 +124,17 @@
 	else
 		animate(src, transform = turn(src.transform, rotate_degrees), time = 6)
 
-/obj/structure/prop/prism/bullet_act(var/obj/item/projectile/Proj)
-	if(istype(Proj, redirect_type))
-		visible_message("<span class='danger'>\The [src] redirects \the [Proj]!</span>")
-		flick("[initial(icon_state)]+glow", src)
+/obj/structure/prop/prism/on_bullet_act(obj/projectile/proj, impact_flags, list/bullet_act_args)
+	if(((proj.projectile_type & projectile_type) != projectile_type) || (proj.projectile_type & projectile_type_cant))
+		return ..()
+	if(!silent)
+		visible_message("<span class='danger'>\The [src] redirects \the [proj]!</span>")
+	flick("[initial(icon_state)]+glow", src)
 
-		var/new_x = (1 * round(10 * cos(degrees_from_north - 90))) + x //Vectors vectors vectors.
-		var/new_y = (-1 * round(10 * sin(degrees_from_north - 90))) + y
-		var/turf/curloc = get_turf(src)
-
-		Proj.penetrating += 1 // Needed for the beam to get out of the turret.
-
-		Proj.redirect(new_x, new_y, curloc, null)
+	// todo: this is not the right way; visuals are weird and the raycast is :/
+	proj.physics_kick_forwards(16)
+	proj.set_angle(degrees_from_north)
+	return PROJECTILE_IMPACT_REFLECT
 
 /obj/structure/prop/prism/incremental
 	free_rotate = 0
@@ -154,7 +160,7 @@
 	var/list/my_turrets = list()
 	var/dialID = null
 
-/obj/structure/prop/prismcontrol/attack_hand(mob/living/user)
+/obj/structure/prop/prismcontrol/attack_hand(mob/user, datum/event_args/actor/clickchain/e_args)
 	..()
 
 	var/confirm = input("Do you want to try to rotate \the [src]?", "[name]") in list("Yes", "No")
@@ -214,3 +220,20 @@
 		P.remote_dial = null
 	my_turrets = list()
 	..()
+
+/obj/structure/prop/prism/reflector
+	name = "reflector prism"
+	desc = "A box with an internal set of mirrors that reflects all laser beams in a single direction."
+	icon_state = "reflector_box"
+	icon = 'icons/obj/reflector.dmi'
+	silent = TRUE
+	free_rotate = FALSE
+	anchored = FALSE
+	worth_intrinsic = 350
+
+/obj/structure/prop/prism/reflector/attackby(obj/item/I, mob/living/user, list/params, clickchain_flags, damage_multiplier)
+	. = ..()
+	if(I.is_wrench())
+		if(do_after(user,40 * I.tool_speed))
+			to_chat(user, SPAN_NOTICE("You [anchored ? "anchor" : "unanchor"] [src]."))
+			anchored = !anchored

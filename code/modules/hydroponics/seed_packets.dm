@@ -7,7 +7,9 @@ GLOBAL_LIST_BOILERPLATE(all_seed_packs, /obj/item/seeds)
 	name = "packet of seeds"
 	icon = 'icons/obj/seeds.dmi'
 	icon_state = "blank"
-	w_class = ITEMSIZE_SMALL
+	worn_render_flags = WORN_RENDER_INHAND_NO_RENDER | WORN_RENDER_SLOT_NO_RENDER
+	w_class = WEIGHT_CLASS_SMALL
+	suit_storage_class = SUIT_STORAGE_CLASS_SOFTWEAR
 
 	var/seed_type
 	var/datum/seed/seed
@@ -15,7 +17,11 @@ GLOBAL_LIST_BOILERPLATE(all_seed_packs, /obj/item/seeds)
 
 /obj/item/seeds/Initialize(mapload)
 	update_seed()
-	. = ..()
+	return ..()
+
+/obj/item/seeds/Destroy()
+	seed = null
+	return ..()
 
 //Grabs the appropriate seed datum from the global list.
 /obj/item/seeds/proc/update_seed()
@@ -30,7 +36,9 @@ GLOBAL_LIST_BOILERPLATE(all_seed_packs, /obj/item/seeds)
 		return
 
 	// Update icon.
-	overlays.Cut()
+	cut_overlays()
+	var/list/overlays_to_add = list()
+
 	var/is_seeds = ((seed.seed_noun in list("seeds","pits","nodes")) ? 1 : 0)
 	var/image/seed_mask
 	var/seed_base_key = "base-[is_seeds ? seed.get_trait(TRAIT_PLANT_COLOUR) : "spores"]"
@@ -51,8 +59,9 @@ GLOBAL_LIST_BOILERPLATE(all_seed_packs, /obj/item/seeds)
 		seed_overlay.color = seed.get_trait(TRAIT_PRODUCT_COLOUR)
 		plant_seed_sprites[seed_overlay_key] = seed_overlay
 
-	overlays |= seed_mask
-	overlays |= seed_overlay
+	overlays_to_add += seed_mask
+	overlays_to_add += seed_overlay
+	add_overlay(overlays_to_add)
 
 	if(is_seeds)
 		src.name = "packet of [seed.seed_name] [seed.seed_noun]"
@@ -61,7 +70,7 @@ GLOBAL_LIST_BOILERPLATE(all_seed_packs, /obj/item/seeds)
 		src.name = "sample of [seed.seed_name] [seed.seed_noun]"
 		src.desc = "It's labelled as coming from [seed.display_name]."
 
-/obj/item/seeds/examine(mob/user)
+/obj/item/seeds/examine(mob/user, dist)
 	. = ..()
 	if(seed && !seed.roundstart)
 		. += "It's tagged as variety #[seed.uid]."
@@ -160,6 +169,12 @@ GLOBAL_LIST_BOILERPLATE(all_seed_packs, /obj/item/seeds)
 /obj/item/seeds/carrotseed
 	seed_type = "carrot"
 
+/obj/item/seeds/taroseed
+	seed_type = "taro"
+
+/obj/item/seeds/coconutseed
+	seed_type = "coconut"
+
 /obj/item/seeds/reishimycelium
 	seed_type = "reishi"
 
@@ -219,6 +234,9 @@ GLOBAL_LIST_BOILERPLATE(all_seed_packs, /obj/item/seeds)
 
 /obj/item/seeds/ambrosiadeusseed
 	seed_type = "ambrosiadeus"
+
+/obj/item/seeds/ambrosiagaiaseed
+	seed_type = "ambrosiagaia"
 
 /obj/item/seeds/whitebeetseed
 	seed_type = "whitebeet"
@@ -327,3 +345,35 @@ GLOBAL_LIST_BOILERPLATE(all_seed_packs, /obj/item/seeds)
 
 /obj/item/seeds/rose/blood
 	seed_type = "bloodrose"
+
+/obj/item/seeds/peaseed
+	seed_type = "peas"
+
+//Ashlander Plants
+/obj/item/seeds/ashlander
+	seed_type = "pyrrhlea"
+
+/obj/item/seeds/ashlander/bentars
+	seed_type = "bentars"
+
+/obj/item/seeds/ashlander/juhtak
+	seed_type = "juhtak"
+
+/obj/item/seeds/ashlander/cersut
+	seed_type = "cersut"
+
+/obj/item/seeds/ashlander/shimash
+	seed_type = "shimash"
+
+/obj/item/seeds/ashlander/pokalea
+	seed_type = "pokalea"
+
+//Alien Plants
+/obj/item/seeds/fungiwheat
+	seed_type = "fungiwheat"
+
+/obj/item/seeds/ironwood
+	seed_type = "ironwood"
+
+/obj/item/seeds/creepermoss
+	seed_type = "creepermoss"

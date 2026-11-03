@@ -27,7 +27,7 @@
 	a_intent = INTENT_HARM
 	stop_automated_movement = 1
 
-	status_flags = CANPUSH
+	status_flags = STATUS_CAN_PUSH
 
 	universal_speak = 0
 	universal_understand = 1
@@ -65,7 +65,7 @@
 
 	shock_resistance = 0.9 //Electricity isn't very effective on stone, especially that from hell.
 
-	armor = list(
+	armor_legacy_mob = list(
 				"melee" = 10,
 				"bullet" = 10,
 				"laser" = 10,
@@ -111,7 +111,7 @@
 
 /mob/living/simple_animal/construct/Initialize(mapload)
 	. = ..()
-	name = text("[initial(name)] ([rand(1, 1000)])")
+	name = "[initial(name)] ([rand(1, 1000)])"
 	real_name = name
 	add_language("Cult")
 	add_language("Occult")
@@ -120,7 +120,7 @@
 	updateicon()
 
 /mob/living/simple_animal/construct/updateicon()
-	overlays.Cut()
+	cut_overlays()
 	..()
 	if(do_glow)
 		add_glow()
@@ -140,8 +140,8 @@
 	if(istype(user, /mob/living/simple_animal/construct/builder))
 		var/mob/living/simple_animal/construct/builder/B = user
 		if(health < getMaxHealth())
-			var/repair_lower_bound = B.melee_damage_lower * -1
-			var/repair_upper_bound = B.melee_damage_upper * -1
+			var/repair_lower_bound = B.legacy_melee_damage_lower * -1
+			var/repair_upper_bound = B.legacy_melee_damage_upper * -1
 			adjustBruteLoss(rand(repair_lower_bound, repair_upper_bound))
 			adjustFireLoss(rand(repair_lower_bound, repair_upper_bound))
 			user.visible_message("<span class='notice'>\The [user] mends some of \the [src]'s wounds.</span>")
@@ -150,9 +150,9 @@
 		return
 	return ..()
 
-/mob/living/simple_animal/construct/examine(mob/user)
+/mob/living/simple_animal/construct/examine(mob/user, dist)
 	. = ..()
-	. += "<span cass='info'>*---------*\nThis is [icon2html(thing = src, target = user)]\a <EM>[src]</EM>!\n"
+	. += "<span cass='info'>This is [icon2html(thing = src, target = user)]\a <EM>[src]</EM>!\n"
 	if (src.health < src.getMaxHealth())
 		. += "<span class='warning'>"
 		if (src.health >= src.getMaxHealth()/2)
@@ -160,7 +160,6 @@
 		else
 			. += "<B>It looks severely dented!</B>\n"
 		. += "</span>"
-	. += "*---------*</span>"
 
 
 /mob/living/simple_animal/construct/Process_Spacemove()
@@ -182,8 +181,8 @@
 	health = 300
 	response_harm   = "harmlessly punches"
 	harm_intent_damage = 0
-	melee_damage_lower = 30
-	melee_damage_upper = 40
+	legacy_melee_damage_lower = 30
+	legacy_melee_damage_upper = 40
 	attack_armor_pen = 60 //Being punched by a living, floating statue.
 	attacktext = list("smashed their armoured gauntlet into")
 	friendly = list("pats")
@@ -198,7 +197,7 @@
 							/spell/targeted/construct_advanced/slam
 							)
 
-	armor = list(
+	armor_legacy_mob = list(
 				"melee" = 70,
 				"bullet" = 30,
 				"laser" = 30,
@@ -207,25 +206,25 @@
 				"bio" = 100,
 				"rad" = 100)
 
-/mob/living/simple_animal/construct/armoured/Life()
+/mob/living/simple_animal/construct/armoured/Life(seconds, times_fired)
 	weakened = 0
 	..()
 
-/mob/living/simple_animal/construct/armoured/bullet_act(var/obj/item/projectile/P)
-//	if(istype(P, /obj/item/projectile/energy) || istype(P, /obj/item/projectile/beam)) //If it's going to be slow, it's probably going to need every reflect it can get.
+/mob/living/simple_animal/construct/armoured/on_bullet_act(obj/projectile/proj, impact_flags, list/bullet_act_args)
+//	if(istype(P, /obj/projectile/energy) || istype(P, /obj/projectile/beam)) //If it's going to be slow, it's probably going to need every reflect it can get.
 	var/reflectchance = 80 - round(P.damage/3)
 	if(prob(reflectchance))
 		var/damage_mod = rand(2,4)
 		var/projectile_dam_type = P.damage_type
 		var/incoming_damage = (round(P.damage / damage_mod) - (round((P.damage / damage_mod) * 0.3)))
-		var/armorcheck = run_armor_check(null, P.check_armour)
-		var/soakedcheck = get_armor_soak(null, P.check_armour)
-		if(!(istype(P, /obj/item/projectile/energy) || istype(P, /obj/item/projectile/beam)))
+		var/armorcheck = run_armor_check(null, P.damage_flag)
+		var/soakedcheck = get_armor_soak(null, P.damage_flag)
+		if(!(istype(P, /obj/projectile/energy) || istype(P, /obj/projectile/beam)))
 			visible_message("<span class='danger'>The [P.name] bounces off of [src]'s shell!</span>", \
 						"<span class='userdanger'>The [P.name] bounces off of [src]'s shell!</span>")
 			new /obj/item/material/shard/shrapnel(src.loc)
-			if(!(P.damage_type == BRUTE || P.damage_type == BURN))
-				projectile_dam_type = BRUTE
+			if(!(P.damage_type == DAMAGE_TYPE_BRUTE || P.damage_type == DAMAGE_TYPE_BURN))
+				projectile_dam_type = DAMAGE_TYPE_BRUTE
 				incoming_damage = round(incoming_damage / 4) //Damage from strange sources is converted to brute for physical projectiles, though severely decreased.
 			apply_damage(incoming_damage, projectile_dam_type, null, armorcheck, soakedcheck, is_sharp(P), has_edge(P), P)
 			return -1 //Doesn't reflect non-beams or non-energy projectiles. They just smack and drop with little to no effect.
@@ -234,8 +233,8 @@
 						"<span class='userdanger'>The [P.name] gets reflected by [src]'s shell!</span>")
 			damage_mod = rand(3,5)
 			incoming_damage = (round(P.damage / damage_mod) - (round((P.damage / damage_mod) * 0.3)))
-			if(!(P.damage_type == BRUTE || P.damage_type == BURN))
-				projectile_dam_type = BURN
+			if(!(P.damage_type == DAMAGE_TYPE_BRUTE || P.damage_type == DAMAGE_TYPE_BURN))
+				projectile_dam_type = DAMAGE_TYPE_BURN
 				incoming_damage = round(incoming_damage / 4) //Damage from strange sources is converted to burn for energy-type projectiles, though severely decreased.
 			apply_damage(incoming_damage, P.damage_type, null, armorcheck, soakedcheck, is_sharp(P), has_edge(P), P)
 
@@ -269,8 +268,8 @@
 	icon_living = "floating"
 	maxHealth = 200
 	health = 200
-	melee_damage_lower = 25
-	melee_damage_upper = 30
+	legacy_melee_damage_lower = 25
+	legacy_melee_damage_upper = 30
 	attack_armor_pen = 15
 	attack_sharp = 1
 	attack_edge = 1
@@ -305,8 +304,8 @@
 	health = 150
 	response_harm = "viciously beaten"
 	harm_intent_damage = 5
-	melee_damage_lower = 15 //It's not the strongest of the bunch, but that doesn't mean it can't hurt you.
-	melee_damage_upper = 20
+	legacy_melee_damage_lower = 15 //It's not the strongest of the bunch, but that doesn't mean it can't hurt you.
+	legacy_melee_damage_upper = 20
 	attacktext = list("rammed")
 	speed = 0
 	environment_smash = 2
@@ -341,8 +340,8 @@
 	speak_emote = list("rumbles")
 	response_harm   = "harmlessly punched"
 	harm_intent_damage = 0
-	melee_damage_lower = 50
-	melee_damage_upper = 50
+	legacy_melee_damage_lower = 50
+	legacy_melee_damage_upper = 50
 	attacktext = list("brutally crushed")
 	friendly = list("pokes") //Anything nice the Behemoth would do would still Kill the Human. Leave it at poke.
 	speed = 5
@@ -352,7 +351,7 @@
 	icon_scale = 2
 	var/energy = 0
 	var/max_energy = 1000
-	armor = list(
+	armor_legacy_mob = list(
 				"melee" = 60,
 				"bullet" = 60,
 				"laser" = 60,
@@ -365,7 +364,7 @@
 							/spell/targeted/construct_advanced/slam
 							)
 
-/mob/living/simple_animal/construct/behemoth/bullet_act(var/obj/item/projectile/P)
+/mob/living/simple_animal/construct/behemoth/on_bullet_act(obj/projectile/proj, impact_flags, list/bullet_act_args)
 	var/reflectchance = 80 - round(P.damage/3)
 	if(prob(reflectchance))
 		visible_message("<span class='danger'>The [P.name] gets reflected by [src]'s shell!</span>", \
@@ -400,8 +399,8 @@
 	icon_living = "harvester"
 	maxHealth = 150
 	health = 150
-	melee_damage_lower = 20
-	melee_damage_upper = 25
+	legacy_melee_damage_lower = 20
+	legacy_melee_damage_upper = 25
 	attack_sharp = 1
 	attacktext = list("violently stabbed")
 	friendly = list("caresses")
@@ -409,7 +408,7 @@
 	environment_smash = 1
 	attack_sound = 'sound/weapons/pierce.ogg'
 
-	armor = list(
+	armor_legacy_mob = list(
 				"melee" = 10,
 				"bullet" = 20,
 				"laser" = 20,
@@ -429,15 +428,15 @@
 /mob/living/simple_animal/construct/proc/add_glow()
 	var/image/eye_glow = image(icon,"glow-[icon_state]")
 	eye_glow.plane = ABOVE_LIGHTING_PLANE
-	overlays += eye_glow
+	add_overlay(eye_glow)
 	set_light(2, -2, l_color = "#FFFFFF")
 
 /mob/living/simple_animal/construct/proc/remove_glow()
-	overlays.Cut()
+	cut_overlays()
 
 ////////////////HUD//////////////////////
 
-/mob/living/simple_animal/construct/Life()
+/mob/living/simple_animal/construct/Life(seconds, times_fired)
 	. = ..()
 	if(.)
 		if(fire)
@@ -453,7 +452,7 @@
 
 		silence_spells(purge)
 
-/mob/living/simple_animal/construct/updatehealth() //Special icons.
+/mob/living/simple_animal/construct/update_health() //Special icons.
 	health = getMaxHealth() - getToxLoss() - getFireLoss() - getBruteLoss()
 
 	//Alive, becoming dead

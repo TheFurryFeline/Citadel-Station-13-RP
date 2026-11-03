@@ -8,19 +8,18 @@
 	light_color = "#a91515"
 	circuit = /obj/item/circuitboard/security
 
-	var/mapping = 0//For the overview file, interesting bit of code.
 	var/list/network = list()
 
-	var/datum/tgui_module/camera/camera
+	var/datum/tgui_module_old/camera/camera
 
-/obj/machinery/computer/security/Initialize()
+/obj/machinery/computer/security/Initialize(mapload)
 	. = ..()
 	if(!LAZYLEN(network))
 		network = get_default_networks()
 	camera = new(src, network)
 
 /obj/machinery/computer/security/proc/get_default_networks()
-	. = GLOB.using_map.station_networks.Copy()
+	. = (LEGACY_MAP_DATUM).station_networks.Copy()
 
 /obj/machinery/computer/security/Destroy()
 	QDEL_NULL(camera)
@@ -29,9 +28,9 @@
 /obj/machinery/computer/security/ui_interact(mob/user, datum/tgui/ui = null)
 	camera.ui_interact(user, ui)
 
-/obj/machinery/computer/security/attack_hand(mob/user)
+/obj/machinery/computer/security/attack_hand(mob/user, datum/event_args/actor/clickchain/e_args)
 	add_fingerprint(user)
-	if(stat & (BROKEN|NOPOWER))
+	if(machine_stat & (BROKEN|NOPOWER))
 		return
 	ui_interact(user)
 
@@ -65,6 +64,7 @@
 	network = list(NETWORK_THUNDER)
 	density = 0
 	circuit = null
+	depth_projected = FALSE
 
 /obj/machinery/computer/security/telescreen/entertainment
 	name = "entertainment monitor"
@@ -77,19 +77,19 @@
 	circuit = /obj/item/circuitboard/security/telescreen/entertainment
 	var/obj/item/radio/radio = null
 
-/obj/machinery/computer/security/telescreen/entertainment/Initialize()
+/obj/machinery/computer/security/telescreen/entertainment/Initialize(mapload)
 	. = ..()
 	radio = new(src)
 	radio.listening = TRUE
 	radio.broadcasting = FALSE
-	radio.set_frequency(ENT_FREQ)
+	radio.set_frequency(FREQ_ENTERTAINMENT)
 	radio.canhear_range = 7 // Same as default sight range.
 	power_change()
 
 /obj/machinery/computer/security/telescreen/entertainment/power_change()
 	..()
 	if(radio)
-		if(stat & NOPOWER)
+		if(machine_stat & NOPOWER)
 			radio.on = FALSE
 		else
 			radio.on = TRUE

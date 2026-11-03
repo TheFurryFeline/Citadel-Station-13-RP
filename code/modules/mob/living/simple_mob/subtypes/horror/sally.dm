@@ -12,7 +12,6 @@
 	icon_living = "Sally"
 	icon_dead = "ws_head"
 	icon_rest = "Sally"
-	faction = "horror"
 	icon = 'icons/mob/horror_show/widehorror.dmi'
 	icon_gib = "generic_gib"
 	catalogue_data = list(/datum/category_item/catalogue/fauna/horror/Sally)
@@ -22,8 +21,8 @@
 	maxHealth = 200
 	health = 200
 
-	melee_damage_lower = 30
-	melee_damage_upper = 40
+	legacy_melee_damage_lower = 30
+	legacy_melee_damage_upper = 40
 	grab_resist = 100
 
 	response_help = "pets the"
@@ -34,30 +33,34 @@
 
 
 	say_list_type = /datum/say_list/Sally
-	ai_holder_type = /datum/ai_holder/simple_mob/horror
+	ai_holder_type = /datum/ai_holder/polaris/simple_mob/horror
 
 	hide_amount = 10
 	exotic_amount = 5
+
+/mob/living/simple_mob/horror/Sally/Initialize(mapload)
+	. = ..()
+	AddComponent(/datum/component/horror_aura)
 
 /mob/living/simple_mob/horror/Sally/death()
 	playsound(src, 'sound/h_sounds/lynx.ogg', 50, 1)
 	..()
 
-/mob/living/simple_mob/horror/Sally/bullet_act()
-    playsound(src, 'sound/h_sounds/holla.ogg', 50, 1)
-    ..()
+/mob/living/simple_mob/horror/Sally/on_bullet_act(obj/projectile/proj, impact_flags, list/bullet_act_args)
+	. = ..()
+	playsound(src, 'sound/h_sounds/holla.ogg', 50, 1)
 
-/mob/living/simple_mob/horror/Sally/attack_hand()
-    playsound(src, 'sound/h_sounds/holla.ogg', 50, 1)
-    ..()
+/mob/living/simple_mob/horror/Sally/attack_hand(mob/user, datum/event_args/actor/clickchain/e_args)
+	playsound(src, 'sound/h_sounds/holla.ogg', 50, 1)
+	..()
 
-/mob/living/simple_mob/horror/Sally/hitby()
-    playsound(src, 'sound/h_sounds/holla.ogg', 50, 1)
-    ..()
+/mob/living/simple_mob/horror/Sally/throw_impacted(atom/movable/AM, datum/thrownthing/TT)
+	. = ..()
+	playsound(src, 'sound/h_sounds/holla.ogg', 50, 1)
 
 /mob/living/simple_mob/horror/Sally/attackby()
-    playsound(src, 'sound/h_sounds/holla.ogg', 50, 1)
-    ..()
+	playsound(src, 'sound/h_sounds/holla.ogg', 50, 1)
+	..()
 
 /datum/say_list/Sally
 	speak = list("Yeeeeee?","Haaah! Gashuuuuuh!", "Gahgahgahgah...")

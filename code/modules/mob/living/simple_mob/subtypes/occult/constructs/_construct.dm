@@ -5,7 +5,7 @@
 /datum/category_item/catalogue/fauna/construct
 	name = "Constructs"
 	desc = "Although much of the information behind these occult constructs \
-	is presumably still classified, NanoTrasen's general briefings have confirmed \
+	is presumably still classified, Nanotrasen's general briefings have confirmed \
 	several key facts. Constructs are animate obsidian statues imbued with strong \
 	paracausal energies. They are considered extremely dangerous, and evidence of \
 	constructs necessitates immediate notification of the PMD."
@@ -25,7 +25,8 @@
 		/datum/category_item/catalogue/fauna/construct/juggernaut,
 		/datum/category_item/catalogue/fauna/construct/proteon,
 		/datum/category_item/catalogue/fauna/construct/shade,
-		/datum/category_item/catalogue/fauna/construct/wraith
+		/datum/category_item/catalogue/fauna/construct/wraith,
+		/datum/category_item/catalogue/fauna/construct/cyclops
 		)
 
 /mob/living/simple_mob/construct
@@ -40,7 +41,7 @@
 	mob_class = MOB_CLASS_DEMONIC
 
 	ui_icons = 'icons/mob/screen1_construct.dmi'
-	has_hands = 1
+	hand_count = 2
 	hand_form = "stone manipulators"
 
 	response_help  = "thinks better of touching"
@@ -71,7 +72,7 @@
 	shock_resist = 0.1 //Electricity isn't very effective on stone, especially that from hell.
 	poison_resist = 1.0
 
-	armor = list(
+	armor_legacy_mob = list(
 				"melee" = 10,
 				"bullet" = 10,
 				"laser" = 10,
@@ -81,15 +82,25 @@
 				"rad" = 100)
 
 	can_be_antagged = TRUE
-	faction = "cult"
+	iff_factions = MOB_IFF_FACTION_SANGUINE_CULT
 
 	supernatural = TRUE
+
+	vision_innate = /datum/vision/baseline/species_tier_3 //Supernatural Other Things Are Beyond Needing Light to see
 
 	var/construct_type = "shade"
 	var/list/construct_spells = list()
 //	var/do_glow = TRUE
 
-	ai_holder_type = /datum/ai_holder/simple_mob/melee
+	ai_holder_type = /datum/ai_holder/polaris/simple_mob/melee
+
+/mob/living/simple_mob/construct/Initialize(mapload)
+	. = ..()
+	name = "[initial(name)] ([rand(1, 1000)])"
+	real_name = name
+	for(var/spell in construct_spells)
+		src.add_spell(new spell, "const_spell_ready")
+	updateicon()
 
 /mob/living/simple_mob/construct/place_spell_in_hand(var/path)
 	if(!path || !ispath(path))
@@ -103,16 +114,14 @@
 		if(S.run_checks())
 			S.on_innate_cast(src)
 
-	if(l_hand && r_hand) //Make sure our hands aren't full.
-		if(istype(r_hand, /obj/item/spell)) //If they are full, perhaps we can still be useful.
-			var/obj/item/spell/r_spell = r_hand
-			if(r_spell.aspect == ASPECT_CHROMATIC) //Check if we can combine the new spell with one in our hands.
-				r_spell.on_combine_cast(S, src)
-		else if(istype(l_hand, /obj/item/spell))
-			var/obj/item/spell/l_spell = l_hand
-			if(l_spell.aspect == ASPECT_CHROMATIC) //Check the other hand too.
-				l_spell.on_combine_cast(S, src)
-		else //Welp
+	if(are_usable_hands_full())
+		var/found = FALSE
+		for(var/obj/item/spell/spell as anything in get_held_item_of_type(/obj/item/spell))
+			if(spell.aspect != ASPECT_CHROMATIC)
+				continue
+			found = TRUE
+			spell.on_combine_cast(S, src)
+		if(!found)
 			to_chat(src, "<span class='warning'>You require a free manipulator to use this power.</span>")
 			return 0
 
@@ -125,14 +134,6 @@
 
 /mob/living/simple_mob/construct/cultify()
 	return
-
-/mob/living/simple_mob/construct/Initialize(mapload)
-	. = ..()
-	name = text("[initial(name)] ([rand(1, 1000)])")
-	real_name = name
-	for(var/spell in construct_spells)
-		src.add_spell(new spell, "const_spell_ready")
-	updateicon()
 
 /*
 /mob/living/simple_mob/construct/update_icon()
@@ -151,8 +152,8 @@
 	if(istype(user, /mob/living/simple_mob/construct/artificer))
 		var/mob/living/simple_mob/construct/artificer/A = user
 		if(health < getMaxHealth())
-			var/repair_lower_bound = A.melee_damage_lower * -1
-			var/repair_upper_bound = A.melee_damage_upper * -1
+			var/repair_lower_bound = A.legacy_melee_damage_lower * -1
+			var/repair_upper_bound = A.legacy_melee_damage_upper * -1
 			adjustBruteLoss(rand(repair_lower_bound, repair_upper_bound))
 			adjustFireLoss(rand(repair_lower_bound, repair_upper_bound))
 			user.visible_message("<span class='notice'>\The [user] mends some of \the [src]'s wounds.</span>")
@@ -161,9 +162,9 @@
 		return
 	return ..()
 
-/mob/living/simple_mob/construct/examine(mob/user)
+/mob/living/simple_mob/construct/examine(mob/user, dist)
 	..(user)
-	var/msg = "<span cass='info'>*---------*\nThis is [icon2html(thing = src, target = user)] \a <EM>[src]</EM>!\n"
+	var/msg = "<span cass='info'>This is [icon2html(thing = src, target = user)] \a <EM>[src]</EM>!\n"
 	if (src.health < src.getMaxHealth())
 		msg += "<span class='warning'>"
 		if (src.health >= src.getMaxHealth()/2)
@@ -171,7 +172,6 @@
 		else
 			msg += "<B>It looks severely dented!</B>\n"
 		msg += "</span>"
-	msg += "*---------*</span>"
 
 	to_chat(user, msg)
 
@@ -184,8 +184,8 @@
 /mob/living/simple_mob/construct/proc/add_glow()
 	var/image/eye_glow = image(icon,"glow-[icon_state]")
 	eye_glow.plane = ABOVE_LIGHTING_PLANE
-	overlays += eye_glow
+	add_overlay(eye_glow)
 	set_light(2, -2, l_color = "#FFFFFF")
 
 /mob/living/simple_mob/construct/proc/remove_glow()
-	overlays.Cut()
+	cut_overlays()

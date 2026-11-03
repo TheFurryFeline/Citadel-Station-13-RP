@@ -26,16 +26,17 @@
 	has_skybox_image = TRUE
 
 /datum/event/infestation/get_skybox_image()
-	if(!cloud_hueshift)
-		cloud_hueshift = color_matrix_rotate_hue(rand(-3, 3) * 15)
-	var/image/res = image('icons/skybox/caelus.dmi', "rats")
-	res.color = cloud_hueshift
+	var/color1 = color_matrix_multiply(color_matrix_rotate_hue(rand(-3, 3) * 15), rgba_auto_greyscale_matrix("#8888ff"))
+	var/color2 = color_matrix_multiply(color_matrix_rotate_hue(rand(-3, 3) * 15), rgba_auto_greyscale_matrix("#88ff88"))
+	var/image/res = image('icons/skybox/caelus.dmi', "aurora")
 	res.appearance_flags = RESET_COLOR
 	res.blend_mode = BLEND_ADD
+	animate_color_shift(res, color1, color2, 1080 * 0.5, 1080 * 0.5)
 	return res
 
 /datum/event/infestation/setup()
-	announceWhen = rand(announceWhen, announceWhen + 3)
+	// make sure startWhen doesn't go to 0 or below!
+	announceWhen = rand(2, 5)
 	startWhen = announceWhen - 1
 	endWhen = 30
 
@@ -78,7 +79,7 @@
 			locstring = "hydroponics"
 			spawncount = rand(3,15)
 		if(LOC_ENGINEERING)
-			spawn_area_type = /area/engineering/
+			spawn_area_type = /area/engineering/hallway //To make sure that we don't have roaches suicide bomb the SME
 			locstring = "engineering"
 			spawncount = rand(3,15)
 	if(!locstring)
@@ -95,7 +96,7 @@
 			spawn_types = list(/mob/living/simple_mob/animal/passive/lizard)
 			vermstring = "lizards"
 		if(VERM_SPIDERS)
-			spawn_types = list(/obj/effect/spider/spiderling/no_crawl)
+			spawn_types = list(/obj/structure/spider/spiderling/no_crawl)
 			vermstring = "spiders"
 		if(VERM_ROACHES)
 			spawn_types = list(/mob/living/simple_mob/animal/roach/roachling)
@@ -105,21 +106,22 @@
 	var/list/vents = list()
 	for(var/areapath in typesof(spawn_area_type))
 		var/area/A = locate(areapath)
-		for(var/obj/machinery/atmospherics/unary/vent_pump/temp_vent in A.contents)
-			if(!temp_vent.welded && temp_vent.network && (temp_vent.loc.z in GLOB.using_map.station_levels))
+		for(var/obj/machinery/atmospherics/component/unary/vent_pump/temp_vent in A.contents)
+			if(!temp_vent.welded && temp_vent.network && (temp_vent.loc.z in (LEGACY_MAP_DATUM).station_levels))
 				vents += temp_vent
-
+	if (vents.len <= 0)
+		return
 	spawn(0)
 		var/num = spawncount
 		var/spawn_type = pick(spawn_types)
-		while(vents.len > 0 && num > 0)
-			var/obj/machinery/atmospherics/unary/vent_pump/V = pick(vents)
+		while(num > 0)
+			var/obj/machinery/atmospherics/component/unary/vent_pump/V = pick(vents)
 			num--
 			new spawn_type(V.loc)
 
 			/*	//This prevents spiderlings from maturing into hostile spiders. I'm disabling it because this event has no stakes otherwise.
 			if(vermin == VERM_SPIDERS)
-				var/obj/effect/spider/spiderling/S = new(T)
+				var/obj/structure/spider/spiderling/S = new(T)
 				S.amount_grown = -1
 			else
 				var/spawn_type = pick(spawn_types)
@@ -133,7 +135,7 @@
 
 // override: cancel if not main ship as this is too dumb to target the actual ship crossing it.
 /datum/event/infestation/overmap/start()
-	if(istype(victim, /obj/effect/overmap/visitable/ship/landable))
+	if(istype(victim, /obj/overmap/entity/visitable/ship/landable))
 		kill()
 		return
 	return ..()

@@ -4,6 +4,7 @@
 // Mappers: you can use "Generate Instances from Icon-states"
 //  to get the different pieces.
 /obj/structure/transit_tube
+	name = "transit tube"
 	icon = 'icons/obj/pipes/transit_tube.dmi'
 	icon_state = "E-W"
 	density = 1
@@ -19,11 +20,22 @@
 	//  this continues to work.
 	var/global/list/tube_dir_list = list(NORTH, SOUTH, EAST, WEST, NORTHEAST, NORTHWEST, SOUTHEAST, SOUTHWEST)
 
+//People are complaining the basic tube is too slow, but I don't want ALL tubes to be super fast. So here's the trick, I think.
+/obj/structure/transit_tube/high_velocity
+	inertia_move_delay = 0
+	exit_delay = 0.5
+	enter_delay = 0.5
+
+//A variant that will can be hidden underneath tiles similiar to pipes and such
+/obj/structure/transit_tube/hidden
+	plane = TURF_PLANE
+	layer = BELOW_TURF_LAYER
 
 // A place where tube pods stop, and people can get in or out.
 // Mappers: use "Generate Instances from Directions" for this
 //  one.
 /obj/structure/transit_tube/station
+	name = "Transit Tube Station"
 	icon = 'icons/obj/pipes/transit_tube_station.dmi'
 	icon_state = "closed"
 	exit_delay = 2
@@ -34,8 +46,6 @@
 	var/const/OPEN_DURATION = 6
 	var/const/CLOSE_DURATION = 6
 
-
-
 /obj/structure/transit_tube_pod
 	icon = 'icons/obj/pipes/transit_tube_pod.dmi'
 	icon_state = "pod"
@@ -43,50 +53,24 @@
 	anchored = 1.0
 	density = 1
 	var/moving = 0
-	var/datum/gas_mixture/air_contents = new()
-
+	var/datum/gas_mixture/air_contents = new(CELL_VOLUME)
 
 
 /obj/structure/transit_tube_pod/Destroy()
 	for(var/atom/movable/AM in contents)
-		AM.loc = loc
-
-	..()
-
-
-
-// When destroyed by explosions, properly handle contents.
-/obj/structure/transit_tube_pod/ex_act(severity)
-	switch(severity)
-		if(1.0)
-			for(var/atom/movable/AM in contents)
-				AM.loc = loc
-				AM.ex_act(severity++)
-
-			qdel(src)
-			return
-		if(2.0)
-			if(prob(50))
-				for(var/atom/movable/AM in contents)
-					AM.loc = loc
-					AM.ex_act(severity++)
-
-				qdel(src)
-				return
-		if(3.0)
-			return
+		AM.forceMove(loc)
+	return ..()
 
 /obj/structure/transit_tube_pod/Initialize(mapload)
 	. = ..()
 
-	air_contents.adjust_multi(/datum/gas/oxygen, MOLES_O2STANDARD * 2, /datum/gas/nitrogen, MOLES_N2STANDARD)
+	air_contents.adjust_multi(GAS_ID_OXYGEN, MOLES_O2STANDARD * 2, GAS_ID_NITROGEN, MOLES_N2STANDARD)
 	air_contents.temperature = T20C
 
 	// Give auto tubes time to align before trying to start moving
 	return INITIALIZE_HINT_LATELOAD
 
 /obj/structure/transit_tube_pod/LateInitialize()
-	. = ..()
 	follow_tube()
 
 /obj/structure/transit_tube/Initialize(mapload)
@@ -95,13 +79,15 @@
 	if(tube_dirs == null)
 		init_dirs()
 
+	update_icon()
+
 /obj/structure/transit_tube/Bumped(mob/AM as mob|obj)
 	var/obj/structure/transit_tube/T = locate() in AM.loc
 	if(T)
 		to_chat(AM, "<span class='warning'>The tube's support pylons block your way.</span>")
 		return ..()
 	else
-		AM.loc = src.loc
+		AM.forceMove(loc)
 		to_chat(AM, "<span class='info'>You slip under the tube.</span>")
 
 /obj/structure/transit_tube/station/Bumped(mob/AM as mob|obj)
@@ -111,11 +97,11 @@
 				to_chat(AM, "<span class='notice'>The pod is already occupied.</span>")
 				return
 			else if(!pod.moving && (pod.dir in directions()))
-				AM.loc = pod
+				AM.forceMove(pod)
 				return
 
 
-/obj/structure/transit_tube/station/attack_hand(mob/user as mob)
+/obj/structure/transit_tube/station/attack_hand(mob/user, datum/event_args/actor/clickchain/e_args)
 	if(!pod_moving)
 		for(var/obj/structure/transit_tube_pod/pod in loc)
 			if(!pod.moving && (pod.dir in directions()))
@@ -318,7 +304,7 @@
 			last_delay = current_tube.enter_delay(src, next_dir)
 			sleep(last_delay)
 			setDir(next_dir)
-			loc = next_loc // When moving from one tube to another, skip collision and such.
+			forceMove(next_loc)  // When moving from one tube to another, skip collision and such.
 			density = current_tube.density
 
 			if(current_tube && current_tube.should_stop_pod(src, next_dir))
@@ -353,9 +339,9 @@
 /obj/structure/transit_tube_pod/proc/mix_air()
 	var/datum/gas_mixture/environment = loc.return_air()
 
-	//note that share_ratio assumes both gas mixes have the same volume,
+	//note that share_with_mixture assumes both gas mixes have the same volume,
 	//so if the volume is changed this may need to be changed as well.
-	air_contents.share_ratio(environment, 1)
+	air_contents.environmental_share_simulated(environment, 1)
 
 // When the player moves, check if the pos is currently stopped at a station.
 //  if it is, check the direction. If the direction matches the direction of
@@ -365,7 +351,7 @@
 	if(istype(mob, /mob) && mob.client)
 		// If the pod is not in a tube at all, you can get out at any time.
 		if(!(locate(/obj/structure/transit_tube) in loc))
-			mob.loc = loc
+			mob.forceMove(loc)
 			mob.client.Move(get_step(loc, direction), direction)
 
 			//if(moving && istype(loc, /turf/space))
@@ -378,7 +364,7 @@
 					if(!station.pod_moving)
 						if(direction == station.dir)
 							if(station.icon_state == "open")
-								mob.loc = loc
+								mob.forceMove(loc)
 								mob.client.Move(get_step(loc, direction), direction)
 
 							else
@@ -593,3 +579,20 @@
 			return "SW"
 		else
 	return
+
+
+
+/// Z level transit tubes. I dont know how to get these to work why is all the movement based off the fucking pod itself
+/*
+/obj/structure/transit_tube/ender
+	//Will look like a regular transit tube
+	unacidable = 1
+	var/id = null
+
+/obj/structure/transit_tube/ender/init_dirs_automatic()
+	. = ..()
+	if(id)
+		for(var/obj/structure/transit_tube/ender/target in world)	//Having this check in world is prolly the wrong way of doing this @ktoma36
+			if(target.id == id)
+				. |= target
+*/

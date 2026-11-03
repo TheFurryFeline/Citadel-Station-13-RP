@@ -6,11 +6,8 @@
 	icon = 'icons/obj/statue.dmi'
 	icon_state = "human_male"
 	gender = NEUTER
-	catalogue_data = list()
-	var/cannot_be_seen = 1
-	var/mob/living/creator = null
 
-	faction = list("statue")
+	iff_factions = MOB_IFF_FACTION_STATUE
 
 	mob_class = MOB_CLASS_ABERRATION
 
@@ -23,9 +20,10 @@
 
 	harm_intent_damage = 10
 
-	melee_damage_lower = 10
-	melee_damage_upper = 18
-	attacktext = list("clawed")
+	legacy_melee_damage_lower = 10
+	legacy_melee_damage_upper = 18
+	attacktext = list("clawed", "mauls")
+	friendly = list("pats", "hugs")
 	attack_sound = 'sound/hallucinations/growl1.ogg'
 
 	taser_kill = 0
@@ -40,12 +38,47 @@
 	max_n2 = 0
 	minbodytemp = 0
 
-	movement_cooldown = -1
+	movement_base_speed = 5
 
-	ai_holder_type = /datum/ai_holder/simple_mob/statue
+	ai_holder_type = /datum/ai_holder/polaris/simple_mob/statue
 
-//Mob AI Code.
-/datum/ai_holder/simple_mob/statue
+/mob/living/simple_mob/living_statue/Initialize(mapload)
+	. = ..()
+
+	AddComponent(/datum/component/unobserved_actor, unobserved_flags = NO_OBSERVED_MOVEMENT | NO_OBSERVED_ATTACKS)
+	ADD_TRAIT(src, TRAIT_UNOBSERVANT, INNATE_TRAIT)
+
+	// Give spells
+	add_spell(new/spell/aoe_turf/flicker_lights)
+	add_spell(new/spell/aoe_turf/blindness)
+	add_spell(new/spell/aoe_turf/veil_of_darkness)
+
+/mob/living/simple_mob/living_statue/death()
+	new /obj/item/ectoplasm (src.loc)
+	new /obj/item/stack/material/marble (src.loc)
+	..(null,"shatters into a pile of rubble.")
+	ghostize()
+	qdel(src)
+
+//# Statue Subtypes
+
+/mob/living/simple_mob/living_statue/female
+	name = "statue"
+	desc = "An incredibly lifelike marble carving. Its eyes seem to follow you.."
+	icon = 'icons/obj/statue.dmi'
+	icon_state = "human_female"
+	gender = NEUTER
+
+//Statue Shadow Organ
+/obj/item/statue_darkness
+	name = "void organ"
+	desc = "You shouldn't be seeing this. Contact a Maintainer."
+	icon = 'icons/obj/items.dmi'
+	icon_state = "gift1"
+
+//# Mob AI Code.
+
+/datum/ai_holder/polaris/simple_mob/statue
 	hostile = TRUE
 	retaliate = FALSE
 	cooperative = FALSE
@@ -54,146 +87,93 @@
 	speak_chance = 0
 	wander = FALSE
 
-/*
-/datum/ai_holder/simple_mob/statue/walk_to_destination()
-	. = ..()
-	var/turf/T = get_turf(src)
-	if(T && destination && T.lighting_object)
-		if(T.get_lumcount()<0.1 && destination.get_lumcount()<0.1) // No one can see us in the darkness, right?
-			return null
-		if(T == destination)
-			destination = null
+//# Mob Code.
 
-/datum/ai_holder/simple_mob/statue/can_attack(atom/movable/the_target)
-	. = ..()
-	var/turf/T = get_turf(src)
-	if(T.get_lumcount()<0.1)
-		if(isliving(the_target))
-			var/mob/living/L = the_target
-			if(!L.client && !L.ckey)
-				return 0
-		else
-			return 1
-	else
-		return ..()
-*/
+//? Cannot talk
+/mob/living/simple_mob/living_statue/say(whispering = FALSE)
+	return FALSE
 
-// No movement while seen code.
-
-/mob/living/simple_mob/living_statue/Initialize(mapload, var/mob/living/creator)
-	. = ..()
-	// Give spells
-	//src.add_spell(/spell/noclothes)
-	//src.add_spell(/spell/aoe_turf/flicker_lights)
-	//src.add_spell(/spell/aoe_turf/blindness)
-
-	// Set creator
-	if(creator)
-		src.creator = creator
-
-/mob/living/simple_mob/living_statue/Move(turf/NewLoc)
-	if(can_be_seen(NewLoc))
-		if(client)
-			to_chat(src, "<span class='warning'>You cannot move, there are eyes on you!</span>")
-		return 0
-	return ..()
-
-/mob/living/simple_mob/living_statue/attack_target()
-	if(can_be_seen(get_turf(loc)))
-		if(client)
-			to_chat(src, "<span class='warning'>You cannot attack, there are eyes on you!</span>")
-		return FALSE
-	else
-		return ..()
-
-/mob/living/simple_mob/living_statue/face_atom()
-	if(!can_be_seen(get_turf(loc)))
-		..()
-
-/mob/living/simple_mob/living_statue/proc/can_be_seen(turf/destination)
-	if(!cannot_be_seen)
-		return null
-	// Check for darkness
-	var/turf/T = get_turf(loc)
-	if(T && destination && T.lighting_object)
-		if(T.get_lumcount()<0.1 && destination.get_lumcount()<0.1) // No one can see us in the darkness, right?
-			return null
-		if(T == destination)
-			destination = null
-
-	// We aren't in darkness, loop for viewers.
-	var/list/check_list = list(src)
-	if(destination)
-		check_list += destination
-
-	// This loop will, at most, loop twice.
-	for(var/atom/check in check_list)
-		for(var/mob/living/M in viewers(world.view + 1, check) - src)
-			if(M.client && CanAttack(M) && !M.silicon_privileges)
-				if(!M.eye_blind)
-					return M
-	return null
-
-// Cannot talk
-
-/mob/living/simple_mob/living_statue/say(whispering = 0)
-	return 0
 
 // Turn to dust when gibbed
-
 /mob/living/simple_mob/living_statue/gib()
 	dust()
 
-// Stop attacking clientless mobs
+//# Statue powers
 
-/mob/living/simple_mob/living_statue/proc/CanAttack(atom/the_target)
-	if(isliving(the_target))
-		var/mob/living/L = the_target
-		if(!L.client && !L.ckey)
-			return 0
-	return
-
-/*
-// Don't attack your creator if there is one
-
-/mob/living/simple_mob/living_statue/proc/ListTargets()
-	return . - creator
-
-// Statue powers
-
-// Flicker lights
+/// Flicker lights AOE Spell
 /spell/aoe_turf/flicker_lights
 	name = "Flicker Lights"
 	desc = "You will trigger a large amount of lights around you to flicker."
 
+	override_base = "grey"
+	hud_state = "blackout"
+
 	charge_max = 300
+	cooldown_min = 300
 	range = 14
 
-/spell/aoe_turf/flicker_lights/cast(list/targets,mob/user = usr)
-	for(var/turf/T in targets)
-		for(var/obj/machinery/light/L in T)
-			L.flicker()
-	return
 
-//Blind AOE
+/spell/aoe_turf/flicker_lights/choose_targets(mob/user = usr)
+	var/list/things = list()
+	var/turf/center = get_turf(user)
+	for(var/obj/machinery/light/nearby_light in range(center, range))
+		if(!nearby_light.on)
+			continue
+
+		things += nearby_light
+
+	return things
+
+/spell/aoe_turf/flicker_lights/cast(list/targets, mob/user = usr)
+	for(var/obj/machinery/light/victim as anything in targets)
+		victim.flicker()
+
+
+/// Blind AOE Spell
 /spell/aoe_turf/blindness
 	name = "Blindness"
 	desc = "Your prey will be momentarily blind for you to advance on them."
 
+	override_base = "grey"
+	hud_state = "wiz_blind"
+
 	message = "<span class='notice'>You glare your eyes.</span>"
+
+	charge_max = 600
+	cooldown_min = 600
 	range = 10
 
-/spell/aoe_turf/blindness/cast(list/targets,mob/user = usr)
-	for(var/mob/living/L)
-		var/turf/T = get_turf(L.loc)
-		if(T && (T in targets))
-			L.Blind(4)
-	return
-*/
+/spell/aoe_turf/blindness/choose_targets(mob/user = usr)
+	var/list/things = list()
+	var/turf/center = get_turf(user)
+	for(var/mob/living/nearby_mob in range(center, range))
+		if(nearby_mob == user || nearby_mob == center)
+			continue
 
-/mob/living/simple_mob/living_statue/female
-	name = "statue"
-	desc = "An incredibly lifelike marble carving. Its eyes seem to follow you.."
-	icon = 'icons/obj/statue.dmi'
-	icon_state = "human_female"
-	gender = NEUTER
+		things += nearby_mob
+
+	return things
+
+/spell/aoe_turf/blindness/cast(list/targets, mob/user = usr)
+	for(var/mob/living/victim as anything in targets)
+		victim.apply_status_effect(/datum/status_effect/sight/blindness, 4 SECONDS)
+
+/// Veil of Darkness Spell
+/spell/aoe_turf/veil_of_darkness
+	name = "Veil of Darkness"
+	desc = "You sheathe yourself in a powerful veil of darkness."
+
+	override_base = "grey"
+	hud_state = "wiz_smoke"
+
+	message = "<span class='notice'>You call upon the void.</span>"
+
+	charge_max = 1200
+	cooldown_min = 1200
+
+/spell/aoe_turf/veil_of_darkness/cast(list/targets, mob/user = user)
+	playsound(user, 'sound/effects/bamf.ogg', 50, 1, 5)
+	var/obj/item/statue_darkness/S = new
+	user.contents.Add(S)
+	S.set_light(5, -10, "#FFFFFF")
+	QDEL_IN(S, 2 SECONDS)

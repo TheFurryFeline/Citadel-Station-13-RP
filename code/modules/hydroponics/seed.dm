@@ -20,7 +20,7 @@
 	var/list/exude_gasses          // The plant will exude these gasses during its life.
 	var/kitchen_tag                // Used by the reagent grinder.
 	var/trash_type                 // Garbage item produced when eaten.
-	var/splat_type = /obj/effect/decal/cleanable/fruit_smudge // Graffiti decal.
+	var/splat_type = /obj/effect/debris/cleanable/fruit_smudge // Graffiti decal.
 	var/has_mob_product            // Mob products. (Dionaea, Walking Mushrooms, Angry Tomatoes)
 	var/apply_color_to_mob = TRUE  // Do we color the mob to match the plant?
 	var/has_item_product           // Item products. (Eggy)
@@ -65,8 +65,8 @@
 	set_trait(TRAIT_NUTRIENT_CONSUMPTION, 0.25)         // Plant eats this much per tick.
 	set_trait(TRAIT_PLANT_COLOUR,         "#46B543")    // Colour of the plant icon.
 
-	spawn(5)
-		sleep(-1)
+	spawn(0)
+		UNTIL(SSplants.initialized)
 		update_growth_stages()
 
 /datum/seed/proc/get_trait(var/trait)
@@ -89,8 +89,8 @@
 	if(!T)
 		return
 
-	var/datum/reagents/R = new/datum/reagents(100)
-	if(chems.len)
+	var/datum/reagent_holder/R = new/datum/reagent_holder(100)
+	if(chems && chems.len)
 		for(var/rid in chems)
 			var/injecting = min(5,max(1,get_trait(TRAIT_POTENCY)/3))
 			R.add_reagent(rid,injecting)
@@ -131,7 +131,7 @@
 
 		if(affecting)
 			to_chat(target, "<span class='danger'>\The [fruit]'s thorns pierce your [affecting.name] greedily!</span>")
-			target.apply_damage(damage, BRUTE, target_limb, blocked, soaked, "Thorns", sharp=1, edge=has_edge)
+			target.apply_damage(damage, DAMAGE_TYPE_BRUTE, target_limb, blocked, soaked, "Thorns", sharp=1, edge=has_edge)
 		else
 			to_chat(target, "<span class='danger'>\The [fruit]'s thorns pierce your flesh greedily!</span>")
 			target.adjustBruteLoss(damage)
@@ -140,7 +140,7 @@
 		has_edge = prob(get_trait(TRAIT_POTENCY)/5)
 		if(affecting)
 			to_chat(target, "<span class='danger'>\The [fruit]'s thorns dig deeply into your [affecting.name]!</span>")
-			target.apply_damage(damage, BRUTE, target_limb, blocked, "Thorns", sharp=1, edge=has_edge)
+			target.apply_damage(damage, DAMAGE_TYPE_BRUTE, target_limb, blocked, "Thorns", sharp=1, edge=has_edge)
 		else
 			to_chat(target, "<span class='danger'>\The [fruit]'s thorns dig deeply into your flesh!</span>")
 			target.adjustBruteLoss(damage)
@@ -154,10 +154,10 @@
 		var/body_coverage = HEAD|FACE|EYES|UPPER_TORSO|LOWER_TORSO|LEGS|FEET|ARMS|HANDS
 
 		for(var/obj/item/clothing/clothes in target)
-			if(target.item_is_in_hands(clothes))
-				continue
-			if(clothes.item_flags & THICKMATERIAL)
-				body_coverage &= ~(clothes.body_parts_covered)
+			if(target.is_holding(clothes))
+				return
+			if(clothes.clothing_flags & CLOTHING_THICK_MATERIAL)
+				body_coverage &= ~(clothes.body_cover_flags)
 
 		if(!body_coverage)
 			return
@@ -171,8 +171,8 @@
 
 //Splatter a turf.
 /datum/seed/proc/splatter(var/turf/T,var/obj/item/thrown)
-	if(splat_type && !(locate(/obj/effect/plant) in T))
-		var/obj/effect/plant/splat = new splat_type(T, src)
+	if(splat_type && !(locate(/obj/structure/plant) in T))
+		var/obj/structure/plant/splat = new splat_type(T, src)
 		if(!istype(splat)) // Plants handle their own stuff.
 			splat.name = "[thrown.name] [pick("smear","smudge","splatter")]"
 			if(get_trait(TRAIT_BIOLUM))
@@ -184,18 +184,18 @@
 			if(!flesh_colour) flesh_colour = get_trait(TRAIT_PRODUCT_COLOUR)
 			if(flesh_colour) splat.color = get_trait(TRAIT_PRODUCT_COLOUR)
 
-	if(chems)
+	if(chems && chems.len)
 		for(var/mob/living/M in T.contents)
 			if(!M.reagents)
 				continue
 			var/body_coverage = HEAD|FACE|EYES|UPPER_TORSO|LOWER_TORSO|LEGS|FEET|ARMS|HANDS
 			for(var/obj/item/clothing/clothes in M)
-				if(M.item_is_in_hands(clothes))
-					continue
-				body_coverage &= ~(clothes.body_parts_covered)
+				if(M.is_holding(clothes))
+					return
+				body_coverage &= ~(clothes.body_cover_flags)
 			if(!body_coverage)
 				continue
-			var/datum/reagents/R = M.reagents
+			var/datum/reagent_holder/R = M.reagents
 			var/mob/living/carbon/human/H = M
 			if(istype(H))
 				R = H.touching
@@ -334,7 +334,7 @@
 			s.set_up(3, 1, get_turf(target))
 			s.start()
 			var/turf/picked = get_turf(pick(turfs))                      // Just in case...
-			new/obj/effect/decal/cleanable/molten_item(get_turf(target)) // Leave a pile of goo behind for dramatic effect...
+			new/obj/effect/debris/cleanable/molten_item(get_turf(target)) // Leave a pile of goo behind for dramatic effect...
 			target.loc = picked                                          // And teleport them to the chosen location.
 
 			impact = 1
@@ -391,8 +391,8 @@
 	set_trait(TRAIT_POTENCY,rand(5,30),200,0)
 	set_trait(TRAIT_PRODUCT_ICON,pick(SSplants.plant_product_sprites))
 	set_trait(TRAIT_PLANT_ICON,pick(SSplants.plant_sprites))
-	set_trait(TRAIT_PLANT_COLOUR,"#[get_random_colour(0,75,190)]")
-	set_trait(TRAIT_PRODUCT_COLOUR,"#[get_random_colour(0,75,190)]")
+	set_trait(TRAIT_PLANT_COLOUR,get_random_colour(0,75,190))
+	set_trait(TRAIT_PRODUCT_COLOUR,get_random_colour(0,75,190))
 	update_growth_stages()
 
 	if(prob(20))
@@ -417,12 +417,12 @@
 
 	if(prob(5))
 		consume_gasses = list()
-		var/gas = pick(/datum/gas/oxygen,/datum/gas/nitrogen,/datum/gas/phoron,/datum/gas/carbon_dioxide)
+		var/gas = pick(GAS_ID_OXYGEN,GAS_ID_NITROGEN,GAS_ID_PHORON,GAS_ID_CARBON_DIOXIDE)
 		consume_gasses[gas] = rand(3,9)
 
 	if(prob(5))
 		exude_gasses = list()
-		var/gas = pick(/datum/gas/oxygen,/datum/gas/nitrogen,/datum/gas/phoron,/datum/gas/carbon_dioxide)
+		var/gas = pick(GAS_ID_OXYGEN,GAS_ID_NITROGEN,GAS_ID_PHORON,GAS_ID_CARBON_DIOXIDE)
 		exude_gasses[gas] = rand(3,9)
 
 	chems = list()
@@ -440,7 +440,7 @@
 
 		for(var/x=1;x<=additional_chems;x++)
 
-			var/new_chem = pick(SSchemistry.chemical_reagents)
+			var/new_chem = pick(SSchemistry.reagent_lookup)
 			if(new_chem in banned_chems)
 				continue
 			banned_chems += new_chem
@@ -491,7 +491,7 @@
 
 	if(prob(5))
 		set_trait(TRAIT_BIOLUM,1)
-		set_trait(TRAIT_BIOLUM_COLOUR,"#[get_random_colour(0,75,190)]")
+		set_trait(TRAIT_BIOLUM_COLOUR,get_random_colour(0,75,190))
 
 	set_trait(TRAIT_ENDURANCE,rand(60,100))
 	set_trait(TRAIT_YIELD,rand(3,15))
@@ -565,7 +565,7 @@
 					if(get_trait(TRAIT_BIOLUM))
 						source_turf.visible_message("<span class='notice'>\The [display_name] begins to glow!</span>")
 						if(prob(degree*2))
-							set_trait(TRAIT_BIOLUM_COLOUR,"#[get_random_colour(0,75,190)]")
+							set_trait(TRAIT_BIOLUM_COLOUR,get_random_colour(0,75,190))
 							source_turf.visible_message("<span class='notice'>\The [display_name]'s glow </span><font color='[get_trait(TRAIT_BIOLUM_COLOUR)]'>changes colour</font>!")
 					else
 						source_turf.visible_message("<span class='notice'>\The [display_name]'s glow dims...</span>")
@@ -736,7 +736,7 @@
 				product.set_light(get_trait(TRAIT_BIOLUM), l_color = clr)
 
 			if(get_trait(TRAIT_STINGS))
-				product.force = 1
+				product.damage_force = 1
 
 			//Handle spawning in living, mobile products (like dionaea).
 			if(istype(product,/mob/living))

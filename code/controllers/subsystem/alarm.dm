@@ -17,7 +17,7 @@ SUBSYSTEM_DEF(alarms)
 
 /datum/controller/subsystem/alarms/Initialize()
 	SSalarms.all_handlers = list(atmosphere_alarm, camera_alarm, fire_alarm, motion_alarm, power_alarm)
-	. = ..()
+	return SS_INIT_SUCCESS
 
 /datum/controller/subsystem/alarms/fire(resumed = FALSE)
 	if(!resumed)
@@ -41,4 +41,4 @@ SUBSYSTEM_DEF(alarms)
 	return active_alarm_cache.len
 
 /datum/controller/subsystem/alarms/stat_entry()
-	..("[number_of_active_alarms()] alarm\s")
+	return ..() + " [number_of_active_alarms()] alarm\s"

@@ -7,7 +7,7 @@
 	name = "Bot - Farmbot"
 	desc = "Farmbots are the fusion of mobile water tanks with sophisticated \
 	cultivation routines. Designed to ease the burden of maintaining Hydroponics \
-	gardens - often a vital face of life in space - these bots are always in demand."
+	gardens - often a vital facet of life in space - these bots are always in demand."
 	value = CATALOGUER_REWARD_TRIVIAL
 
 /mob/living/bot/farmbot
@@ -17,7 +17,7 @@
 	icon_state = "farmbot0"
 	health = 50
 	maxHealth = 50
-	req_one_access = list(access_robotics, access_hydroponics, access_xenobiology)
+	req_one_access = list(ACCESS_SCIENCE_ROBOTICS, ACCESS_GENERAL_BOTANY, ACCESS_SCIENCE_XENOBIO)
 	catalogue_data = list(/datum/category_item/catalogue/technology/bot/farmbot)
 
 	var/action = "" // Used to update icon
@@ -42,7 +42,7 @@
 		ui = new(user, src, "Farmbot", name)
 		ui.open()
 
-/mob/living/bot/farmbot/ui_data(mob/user, datum/tgui/ui, datum/ui_state/state)
+/mob/living/bot/farmbot/ui_data(mob/user, datum/tgui/ui)
 	var/list/data = ..()
 
 	data["on"] = on
@@ -69,7 +69,7 @@
 
 	return data
 
-/mob/living/bot/farmbot/attack_hand(mob/user)
+/mob/living/bot/farmbot/attack_hand(mob/user, datum/event_args/actor/clickchain/e_args)
 	. = ..()
 	if(.)
 		return
@@ -85,7 +85,7 @@
 			emagged = TRUE
 		return TRUE
 
-/mob/living/bot/farmbot/ui_act(action, list/params, datum/tgui/ui, datum/ui_state/state)
+/mob/living/bot/farmbot/ui_act(action, list/params, datum/tgui/ui, datum/ui_state/state, datum/event_args/actor/actor)
 	if(..())
 		return TRUE
 
@@ -115,14 +115,13 @@
 		if("replacenutri")
 			replaces_nutriment = !replaces_nutriment
 			. = TRUE
-		// VOREStation Edit: No automatic hydroponics
+		// No automatic hydroponics //TODO: Reconsider?
 		// if("collect")
 		// 	collects_produce = !collects_produce
 		// 	. = TRUE
 		// if("removedead")
 		// 	removes_dead = !removes_dead
 		// 	. = TRUE
-		// VOREStation Edit End
 
 /mob/living/bot/farmbot/update_icons()
 	if(on && action)
@@ -153,22 +152,21 @@
 				return
 
 /mob/living/bot/farmbot/calcTargetPath() // We need to land NEXT to the tray, because the tray itself is impassable
-	for(var/trayDir in list(NORTH, SOUTH, EAST, WEST))
-		target_path = AStar(get_turf(loc), get_step(get_turf(target), trayDir), /turf/proc/CardinalTurfsWithAccess, /turf/proc/Distance, 0, max_target_dist, id = botcard)
-		if(target_path)
-			break
+	if(isnull(target))
+		return
+	target_path = SSpathfinder.default_bot_pathfinding(src, get_turf(target), 1, 32)
 	if(!target_path)
 		ignore_list |= target
 		target = null
 		target_path = list()
-	return
 
 /mob/living/bot/farmbot/stepToTarget() // Same reason
+	if(isnull(target))
+		return
 	var/turf/T = get_turf(target)
 	if(!target_path.len || !T.Adjacent(target_path[target_path.len]))
 		calcTargetPath()
 	makeStep(target_path)
-	return
 
 /mob/living/bot/farmbot/UnarmedAttack(var/atom/A, var/proximity)
 	if(!..())
@@ -236,7 +234,7 @@
 
 		busy = 1
 		while(do_after(src, 10) && tank.reagents.total_volume < tank.reagents.maximum_volume)
-			tank.reagents.add_reagent("water", 100) //VOREStation Edit
+			tank.reagents.add_reagent("water", 100)
 			if(prob(5))
 				playsound(loc, 'sound/effects/slosh.ogg', 25, 1)
 
@@ -273,7 +271,7 @@
 	new /obj/item/material/minihoe(Tsec)
 	new /obj/item/reagent_containers/glass/bucket(Tsec)
 	new /obj/item/assembly/prox_sensor(Tsec)
-	new /obj/item/analyzer/plant_analyzer(Tsec)
+	new /obj/item/plant_analyzer(Tsec)
 
 	if(tank)
 		tank.loc = Tsec
@@ -333,7 +331,7 @@
 	var/build_step = 0
 	var/created_name = "Farmbot"
 	var/obj/tank
-	w_class = ITEMSIZE_NORMAL
+	w_class = WEIGHT_CLASS_NORMAL
 
 
 /obj/item/farmbot_arm_assembly/Initialize(mapload, theTank)
@@ -346,64 +344,53 @@
 
 /obj/structure/reagent_dispensers/watertank/attackby(var/obj/item/robot_parts/S, mob/user as mob)
 	if ((!istype(S, /obj/item/robot_parts/l_arm)) && (!istype(S, /obj/item/robot_parts/r_arm)))
-		..()
+		return ..()
+	if(!user.attempt_consume_item_for_construction(S))
 		return
-
-
 	to_chat(user, "You add the robot arm to [src].")
-
-	user.drop_from_inventory(S)
-	qdel(S)
 
 	new /obj/item/farmbot_arm_assembly(loc, src)
 
 /obj/structure/reagent_dispensers/watertank/attackby(var/obj/item/organ/external/S, mob/user as mob)
 	if ((!istype(S, /obj/item/organ/external/arm)) || S.robotic != ORGAN_ROBOT)
-		..()
+		return ..()
+	if(!user.attempt_consume_item_for_construction(S))
 		return
-
 	to_chat(user, "You add the robot arm to [src].")
-
-	user.drop_from_inventory(S)
-	qdel(S)
 
 	new /obj/item/farmbot_arm_assembly(loc, src)
 
 /obj/item/farmbot_arm_assembly/attackby(obj/item/W as obj, mob/user as mob)
 	..()
-	if((istype(W, /obj/item/analyzer/plant_analyzer)) && (build_step == 0))
+	if((istype(W, /obj/item/plant_analyzer)) && (build_step == 0))
+		if(!user.attempt_consume_item_for_construction(W))
+			return
 		build_step++
 		to_chat(user, "You add the plant analyzer to [src].")
 		name = "farmbot assembly"
 
-		user.remove_from_mob(W)
-		qdel(W)
-
 	else if((istype(W, /obj/item/reagent_containers/glass/bucket)) && (build_step == 1))
+		if(!user.attempt_consume_item_for_construction(W))
+			return
 		build_step++
 		to_chat(user, "You add a bucket to [src].")
 		name = "farmbot assembly with bucket"
 
-		user.remove_from_mob(W)
-		qdel(W)
-
 	else if((istype(W, /obj/item/material/minihoe)) && (build_step == 2))
+		if(!user.attempt_consume_item_for_construction(W))
+			return
 		build_step++
 		to_chat(user, "You add a minihoe to [src].")
 		name = "farmbot assembly with bucket and minihoe"
 
-		user.remove_from_mob(W)
-		qdel(W)
-
 	else if((isprox(W)) && (build_step == 3))
+		if(!user.attempt_consume_item_for_construction(W))
+			return
 		build_step++
 		to_chat(user, "You complete the Farmbot! Beep boop.")
 
 		var/mob/living/bot/farmbot/S = new /mob/living/bot/farmbot(get_turf(src), tank)
 		S.name = created_name
-
-		user.remove_from_mob(W)
-		qdel(W)
 		qdel(src)
 
 	else if(istype(W, /obj/item/pen))
@@ -416,5 +403,5 @@
 
 		created_name = t
 
-/obj/item/farmbot_arm_assembly/attack_hand(mob/user as mob)
+/obj/item/farmbot_arm_assembly/attack_hand(mob/user, datum/event_args/actor/clickchain/e_args)
 	return //it's a converted watertank, no you cannot pick it up and put it in your backpack

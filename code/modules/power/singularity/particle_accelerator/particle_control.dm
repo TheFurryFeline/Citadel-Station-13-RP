@@ -34,7 +34,7 @@
 	wires = null
 	return ..()
 
-/obj/machinery/particle_accelerator/control_box/attack_hand(mob/user as mob)
+/obj/machinery/particle_accelerator/control_box/attack_hand(mob/user, datum/event_args/actor/clickchain/e_args)
 	if(construction_state >= 3)
 		interact(user)
 	else if(construction_state == 2) // Wires exposed
@@ -80,7 +80,7 @@
 /obj/machinery/particle_accelerator/control_box/Topic(href, href_list)
 	..()
 	//Ignore input if we are broken, !silicon guy cant touch us, or nonai controlling from super far away
-	if(stat & (BROKEN|NOPOWER) || (get_dist(src, usr) > 1 && !istype(usr, /mob/living/silicon)) || (get_dist(src, usr) > 8 && !istype(usr, /mob/living/silicon/ai)))
+	if(machine_stat & (BROKEN|NOPOWER) || (get_dist(src, usr) > 1 && !istype(usr, /mob/living/silicon)) || (get_dist(src, usr) > 8 && !istype(usr, /mob/living/silicon/ai)))
 		usr.unset_machine()
 		usr << browse(null, "window=pacontrol")
 		return
@@ -136,10 +136,10 @@
 
 /obj/machinery/particle_accelerator/control_box/power_change()
 	..()
-	if(stat & NOPOWER)
+	if(machine_stat & NOPOWER)
 		active = 0
 		update_use_power(USE_POWER_OFF)
-	else if(!stat && construction_state == 3)
+	else if(!machine_stat && construction_state == 3)
 		update_use_power(USE_POWER_IDLE)
 
 
@@ -227,7 +227,7 @@
 
 
 /obj/machinery/particle_accelerator/control_box/interact(mob/user)
-	if((get_dist(src, user) > 1) || (stat & (BROKEN|NOPOWER)))
+	if((get_dist(src, user) > 1) || (machine_stat & (BROKEN|NOPOWER)))
 		if(!istype(user, /mob/living/silicon))
 			user.unset_machine()
 			user << browse(null, "window=pacontrol")
@@ -252,6 +252,6 @@
 		dat += "Particle Strength: [src.strength] "
 		dat += "<A href='?src=\ref[src];strengthdown=1'>--</A>|<A href='?src=\ref[src];strengthup=1'>++</A><BR><BR>"
 
-	user << browse(dat, "window=pacontrol;size=420x500")
+	user << browse(HTML_SKELETON(dat), "window=pacontrol;size=420x500")
 	onclose(user, "pacontrol")
 	return

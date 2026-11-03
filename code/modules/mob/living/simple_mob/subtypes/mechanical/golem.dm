@@ -20,7 +20,7 @@
 	maxHealth = 300
 	catalogue_data = list(/datum/category_item/catalogue/technology/drone/technomancer_golem)
 
-	faction = "golem"
+	iff_factions = MOB_IFF_FACTION_NEUTRAL // bad faction to use but whatever
 
 	response_help   = "pets"
 	response_disarm = "pushes away"
@@ -28,8 +28,8 @@
 	harm_intent_damage = 3
 	friendly = "hugs"
 
-	melee_damage_lower = 30 // It has a built in esword.
-	melee_damage_upper = 30
+	legacy_melee_damage_lower = 30 // It has a built in esword.
+	legacy_melee_damage_upper = 30
 	attack_sound = 'sound/weapons/blade1.ogg'
 	attacktext = list("slashed")
 	melee_attack_delay = 0.5 SECONDS // Even has custom attack animations.
@@ -39,7 +39,7 @@
 	special_attack_min_range = 0
 	special_attack_max_range = 7
 
-	ai_holder_type = /datum/ai_holder/simple_mob/melee
+	ai_holder_type = /datum/ai_holder/polaris/simple_mob/melee
 
 	var/obj/item/technomancer_core/golem/core = null
 	var/obj/item/spell/active_spell = null // Shield and ranged spells
@@ -81,7 +81,7 @@
 /mob/living/simple_mob/mechanical/technomancer_golem/death()
 	..()
 	visible_message("\The [src] disintegrates!")
-	new /obj/effect/decal/cleanable/blood/gibs/robot(src.loc)
+	new /obj/effect/debris/cleanable/blood/gibs/robot(src.loc)
 	var/datum/effect_system/spark_spread/s = new /datum/effect_system/spark_spread
 	s.set_up(3, 1, src)
 	s.start()
@@ -131,7 +131,7 @@
 	flick("golem_pre_melee", src) // To force the animation to restart.
 	icon_living = "golem_pre_melee" // The animation will hold after this point until melee_post_animation() gets called.
 	icon_state = "golem_pre_melee"
-	setClickCooldown(2)
+	setClickCooldownLegacy(2)
 
 /mob/living/simple_mob/mechanical/technomancer_golem/melee_post_animation(atom/A)
 	if(casting) // Some spells delete themselves when used, so we use a different variable set earlier instead.
@@ -141,19 +141,19 @@
 	flick("golem_post_melee", src)
 	icon_living = "golem"
 	icon_state = "golem"
-	setClickCooldown(6)
+	setClickCooldownLegacy(6)
 
 /mob/living/simple_mob/mechanical/technomancer_golem/ranged_pre_animation(atom/A)
 	flick("golem_pre_ranged", src)
 	icon_living = "golem_pre_ranged"
 	icon_state = "golem_pre_ranged"
-	setClickCooldown(5)
+	setClickCooldownLegacy(5)
 
 /mob/living/simple_mob/mechanical/technomancer_golem/ranged_post_animation(atom/A)
 	flick("golem_post_ranged", src)
 	icon_living = "golem"
 	icon_state = "golem"
-	setClickCooldown(5)
+	setClickCooldownLegacy(5)
 
 /mob/living/simple_mob/mechanical/technomancer_golem/special_pre_animation(atom/A)
 	casting = TRUE

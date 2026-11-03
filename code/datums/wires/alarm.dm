@@ -1,5 +1,5 @@
 /datum/wires/alarm
-	holder_type = /obj/machinery/alarm
+	holder_type = /obj/machinery/air_alarm
 	wire_count = 5
 	proper_name = "Air alarm"
 
@@ -12,20 +12,20 @@
 
 
 /datum/wires/alarm/interactable(mob/user)
-	var/obj/machinery/alarm/A = holder
+	var/obj/machinery/air_alarm/A = holder
 	if(A.panel_open)
 		return TRUE
 	return FALSE
 
 /datum/wires/alarm/get_status()
-	var/obj/machinery/alarm/A = holder
+	var/obj/machinery/air_alarm/A = holder
 	. = ..()
 	. += "The Air Alarm is [A.locked ? "locked." : "unlocked."]"
-	. += "The Air Alarm is [(A.shorted || (A.stat & (NOPOWER|BROKEN))) ? "offline." : "working properly!"]"
+	. += "The Air Alarm is [(A.shorted || (A.machine_stat & (NOPOWER|BROKEN))) ? "offline." : "working properly!"]"
 	. += "The 'AI control allowed' light is [A.aidisabled ? "off" : "on"]."
 
 /datum/wires/alarm/on_cut(wire, mend)
-	var/obj/machinery/alarm/A = holder
+	var/obj/machinery/air_alarm/A = holder
 	switch(wire)
 		if(WIRE_IDSCAN)
 			if(!mend)
@@ -45,13 +45,13 @@
 				A.apply_mode()
 
 		if(WIRE_AALARM)
-			if(A.alarm_area.atmosalert(2, A))
+			if(A.alarm_area.atmosalert(2, A, list("CIRCUIT FAULT")))
 				A.post_alert(2)
 			A.update_icon()
 	..()
 
 /datum/wires/alarm/on_pulse(wire)
-	var/obj/machinery/alarm/A = holder
+	var/obj/machinery/air_alarm/A = holder
 	switch(wire)
 		if(WIRE_IDSCAN)
 			A.locked = !A.locked

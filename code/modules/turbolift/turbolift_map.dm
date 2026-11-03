@@ -11,11 +11,23 @@
 	var/wall_type =  /turf/simulated/wall/elevator
 	var/floor_type = /turf/simulated/floor/tiled/dark
 	var/door_type =  /obj/machinery/door/airlock/lift
+	var/light_type =  /obj/machinery/light/no_nightshift
 
 	var/list/areas_to_use = list()
 
+	// rotated
+	var/got_rotated_by_maploader
+
+/obj/turbolift_map_holder/preloading_from_mapload_rotation(datum/dmm_context/context)
+	. = ..()
+	got_rotated_by_maploader = context.loaded_orientation
+
 /obj/turbolift_map_holder/Initialize(mapload)
 	. = ..()
+	return INITIALIZE_HINT_LATELOAD
+
+// since this WILL cause qdels (on other atoms) to be invoked
+/obj/turbolift_map_holder/LateInitialize()
 	// Create our system controller.
 	var/datum/turbolift/lift = new()
 
@@ -23,12 +35,30 @@
 	var/ux = x
 	var/uy = y
 	var/uz = z
+
+	// handle orientations
+	switch(got_rotated_by_maploader)
+		if(SOUTH)
+		if(NORTH)
+			ux -= lift_size_x
+			uy -= lift_size_y
+		if(EAST)
+			var/swap = lift_size_x
+			lift_size_x = lift_size_y
+			lift_size_y = swap
+			ux -= lift_size_x
+		if(WEST)
+			var/swap = lift_size_x
+			lift_size_x = lift_size_y
+			lift_size_y = swap
+			uy -= lift_size_y
+
 	var/udir = dir
 	moveToNullspace()
 
 	// These modifiers are used in relation to the origin
 	// to place the system control panels and doors.
-	var/make_walls = isnull(wall_type) ? FALSE : TRUE	//VOREStation addition: Wall-less elevator
+	var/make_walls = isnull(wall_type) ? FALSE : TRUE // Wall-less elevator
 	var/int_panel_x
 	var/int_panel_y
 	var/ext_panel_x
@@ -52,70 +82,70 @@
 		if(NORTH)
 
 			int_panel_x = ux + FLOOR(lift_size_x/2, 1)
-			int_panel_y = uy + (make_walls ? 1 : 0)	//VOREStation edit: Wall-less elevator
+			int_panel_y = uy + (make_walls ? 1 : 0)
 			ext_panel_x = ux
 			ext_panel_y = ey + 2
 
 			door_x1 = ux + 1
-			door_y1 = ey + (make_walls ? 0 : 1)	//VOREStation edit: Wall-less elevator
+			door_y1 = ey + (make_walls ? 0 : 1)
 			door_x2 = ex - 1
 			door_y2 = ey + 1
 
-			light_x1 = ux + (make_walls ? 1 : 0)	//VOREStation edit: Wall-less elevator
-			light_y1 = uy + (make_walls ? 1 : 0)	//VOREStation edit: Wall-less elevator
-			light_x2 = ux + lift_size_x - (make_walls ? 1 : 0)	//VOREStation edit: Wall-less elevator
-			light_y2 = uy + (make_walls ? 1 : 0)	//VOREStation edit: Wall-less elevator
+			light_x1 = ux + (make_walls ? 1 : 0)
+			light_y1 = uy + (make_walls ? 1 : 0)
+			light_x2 = ux + lift_size_x - (make_walls ? 1 : 0)
+			light_y2 = uy + (make_walls ? 1 : 0)
 
 		if(SOUTH)
 
 			int_panel_x = ux + FLOOR(lift_size_x/2, 1)
-			int_panel_y = ey - (make_walls ? 1 : 0)	//VOREStation edit: Wall-less elevator
+			int_panel_y = ey - (make_walls ? 1 : 0)
 			ext_panel_x = ex
 			ext_panel_y = uy - 2
 
 			door_x1 = ux + 1
 			door_y1 = uy - 1
 			door_x2 = ex - 1
-			door_y2 = uy - (make_walls ? 0 : 1)	//VOREStation edit: Wall-less elevator
+			door_y2 = uy - (make_walls ? 0 : 1)
 
-			light_x1 = ux + (make_walls ? 1 : 0)	//VOREStation edit: Wall-less elevator
-			light_y1 = uy + (make_walls ? 2 : 1)	//VOREStation edit: Wall-less elevator
-			light_x2 = ux + lift_size_x - (make_walls ? 1 : 0)	//VOREStation edit: Wall-less elevator
-			light_y2 = uy + lift_size_y - (make_walls ? 1 : 0)	//VOREStation edit: Wall-less elevator
+			light_x1 = ux + (make_walls ? 1 : 0)
+			light_y1 = uy + lift_size_y - (make_walls ? 1 : 0)
+			light_x2 = ux + lift_size_x - (make_walls ? 1 : 0)
+			light_y2 = uy + lift_size_y - (make_walls ? 1 : 0)
 
 		if(EAST)
 
-			int_panel_x = ux+(make_walls ? 1 : 0)	//VOREStation edit: Wall-less elevator
+			int_panel_x = ux+(make_walls ? 1 : 0)
 			int_panel_y = uy + FLOOR(lift_size_y/2, 1)
 			ext_panel_x = ex+2
 			ext_panel_y = ey
 
-			door_x1 = ex + (make_walls ? 0 : 1)	//VOREStation edit: Wall-less elevator
+			door_x1 = ex + (make_walls ? 0 : 1)
 			door_y1 = uy + 1
 			door_x2 = ex + 1
 			door_y2 = ey - 1
 
-			light_x1 = ux + (make_walls ? 1 : 0)	//VOREStation edit: Wall-less elevator
-			light_y1 = uy + (make_walls ? 1 : 0)	//VOREStation edit: Wall-less elevator
-			light_x2 = ux + (make_walls ? 1 : 0)	//VOREStation edit: Wall-less elevator
-			light_y2 = uy + lift_size_x - (make_walls ? 1 : 0)	//VOREStation edit: Wall-less elevator
+			light_x1 = ux + (make_walls ? 1 : 0)
+			light_y1 = uy + (make_walls ? 1 : 0)
+			light_x2 = ux + (make_walls ? 1 : 0)
+			light_y2 = uy + lift_size_x - (make_walls ? 1 : 0)
 
 		if(WEST)
 
-			int_panel_x = ex-(make_walls ? 1 : 0)	//VOREStation edit: Wall-less elevator
+			int_panel_x = ex-(make_walls ? 1 : 0)
 			int_panel_y = uy + FLOOR(lift_size_y/2, 1)
 			ext_panel_x = ux-2
 			ext_panel_y = uy
 
 			door_x1 = ux - 1
 			door_y1 = uy + 1
-			door_x2 = ux - (make_walls ? 0 : 1)	//VOREStation edit: Wall-less elevator
+			door_x2 = ux - (make_walls ? 0 : 1)
 			door_y2 = ey - 1
 
-			light_x1 = ux + lift_size_x - (make_walls ? 1 : 0)	//VOREStation edit: Wall-less elevator
-			light_y1 = uy + (make_walls ? 1 : 0)	//VOREStation edit: Wall-less elevator
-			light_x2 = ux + lift_size_x - (make_walls ? 1 : 0)	//VOREStation edit: Wall-less elevator
-			light_y2 = uy + lift_size_y - (make_walls ? 1 : 0)	//VOREStation edit: Wall-less elevator
+			light_x1 = ux + lift_size_x - (make_walls ? 1 : 0)
+			light_y1 = uy + (make_walls ? 1 : 0)
+			light_x2 = ux + lift_size_x - (make_walls ? 1 : 0)
+			light_y2 = uy + lift_size_y - (make_walls ? 1 : 0)
 
 	// Generate each floor and store it in the controller datum.
 	for(var/cz = uz;cz<=ez;cz++)
@@ -131,14 +161,14 @@
 				var/turf/checking = locate(tx,ty,cz)
 
 				if(!istype(checking))
-					log_debug("[name] cannot find a component turf at [tx],[ty] on floor [cz]. Aborting.")
+					log_debug(SPAN_DEBUGERROR("[name] cannot find a component turf at [tx],[ty] on floor [cz]. Aborting."))
 					qdel(src)
 					return
 
 				// Update path appropriately if needed.
-				var/swap_to = /turf/simulated/open
+				var/swap_to = /turf/baseturf_bottom
 				if(cz == uz)                                                                       // Elevator.
-					if(wall_type && (tx == ux || ty == uy || tx == ex || ty == ey) && !(tx >= door_x1 && tx <= door_x2 && ty >= door_y1 && ty <= door_y2))	//VOREStation edit: Wall-less elevator
+					if(wall_type && (tx == ux || ty == uy || tx == ex || ty == ey) && !(tx >= door_x1 && tx <= door_x2 && ty >= door_y1 && ty <= door_y2))
 						swap_to = wall_type
 					else
 						swap_to = floor_type
@@ -153,7 +183,7 @@
 
 				// Clear out contents.
 				for(var/atom/movable/thing in checking.contents)
-					if(thing.simulated)
+					if(!(thing.atom_flags & ATOM_ABSTRACT))
 						qdel(thing)
 
 				if(tx >= ux && tx <= ex && ty >= uy && ty <= ey)
@@ -170,10 +200,11 @@
 						checking.ChangeTurf(floor_type)
 						checking = locate(tx,ty,cz)
 					for(var/atom/movable/thing in checking.contents)
-						if(thing.simulated)
+						if(!(thing.atom_flags & ATOM_ABSTRACT))
 							qdel(thing)
 				if(checking.type == floor_type) // Don't build over empty space on lower levels.
 					var/obj/machinery/door/airlock/lift/newdoor = new door_type(checking)
+					newdoor.setDir(got_rotated_by_maploader ? got_rotated_by_maploader : dir)
 					if(internal)
 						lift.doors += newdoor
 						newdoor.lift = cfloor
@@ -188,21 +219,9 @@
 		panel_ext.setDir(udir)
 		cfloor.ext_panel = panel_ext
 
-        // Place lights
-		var/turf/placing1 = locate(light_x1, light_y1, cz)
-		var/turf/placing2 = locate(light_x2, light_y2, cz)
-		var/obj/machinery/light/light1 = new(placing1)
-		var/obj/machinery/light/light2 = new(placing2)
-		if(udir == NORTH || udir == SOUTH)
-			light1.setDir(WEST)
-			light2.setDir(EAST)
-		else
-			light1.setDir(SOUTH)
-			light2.setDir(NORTH)
-
 		// Update area.
 		if(az > areas_to_use.len)
-			log_debug("Insufficient defined areas in turbolift datum, aborting.")
+			log_debug(SPAN_DEBUGWARNING("Insufficient defined areas in turbolift datum, aborting."))
 			qdel(src)
 			return
 
@@ -220,5 +239,17 @@
 	lift.control_panel_interior.setDir(udir)
 	lift.current_floor = lift.floors[1]
 
+	// Place interior lights
+	if(light_type)
+		var/turf/placing1 = locate(light_x1, light_y1, uz)
+		var/turf/placing2 = locate(light_x2, light_y2, uz)
+		var/obj/machinery/light/light1 = new light_type(placing1, light)
+		var/obj/machinery/light/light2 = new light_type(placing2, light)
+		if(udir == NORTH || udir == SOUTH)
+			light1.setDir(WEST)
+			light2.setDir(EAST)
+		else
+			light1.setDir(SOUTH)
+			light2.setDir(NORTH)
+
 	lift.open_doors()
-	return INITIALIZE_HINT_QDEL

@@ -38,6 +38,12 @@
 	light_power = 0.5
 	light_color = "#0066FF"
 
+/obj/effect/projectile/impact/laser_pink
+	icon_state = "impact_pink"
+	light_range = 2
+	light_power = 0.5
+	light_color = "#ff00dd"
+
 /obj/effect/projectile/impact/emitter
 	icon_state = "impact_emitter"
 	light_range = 2
@@ -68,6 +74,18 @@
 	light_power = -2
 	light_color = "#FFFFFF"
 
+/obj/effect/projectile/impact/inversion_heavy
+	icon_state = "impact_invert_heavy"
+	light_range = 3
+	light_power = -2
+	light_color = "#FFFFFF"
+
+/obj/effect/projectile/impact/oblivion
+	icon_state = "impact_oblivion"
+	light_range = 4
+	light_power = -2
+	light_color = "#FFFFFF"
+
 /obj/effect/projectile/impact/darkmatter
 	icon_state = "impact_darkb"
 	light_range = 2
@@ -80,11 +98,16 @@
 	light_power = 3
 	light_color = "#3300ff"
 
-//VOREStation edit: medigun
+/obj/effect/projectile/impact/secutorkill
+	icon_state = "impact_laser"
+	light_range = 2
+	light_power = 0.5
+	light_color = "#BF2F4B"
+
+// Medigun
 /obj/effect/projectile/impact/medigun
 	icon = 'icons/obj/projectiles_vr.dmi'
 	icon_state = "impact_medbeam"
 	light_range = 2
 	light_power = 0.5
 	light_color = "#80F5FF"
-//VOREStation edit ends

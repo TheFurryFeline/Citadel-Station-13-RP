@@ -21,15 +21,15 @@
 	user.teleop = src
 	radio.channels = user.aiRadio.keyslot2.channels
 	controlling_ai = user
-	verbs += /mob/living/silicon/robot/drone/proc/release_ai_control_verb
+	add_verb(src, /mob/living/silicon/robot/drone/proc/release_ai_control_verb)
 	local_transmit = FALSE
 	languages = controlling_ai.languages.Copy()
 	speech_synthesizer_langs = controlling_ai.speech_synthesizer_langs.Copy()
 	set_stat(CONSCIOUS)
 	if(user.mind)
-		user.mind.transfer_to(src)
+		user.mind.transfer(src)
 	else
-		key = user.key
+		user.transfer_client_to(src)
 	updatename()
 	to_chat(src, "<span class='notice'><b>You have shunted your primary control loop into \a [initial(name)].</b> Use the <b>Release Control</b> verb to return to your core.</span>")
 
@@ -59,15 +59,15 @@
 	user.teleop = new_drone
 	new_drone.radio.channels = user.aiRadio.keyslot2.channels
 	new_drone.controlling_ai = user
-	new_drone.verbs += /mob/living/silicon/robot/drone/proc/release_ai_control_verb
+	add_verb(new_drone, /mob/living/silicon/robot/drone/proc/release_ai_control_verb)
 	new_drone.local_transmit = FALSE
 	new_drone.languages = new_drone.controlling_ai.languages.Copy()
 	new_drone.speech_synthesizer_langs = new_drone.controlling_ai.speech_synthesizer_langs.Copy()
 
 	if(user.mind)
-		user.mind.transfer_to(new_drone)
+		user.mind.transfer(new_drone)
 	else
-		new_drone.key = user.key
+		user.transfer_client_to(new_drone)
 	new_drone.updatename()
 
 	to_chat(new_drone, "<span class='notice'><b>You have shunted your primary control loop into \a [initial(new_drone.name)].</b> Use the <b>Release Control</b> verb to return to your core.</span>")
@@ -83,16 +83,16 @@
 
 	if(controlling_ai)
 		if(mind)
-			mind.transfer_to(controlling_ai)
+			mind.transfer(controlling_ai)
 		else
-			controlling_ai.key = key
+			transfer_client_to(controlling_ai)
 		to_chat(controlling_ai, "<span class='notice'>[message]</span>")
 		controlling_ai.controlling_drone = null
 		controlling_ai.teleop = null
 		controlling_ai = null
 
 	radio.channels = module.channels
-	verbs -= /mob/living/silicon/robot/drone/proc/release_ai_control_verb
+	remove_verb(src, /mob/living/silicon/robot/drone/proc/release_ai_control_verb)
 	module.remove_languages(src) //Removes excess, adds 'default'.
 	remove_language("Robot Talk")
 	add_language("Robot Talk", 0)

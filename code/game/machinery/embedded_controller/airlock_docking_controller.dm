@@ -15,13 +15,24 @@
 	tag_secure = 1
 	valid_actions = list("cycle_ext", "cycle_int", "force_ext", "force_int", "abort", "toggle_override")
 
-/obj/machinery/embedded_controller/radio/airlock/docking_port/Initialize()
+/obj/machinery/embedded_controller/radio/airlock/docking_port/Initialize(mapload)
 	. = ..()
 	airlock_program = new/datum/computer/file/embedded_program/airlock/docking(src)
 	docking_program = new/datum/computer/file/embedded_program/docking/airlock(src, airlock_program)
 	program = docking_program
 	if(display_name)
 		docking_program.display_name = display_name
+
+/obj/machinery/embedded_controller/radio/airlock/docking_port/Destroy()
+	QDEL_NULL(airlock_program)
+	QDEL_NULL(docking_program)
+	return ..()
+
+/obj/machinery/embedded_controller/radio/airlock/docking_port/process()
+	airlock_program?.process()
+	docking_program?.process()
+
+	update_icon()
 
 /obj/machinery/embedded_controller/radio/airlock/docking_port/attackby(obj/item/W, mob/user)
 	if(istype(W,/obj/item/multitool)) //give them part of code, would take few tries to get full
@@ -35,7 +46,7 @@
 	else
 		..()
 
-/obj/machinery/embedded_controller/radio/airlock/docking_port/ui_data(mob/user)
+/obj/machinery/embedded_controller/radio/airlock/docking_port/ui_data(mob/user, datum/tgui/ui)
 	var/datum/computer/file/embedded_program/docking/airlock/docking_program = program
 	var/datum/computer/file/embedded_program/airlock/docking/airlock_program = docking_program.airlock_program
 
@@ -84,28 +95,26 @@
 
 //tell the docking port to start getting ready for docking - e.g. pressurize
 /datum/computer/file/embedded_program/docking/airlock/prepare_for_docking()
-	airlock_program.begin_dock_cycle()
+	airlock_program.state = STATE_CYCLING_IN
 
 //are we ready for docking?
 /datum/computer/file/embedded_program/docking/airlock/ready_for_docking()
-	return !airlock_program || airlock_program.done_cycling()
+	return airlock_program.state == STATE_OPEN_IN
 
 //we are docked, open the doors or whatever.
 /datum/computer/file/embedded_program/docking/airlock/finish_docking()
 	airlock_program.enable_mech_regulation()
 	airlock_program.open_doors()
 
+// TODO IMPLEMENT THESE procs that return 0
+
 //tell the docking port to start getting ready for undocking - e.g. close those doors.
 /datum/computer/file/embedded_program/docking/airlock/prepare_for_undocking()
-	airlock_program.stop_cycling()
-	airlock_program.close_doors()
-	airlock_program.disable_mech_regulation()
+	airlock_program.state = STATE_SEALING
 
 //are we ready for undocking?
 /datum/computer/file/embedded_program/docking/airlock/ready_for_undocking()
-	var/ext_closed = airlock_program.check_exterior_door_secured()
-	var/int_closed = airlock_program.check_interior_door_secured()
-	return (ext_closed || int_closed)
+	return airlock_program.state == STATE_CLOSED
 
 ///////////////////////////////////////////////////////////////////////////////
 //An airlock controller to be used by the airlock-based docking port controller.
@@ -128,23 +137,19 @@
 	toggleDoor(memory["interior_status"], tag_interior_door, memory["secure"], "open")
 	toggleDoor(memory["exterior_status"], tag_exterior_door, memory["secure"], "open")
 
-/datum/computer/file/embedded_program/airlock/docking/cycleDoors(var/target)
-	if (master_prog.undocked() || master_prog.override_enabled)	//only allow the port to be used as an airlock if nothing is docked here or the override is enabled
-		..(target)
-
 /*** DEBUG VERBS ***
 
 /datum/computer/file/embedded_program/docking/proc/print_state()
-	to_world("id_tag: [id_tag]")
-	to_world("dock_state: [dock_state]")
-	to_world("control_mode: [control_mode]")
-	to_world("tag_target: [tag_target]")
-	to_world("response_sent: [response_sent]")
+	TO_WORLD("id_tag: [id_tag]")
+	TO_WORLD("dock_state: [dock_state]")
+	TO_WORLD("control_mode: [control_mode]")
+	TO_WORLD("tag_target: [tag_target]")
+	TO_WORLD("response_sent: [response_sent]")
 
 /datum/computer/file/embedded_program/docking/post_signal(datum/signal/signal, comm_line)
-	to_world("Program [id_tag] sent a message!")
+	TO_WORLD("Program [id_tag] sent a message!")
 	print_state()
-	to_world("[id_tag] sent command \"[signal.data["command"]]\" to \"[signal.data["recipient"]]\"")
+	TO_WORLD("[id_tag] sent command \"[signal.data["command"]]\" to \"[signal.data["recipient"]]\"")
 	..(signal)
 
 /obj/machinery/embedded_controller/radio/airlock/docking_port/verb/view_state()

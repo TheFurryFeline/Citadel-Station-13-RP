@@ -10,15 +10,16 @@
 	description_info = "You can use this on airlocks or APCs to try to hack them without cutting wires."
 	icon = 'icons/obj/device.dmi'
 	icon_state = "multitool"
-	force = 5.0
-	w_class = ITEMSIZE_SMALL
-	throwforce = 5.0
+	damage_force = 5.0
+	w_class = WEIGHT_CLASS_SMALL
+	belt_storage_class = BELT_CLASS_SMALL
+	throw_force = 5.0
 	throw_range = 15
 	throw_speed = 3
 	drop_sound = 'sound/items/drop/multitool.ogg'
 	pickup_sound = 'sound/items/pickup/multitool.ogg'
 
-	matter = list(MAT_STEEL = 50, MAT_GLASS = 20)
+	materials_base = list(MAT_STEEL = 50, MAT_GLASS = 20)
 
 	var/mode_index = 1
 	var/toolmode = MULTITOOL_MODE_STANDARD
@@ -26,26 +27,31 @@
 
 	origin_tech = list(TECH_MAGNET = 1, TECH_ENGINEERING = 1)
 	var/obj/machinery/telecomms/buffer // simple machine buffer for device linkage
-	var/obj/machinery/clonepod/connecting //same for cryopod linkage
+	var/obj/machinery/resleeving/body_printer/connecting //same for cryopod linkage
 	var/obj/machinery/connectable	//Used to connect machinery.
 	var/datum/weakref_wiring //Used to store weak references for integrated circuitry. This is now the Omnitool.
 	var/colorable = 1
 	var/color_overlay = null
-	toolspeed = 1
+	tool_speed = 1
+	tool_behavior = TOOL_MULTITOOL
+	tool_sound = 'sound/weapons/empty.ogg'
 
 /obj/item/multitool/Initialize(mapload)
 	. = ..()
 	if(colorable)
 		switch(pick("red","green","yellow"))
 			if ("red")
-				overlays += "multi_r"
+				add_overlay("multi_r")
 			if ("green")
-				overlays += "multi_g"
+				add_overlay("multi_g")
 			if ("yellow")
 				return
 		update_icon()
 
-/obj/item/multitool/attack_self(mob/living/user)
+/obj/item/multitool/attack_self(mob/user, datum/event_args/actor/actor)
+	. = ..()
+	if(.)
+		return
 	var/choice = alert("What do you want to do with \the [src]?","Multitool Menu", "Switch Mode", "Clear Buffers", "Cancel")
 	switch(choice)
 		if("Cancel")
@@ -65,6 +71,25 @@
 
 	update_icon()
 
+/obj/item/multitool/using_as_item(atom/target, datum/event_args/actor/clickchain/clickchain, clickchain_flags)
+	if(is_holosphere_shell(target) && clickchain.using_intent == INTENT_HELP)
+		var/mob/living/simple_mob/holosphere_shell/shell = target
+		// can't revive them if they are not dead
+		if(shell.stat != DEAD)
+			to_chat(clickchain.performer, SPAN_NOTICE("[target] does not need to be rebooted!"))
+			return CLICKCHAIN_DID_SOMETHING
+		// can't revive them if they are not full hp
+		if(shell.health == shell.maxHealth)
+			to_chat(clickchain.performer, SPAN_NOTICE("You begin rebooting [target] using \the [src]"))
+			if(do_after(clickchain.performer, 10 SECONDS))
+				// make sure they're still dead and full hp
+				if(shell.stat != DEAD || shell.health != shell.maxHealth)
+					to_chat(clickchain.performer, SPAN_NOTICE("[target] is no longer in a condition where you can reboot them."))
+					return CLICKCHAIN_DID_SOMETHING
+				// revive the holosphere shell
+				visible_message(SPAN_NOTICE("[clickchain.performer] successfully reboots [target] using \the [src]."))
+				shell.revive(full_heal = TRUE, restore_nutrition = FALSE)
+				return CLICKCHAIN_DID_SOMETHING
 	return ..()
 
 /obj/item/multitool/is_multitool()
@@ -86,7 +111,7 @@
 /obj/item/multitool/cyborg
 	name = "multitool"
 	desc = "Optimised and stripped-down version of a regular multitool."
-	toolspeed = 0.5
+	tool_speed = 0.5
 	colorable = 0
 
 /datum/category_item/catalogue/anomalous/precursor_a/alien_multitool
@@ -107,9 +132,21 @@
 	catalogue_data = list(/datum/category_item/catalogue/anomalous/precursor_a/alien_multitool)
 	icon = 'icons/obj/abductor.dmi'
 	icon_state = "multitool"
-	toolspeed = 0.1
+	tool_speed = 0.1
 	origin_tech = list(TECH_MAGNET = 5, TECH_ENGINEERING = 5)
 	colorable = 0
+
+/obj/item/multitool/clockwork
+	name = "clockwork multitool"
+	desc = "A slender brass device, adorned with three prongs pulsing with energy, a faintly glowing red gem, and a screen in the shape of an eye."
+	icon = 'icons/obj/clockwork.dmi'
+	icon_state = "multitool"
+	tool_speed = 0.1
+	colorable = 0
+
+/obj/item/multitool/clockwork/examine(mob/user, dist)
+	. = ..()
+	. += SPAN_NZCRENTR("The multitool seems to flash and pulse with impatience, the 'eye' appearing to be both bored and frustrated.")
 
 //Colored Variants
 /obj/item/multitool/red
@@ -117,3 +154,16 @@
 
 /obj/item/multitool/green
 	color_overlay = "multi_g"
+
+/obj/item/multitool/crystal
+	name = "crystalline multitool"
+	desc = "A crystalline energy patterning tool of an alien make."
+	icon_state = "crystal_multitool"
+	item_state = "crystal_tool"
+	icon = 'icons/obj/crystal_tools.dmi'
+	materials_base = list(MATERIAL_CRYSTAL = 1250)
+
+/obj/item/multitool/crystal/Initialize()
+	. = ..()
+	icon_state = initial(icon_state)
+	item_state = initial(item_state)

@@ -1,4 +1,4 @@
-/mob/living/silicon/robot/drone/say(var/message, var/datum/language/speaking = null, var/verb="says", var/alt_name="", var/whispering = 0)
+/mob/living/silicon/robot/drone/say(var/message, var/datum/prototype/language/speaking = null, var/verb="says", var/alt_name="", var/whispering = 0)
 	if(local_transmit)
 		if (src.client)
 			if(client.prefs.muted & MUTE_IC)
@@ -14,7 +14,7 @@
 			return emote(copytext(message,2))
 
 		if(copytext(message,1,2) == ";")
-			var/datum/language/L = GLOB.all_languages["Drone Talk"]
+			var/datum/prototype/language/L = RSlanguages.fetch(LANGUAGE_ID_DRONE_BINARY)
 			if(istype(L))
 				return L.broadcast(src,trim(copytext(message,2)))
 
@@ -29,10 +29,10 @@
 			if(D.client && D.local_transmit)
 				to_chat(D, "<b>[src]</b> transmits, \"[message]\"")
 
-		for (var/mob/M in player_list)
+		for (var/mob/M in GLOB.player_list)
 			if (istype(M, /mob/new_player))
 				continue
-			else if(M.stat == DEAD &&  M.is_preference_enabled(/datum/client_preference/ghost_ears))
+			else if(M.stat == DEAD &&  M.get_preference_toggle(/datum/game_preference_toggle/observer/ghost_ears))
 				if(M.client) to_chat(M, "<b>[src]</b> transmits, \"[message]\"")
 		return 1
 	return ..(message, 0)

@@ -71,7 +71,7 @@ GLOBAL_DATUM(error_cache, /datum/error_viewer/error_cache)
 	if (linear)
 		back_to_param += ";viewruntime_linear=1"
 
-	return "<a href='?_src_=holder;[HrefToken()];viewruntime=[REF(src)][back_to_param]'>[linktext]</a>"
+	return "<a href='byond://?_src_=holder;[HrefToken()];viewruntime=[REF(src)][back_to_param]'>[linktext]</a>"
 
 /datum/error_viewer/error_cache
 	var/list/errors = list()
@@ -80,7 +80,7 @@ GLOBAL_DATUM(error_cache, /datum/error_viewer/error_cache)
 
 /datum/error_viewer/error_cache/show_to(user, datum/error_viewer/back_to, linear)
 	var/html = build_header()
-	html += "<b>[global.total_runtimes]</b> runtimes, <b>[GLOB.total_runtimes_skipped]</b> skipped<br><br>"
+	html += "<b>[GLOB.total_runtimes]</b> runtimes, <b>[GLOB.total_runtimes_skipped]</b> skipped<br><br>"
 	if (!linear)
 		html += "organized | [make_link("linear", null, 1)]<hr>"
 		var/datum/error_viewer/error_source/error_source
@@ -117,15 +117,12 @@ GLOBAL_DATUM(error_cache, /datum/error_viewer/error_cache)
 	if (error_source.next_message_at <= world.time)
 		var/const/viewtext = "\[view]" // Nesting these in other brackets went poorly
 		//log_debug("Runtime in <b>[e.file]</b>, line <b>[e.line]</b>: <b>[html_encode(e.name)]</b> [error_entry.make_link(viewtext)]")
-		/*
-		var/err_msg_delay
-		if(config)
-			err_msg_delay = CONFIG_GET(number/error_msg_delay)
-		else
-			var/datum/config_entry/CE = /datum/config_entry/number/error_msg_delay
-			err_msg_delay = initial(CE.config_entry_value)
-		*/
 		var/err_msg_delay = 50
+		// if(config?.loaded)
+		// 	err_msg_delay = CONFIG_GET(number/error_msg_delay)
+		// else
+		// 	var/datum/config_entry/CE = /datum/config_entry/number/error_msg_delay
+		// 	err_msg_delay = initial(CE.default)
 		error_source.next_message_at = world.time + err_msg_delay
 
 /datum/error_viewer/error_source
@@ -185,12 +182,12 @@ GLOBAL_DATUM(error_cache, /datum/error_viewer/error_cache)
 	var/html = build_header(back_to, linear)
 	html += "[name]<div class='runtime'>[desc]</div>"
 	if (usr_ref)
-		html += "<br><b>usr</b>: <a href='?_src_=vars;[HrefToken()];Vars=[usr_ref]'>VV</a>"
-		html += " <a href='?_src_=holder;[HrefToken()];adminplayeropts=[usr_ref]'>PP</a>"
-		html += " <a href='?_src_=holder;[HrefToken()];adminplayerobservefollow=[usr_ref]'>Follow</a>"
+		html += "<br><b>usr</b>: <a href='byond://?_src_=vars;[HrefToken()];Vars=[usr_ref]'>VV</a>"
+		html += " <a href='byond://?_src_=holder;[HrefToken()];adminplayeropts=[usr_ref]'>PP</a>"
+		html += " <a href='byond://?_src_=holder;[HrefToken()];adminplayerobservefollow=[usr_ref]'>Follow</a>"
 		if (istype(usr_loc))
-			html += "<br><b>usr.loc</b>: <a href='?_src_=vars;[HrefToken()];Vars=[REF(usr_loc)]'>VV</a>"
-			html += " <a href='?_src_=holder;[HrefToken()];adminplayerobservecoodjump=1;X=[usr_loc.x];Y=[usr_loc.y];Z=[usr_loc.z]'>JMP</a>"
+			html += "<br><b>usr.loc</b>: <a href='byond://?_src_=vars;[HrefToken()];Vars=[REF(usr_loc)]'>VV</a>"
+			html += " <a href='byond://?_src_=holder;[HrefToken()];adminplayerobservecoodjump=1;X=[usr_loc.x];Y=[usr_loc.y];Z=[usr_loc.z]'>JMP</a>"
 
 	browse_to(user, html)
 

@@ -1,9 +1,13 @@
-#define MED_DATA_R_LIST  2 //Record list
-#define MED_DATA_MAINT   3 //Records maintenance
-#define MED_DATA_RECORD  4 //Record
-#define MED_DATA_V_DATA  5 //Virus database
-#define MED_DATA_MEDIBOT 6 //Medibot monitor
-
+///Record list
+#define MED_DATA_R_LIST  2
+///Records maintenance
+#define MED_DATA_MAINT   3
+///Record
+#define MED_DATA_RECORD  4
+///Virus database
+#define MED_DATA_V_DATA  5
+///Medibot monitor
+#define MED_DATA_MEDIBOT 6
 #define FIELD(N, V, E) list(field = N, value = V, edit = E)
 #define MED_FIELD(N, V, E, LB) list(field = N, value = V, edit = E, line_break = LB)
 
@@ -14,7 +18,7 @@
 	icon_screen = "medcomp"
 	density = TRUE
 	light_color = "#315ab4"
-	req_one_access = list(access_medical, access_forensics_lockers, access_robotics)
+	req_one_access = list(ACCESS_MEDICAL_MAIN, ACCESS_SECURITY_FORENSICS, ACCESS_SCIENCE_ROBOTICS)
 	circuit = /obj/item/circuitboard/med_data
 	var/obj/item/card/id/scan = null
 	var/authenticated = null
@@ -68,7 +72,7 @@
 	return ..()
 
 /obj/machinery/computer/med_data/verb/eject_id()
-	set category = "Object"
+	set category = VERB_CATEGORY_OBJECT
 	set name = "Eject ID Card"
 	set src in oview(1)
 
@@ -77,7 +81,7 @@
 	if(scan)
 		to_chat(usr, "You remove \the [scan] from \the [src].")
 		scan.loc = get_turf(src)
-		if(!usr.get_active_hand() && istype(usr,/mob/living/carbon/human))
+		if(!usr.get_active_held_item() && istype(usr,/mob/living/carbon/human))
 			usr.put_in_hands(scan)
 		scan = null
 	else
@@ -85,8 +89,9 @@
 	return
 
 /obj/machinery/computer/med_data/attackby(var/obj/item/O, var/mob/user)
-	if(istype(O, /obj/item/card/id) && !scan && user.unEquip(O))
-		O.loc = src
+	if(istype(O, /obj/item/card/id) && !scan)
+		if(!user.attempt_insert_item_for_installation(O, src))
+			return
 		scan = O
 		to_chat(user, "You insert \the [O].")
 		ui_interact(user)
@@ -96,7 +101,7 @@
 /obj/machinery/computer/med_data/attack_ai(user as mob)
 	return attack_hand(user)
 
-/obj/machinery/computer/med_data/attack_hand(mob/user as mob)
+/obj/machinery/computer/med_data/attack_hand(mob/user, datum/event_args/actor/clickchain/e_args)
 	if(..())
 		return
 
@@ -111,7 +116,7 @@
 		ui.set_autoupdate(FALSE)
 
 
-/obj/machinery/computer/med_data/ui_data(mob/user)
+/obj/machinery/computer/med_data/ui_data(mob/user, datum/tgui/ui)
 	var/data[0]
 	data["temp"] = temp
 	data["scan"] = scan ? scan.name : null
@@ -160,9 +165,9 @@
 					fields[++fields.len] = MED_FIELD("Blood Type", active2.fields["b_type"], "blood_type", FALSE)
 					fields[++fields.len] = MED_FIELD("DNA", active2.fields["b_dna"], "b_dna", TRUE)
 					fields[++fields.len] = MED_FIELD("Brain Type", active2.fields["brain_type"], "brain_type", TRUE)
-					fields[++fields.len] = MED_FIELD("Important Notes", active2.fields["notes"], "notes", TRUE)
 					if(!active2.fields["comments"] || !islist(active2.fields["comments"]))
 						active2.fields["comments"] = list()
+					medical["notes"] = active2.fields["notes"]
 					medical["comments"] = active2.fields["comments"]
 					medical["empty"] = 0
 				else
@@ -197,7 +202,7 @@
 	data["modal"] = ui_modal_data(src)
 	return data
 
-/obj/machinery/computer/med_data/ui_act(action, params)
+/obj/machinery/computer/med_data/ui_act(action, list/params, datum/tgui/ui, datum/ui_state/state, datum/event_args/actor/actor)
 	if(..())
 		return TRUE
 
@@ -216,14 +221,14 @@
 		if("scan")
 			if(scan)
 				scan.forceMove(loc)
-				if(ishuman(usr) && !usr.get_active_hand())
+				if(ishuman(usr) && !usr.get_active_held_item())
 					usr.put_in_hands(scan)
 				scan = null
 			else
-				var/obj/item/I = usr.get_active_hand()
+				var/obj/item/I = usr.get_active_held_item()
 				if(istype(I, /obj/item/card/id))
-					usr.drop_item()
-					I.forceMove(src)
+					if(!usr.attempt_insert_item_for_installation(I, src))
+						return
 					scan = I
 		if("login")
 			var/login_type = text2num(params["login_type"])
@@ -254,7 +259,7 @@
 			if("logout")
 				if(scan)
 					scan.forceMove(loc)
-					if(ishuman(usr) && !usr.get_active_hand())
+					if(ishuman(usr) && !usr.get_active_held_item())
 						usr.put_in_hands(scan)
 					scan = null
 				authenticated = null
@@ -309,7 +314,6 @@
 					R.fields["alg_d"] = "No allergies have been detected in this patient."
 					R.fields["cdi"] = "None"
 					R.fields["cdi_d"] = "No diseases have been diagnosed at the moment."
-					R.fields["notes"] = "No notes."
 					data_core.medical += R
 					active2 = R
 					screen = MED_DATA_RECORD
@@ -347,7 +351,7 @@
 					printing = TRUE
 					// playsound(loc, 'sound/goonstation/machines/printer_dotmatrix.ogg', 50, TRUE)
 					SStgui.update_uis(src)
-					addtimer(CALLBACK(src, .proc/print_finish), 5 SECONDS)
+					addtimer(CALLBACK(src, PROC_REF(print_finish)), 5 SECONDS)
 			else
 				return FALSE
 
@@ -438,7 +442,7 @@
 		<br>\nDetails: [active2.fields["alg_d"]]<br>\n
 		<br>\nCurrent Diseases: [active2.fields["cdi"]] (per disease info placed in log/comment section)
 		<br>\nDetails: [active2.fields["cdi_d"]]<br>\n
-		<br>\nImportant Notes:
+		<br>\nMedical Notes Summary:
 		<br>\n\t[active2.fields["notes"]]<br>\n
 		<br>\n
 		<center><b>Comments/Log</b></center><br>"}
@@ -452,19 +456,19 @@
 	SStgui.update_uis(src)
 
 /**
-  * Sets a temporary message to display to the user
-  *
-  * Arguments:
-  * * text - Text to display, null/empty to clear the message from the UI
-  * * style - The style of the message: (color name), info, success, warning, danger, virus
-  */
+ * Sets a temporary message to display to the user
+ *
+ * Arguments:
+ * * text - Text to display, null/empty to clear the message from the UI
+ * * style - The style of the message: (color name), info, success, warning, danger, virus
+ */
 /obj/machinery/computer/med_data/proc/set_temp(text = "", style = "info", update_now = FALSE)
 	temp = list(text = text, style = style)
 	if(update_now)
 		SStgui.update_uis(src)
 
 /obj/machinery/computer/med_data/emp_act(severity)
-	if(stat & (BROKEN|NOPOWER))
+	if(machine_stat & (BROKEN|NOPOWER))
 		..(severity)
 		return
 
@@ -472,7 +476,7 @@
 		if(prob(10/severity))
 			switch(rand(1,6))
 				if(1)
-					R.fields["name"] = "[pick(pick(first_names_male), pick(first_names_female))] [pick(last_names)]"
+					R.fields["name"] = "[pick(pick(GLOB.first_names_male), pick(GLOB.first_names_female))] [pick(GLOB.last_names)]"
 				if(2)
 					R.fields["sex"]	= pick("Male", "Female")
 				if(3)
@@ -494,15 +498,18 @@
 	..(severity)
 
 
-/obj/machinery/computer/med_data/laptop
-	name = "Medical Laptop"
-	desc = "A cheap laptop."
-	icon_state = "laptop"
-	icon_keyboard = "laptop_key"
-	icon_screen = "medlaptop"
-	throwpass = 1 //VOREStation Edit - Really???
-	density = FALSE			//THIS IS A LAPTOP.	--CITADEL EDIT
-
+/obj/machinery/computer/med_data/laptop //TODO: Change name to PCU and update mapdata to include replacement computers
+	name = "\improper Medical Laptop"
+	desc = "A personal computer unit. It seems to have only the medical records program installed."
+	icon_screen = "pcu_generic"
+	icon_state = "pcu_med"
+	icon_keyboard = "pcu_key"
+	light_color = "#5284e7"
+	circuit = /obj/item/circuitboard/med_data/pcu
+	density = FALSE
+	depth_level = 0
+	depth_projected = FALSE
+	climb_allowed = FALSE
 
 #undef FIELD
 #undef MED_FIELD

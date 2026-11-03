@@ -30,20 +30,22 @@
 
 	maxHealth = 65
 	health = 40
-	movement_cooldown = 4
+	movement_base_speed = 10 / 4
 
 	response_help = "pets the"
 	response_disarm = "gently pushes aside the"
 	response_harm = "hits the"
-	faction = "vagrant"
+
+	iff_factions = MOB_IFF_FACTION_SWARMER
+
 	harm_intent_damage = 3
-	melee_damage_lower = 6
-	melee_damage_upper = 9
+	legacy_melee_damage_lower = 6
+	legacy_melee_damage_upper = 9
 	light_color = "#8a0707"
 	attacktext = "drugged"
 	attack_sound = 'sound/weapons/bite.ogg'
 
-	ai_holder_type = /datum/ai_holder/simple_mob/melee
+	ai_holder_type = /datum/ai_holder/polaris/simple_mob/melee
 	say_list_type = /datum/say_list/disbot
 
 	var/poison_chance = 100
@@ -67,5 +69,5 @@
 // Does actual poison injection, after all checks passed.
 /mob/living/simple_mob/mechanical/infectionbot/proc/inject_poison(mob/living/L, target_zone)
 	if(prob(poison_chance))
-		to_chat(L, "<span class='warning'>You feel a tiny prick.</span>")
+		L.custom_pain(SPAN_WARNING("You feel a tiny prick."), 1, TRUE)
 		L.reagents.add_reagent(poison_type, poison_per_bite)

@@ -7,63 +7,65 @@
 
 /obj/machinery/mining/drill
 	name = "mining drill head"
-	desc = "An enormous drill."
+	desc = "An enormous drill.\n <span class='notice'>\[Accepts Upgrades\]</span>"
 	icon_state = "mining_drill"
 	circuit = /obj/item/circuitboard/miningdrill
 	var/braces_needed = 2
-	var/list/supports = list()
+	var/list/obj/machinery/mining/brace/supports = list()
 	var/supported = 0
 	var/active = 0
+	var/orecount = 0 //current amount of ores it's holding
 	var/list/resource_field = list()
-	var/obj/item/radio/intercom/faultreporter = new /obj/item/radio/intercom{channels=list("Supply")}(null)
-
+	var/obj/item/radio/intercom/faultreporter
+	var/drill_id = 0
+	var/datum/component/gps_signal/gps_component
 	var/list/ore_types = list(
-		MAT_HEMATITE = /obj/item/ore/iron,
-		MAT_URANIUM = /obj/item/ore/uranium,
-		MAT_GOLD = /obj/item/ore/gold,
-		MAT_SILVER = /obj/item/ore/silver,
-		MAT_COPPER = /obj/item/ore/copper,
-		MAT_DIAMOND = /obj/item/ore/diamond,
-		MAT_PHORON = /obj/item/ore/phoron,
-		MAT_OSMIUM = /obj/item/ore/osmium,
-		"hydrogen" = /obj/item/ore/hydrogen,
-		"silicates" = /obj/item/ore/glass,
-		MAT_CARBON = /obj/item/ore/coal
+		MAT_HEMATITE = /obj/item/stack/ore/iron,
+		MAT_URANIUM = /obj/item/stack/ore/uranium,
+		MAT_GOLD = /obj/item/stack/ore/gold,
+		MAT_SILVER = /obj/item/stack/ore/silver,
+		MAT_COPPER = /obj/item/stack/ore/copper,
+		MAT_DIAMOND = /obj/item/stack/ore/diamond,
+		MAT_PHORON = /obj/item/stack/ore/phoron,
+		MAT_OSMIUM = /obj/item/stack/ore/osmium,
+		"hydrogen" = /obj/item/stack/ore/hydrogen,
+		"silicates" = /obj/item/stack/ore/glass,
+		MAT_CARBON = /obj/item/stack/ore/coal,
+		MAT_MARBLE = /obj/item/stack/ore/marble,
+		MAT_LEAD = /obj/item/stack/ore/lead,
 		)
 
 	//Upgrades
 	var/harvest_speed
 	var/capacity
 	var/charge_use
-	var/exotic_drilling
 	var/obj/item/cell/cell = null
-
-	// Found with an advanced laser. exotic_drilling >= 1
-	var/list/ore_types_uncommon = list(
-		MAT_MARBLE = /obj/item/ore/marble,
-		MAT_LEAD = /obj/item/ore/lead
-		)
-
-	// Found with an ultra laser. exotic_drilling >= 2
-	var/list/ore_types_rare = list(
-		MAT_VERDANTIUM = /obj/item/ore/verdantium
-		)
 
 	//Flags
 	var/need_update_field = 0
 	var/need_player_check = 0
 
 /obj/machinery/mining/drill/Initialize(mapload)
+	faultreporter = new /obj/item/radio/intercom{channels=list("Supply")}(null)
+	gps_component = AddComponent(/datum/component/gps_signal, "DRILL#[drill_id]")
+	change_id(drill_id) //yes, this means mappers can assign it their own ID number on roundstart
 	. = ..()
 	component_parts = list(
 		new /obj/item/stock_parts/matter_bin(src),
 		new /obj/item/stock_parts/capacitor(src),
 		new /obj/item/stock_parts/micro_laser(src),
-		new /obj/item/cell/high(src)
+		new /obj/item/cell/basic/tier_1/large(src)
 	)
 	RefreshParts()
 
-/obj/machinery/mining/drill/get_cell()
+/obj/machinery/mining/drill/examine()
+	. += ..()
+	. += SPAN_NOTICE("It looks like the storage cache can fit about [capacity - orecount] more ores before it reaches capacity.")
+	. += SPAN_NOTICE("The charge meter for the cell in the drill reads about [round(cell.percent())]%.")
+	. += SPAN_INFO("Alt-click to empty the drill's cache, if you have an ore satchel on you or an ore box nearby.")
+	. += SPAN_INFO("Use a multitool to change the drill's ID.")
+
+/obj/machinery/mining/drill/get_cell(inducer)
 	return cell
 
 /obj/machinery/mining/drill/process(delta_time)
@@ -91,7 +93,7 @@
 	//Drill through the flooring, if any.
 	if(istype(get_turf(src), /turf/simulated))
 		var/turf/simulated/T = get_turf(src)
-		T.ex_act(2.0)
+		LEGACY_EX_ACT(T, 2, null)
 
 	//Dig out the tasty ores.
 	if(resource_field.len)
@@ -113,17 +115,22 @@
 
 		for(var/metal in GLOB.ore_types)
 
-			if(contents.len >= capacity)
+			orecount = 0
+			for(var/obj/item/stack/ore/s in contents)
+				orecount += s.amount
+
+			if(orecount >= capacity)
 				system_error("Insufficient storage space.")
 				active = 0
 				need_player_check = 1
 				update_icon()
 				return
 
-			if(contents.len + total_harvest >= capacity)
-				total_harvest = capacity - contents.len
+			if(orecount + total_harvest >= capacity)
+				total_harvest = capacity - orecount
 
-			if(total_harvest <= 0) break
+			if(total_harvest <= 0)
+				break
 			if(harvesting.resources[metal])
 
 				found_resource  = 1
@@ -160,8 +167,8 @@
 		if(istype(O, /obj/item/multitool))
 			var/newtag = text2num(sanitizeSafe(input(user, "Enter new ID number or leave empty to cancel.", "Assign ID number") as text, 4))
 			if(newtag)
-				name = "[initial(name)] #[newtag]"
-				to_chat(user, "<span class='notice'>You changed the drill ID to: [newtag]</span>")
+				change_id(newtag)
+				to_chat(user, "<span class='notice'>You changed the drill ID to: [drill_id]</span>")
 			return
 		if(default_deconstruction_screwdriver(user, O))
 			return
@@ -175,15 +182,15 @@
 		if(cell)
 			to_chat(user, "The drill already has a cell installed.")
 		else
-			user.drop_item()
-			O.loc = src
+			if(!user.attempt_insert_item_for_installation(O, src))
+				return
 			cell = O
 			component_parts += O
 			to_chat(user, "You install \the [O].")
 		return
 	..()
 
-/obj/machinery/mining/drill/attack_hand(mob/user as mob)
+/obj/machinery/mining/drill/attack_hand(mob/user, datum/event_args/actor/clickchain/e_args)
 	check_supports()
 
 	if (panel_open && cell && user.Adjacent(src))
@@ -229,23 +236,16 @@
 	..()
 	harvest_speed = 0
 	capacity = 0
-	charge_use = 50
+	charge_use = 25
 
 	for(var/obj/item/stock_parts/P in component_parts)
 		if(istype(P, /obj/item/stock_parts/micro_laser))
-			harvest_speed = P.rating
-			exotic_drilling = P.rating - 1
-			if(exotic_drilling >= 1)
-				ore_types |= ore_types_uncommon
-				if(exotic_drilling >= 2)
-					ore_types |= ore_types_rare
-			else
-				ore_types -= ore_types_uncommon
-				ore_types -= ore_types_rare
+			harvest_speed += P.rating * 3
 		if(istype(P, /obj/item/stock_parts/matter_bin))
-			capacity = 200 * P.rating
+			capacity = 300 * P.rating
 		if(istype(P, /obj/item/stock_parts/capacitor))
-			charge_use -= 10 * P.rating
+			charge_use -= 5 * P.rating
+	charge_use = max(charge_use, 0)
 	cell = locate(/obj/item/cell) in component_parts
 
 /obj/machinery/mining/drill/proc/check_supports()
@@ -259,8 +259,12 @@
 	else
 		anchored = 1
 
-	if(supports && supports.len >= braces_needed)
-		supported = 1
+	if(supports)
+		if(supports.len >= braces_needed)
+			supported = 1
+		else for(var/obj/machinery/mining/brace/check in supports)
+			if(check.brace_tier >= 3)
+				supported = 1
 
 	update_icon()
 
@@ -279,17 +283,13 @@
 	need_update_field = 0
 
 	var/turf/T = get_turf(src)
-	if(!istype(T)) return
+	if(!istype(T))
+		return
 
-	var/tx = T.x - 2
-	var/ty = T.y - 2
-	var/turf/simulated/mine_turf
-	for(var/iy = 0,iy < 5, iy++)
-		for(var/ix = 0, ix < 5, ix++)
-			mine_turf = locate(tx + ix, ty + iy, T.z)
-			if(!istype(mine_turf, /turf/space/))
-				if(mine_turf && mine_turf.has_resources)
-					resource_field += mine_turf
+	for(var/turf/simulated/mining_turf in RANGE_TURFS(7, T))
+		if(!mining_turf.has_resources)
+			continue
+		resource_field += mining_turf
 
 	if(!resource_field.len)
 		system_error("Resources depleted.")
@@ -301,32 +301,64 @@
 		return 1
 	return 0
 
-/obj/machinery/mining/drill/verb/unload()
+/obj/machinery/mining/drill/verb/unload_drill()
 	set name = "Unload Drill"
-	set category = "Object"
+	set category = VERB_CATEGORY_OBJECT
 	set src in oview(1)
 
-	if(usr.stat) return
+	unload(usr)
+
+/obj/machinery/mining/drill/AltClick(user)
+	. = ..()
+	unload(user)
+
+/obj/machinery/mining/drill/proc/unload(mob/user)
+	if(user.stat || !user.Adjacent(src)) return
 
 	var/obj/structure/ore_box/B = locate() in orange(1)
+	var/obj/item/storage/bag/ore/S = locate() in user.contents
 	if(B)
-		for(var/obj/item/ore/O in contents)
+		for(var/obj/item/stack/ore/O in contents)
 			B.take(O)
-		to_chat(usr, "<span class='notice'>You unload the drill's storage cache into the ore box.</span>")
+		to_chat(user, "<span class='notice'>You unload the drill's storage cache into [B].</span>")
+	else if(S)
+		var/tookall = TRUE
+		for(var/obj/item/stack/ore/O in contents)
+			if(!S.obj_storage.try_insert(O))
+				tookall = FALSE
+				break
+		to_chat(user, "<span class='notice'>You unload [tookall ? "all" : "some"] of the drill's storage cache into [S].</span>")
 	else
-		to_chat(usr, "<span class='notice'>You must move an ore box up to the drill before you can unload it.</span>")
+		to_chat(user, "<span class='notice'>You must move an ore box up to the drill or have an ore satchel before you can unload it.</span>")
 
+/obj/machinery/mining/drill/proc/change_id(newid = 0)
+	drill_id = newid
+	name = "[initial(name)] #[drill_id]"
+	gps_component.set_gps_tag("DRILL#[drill_id]")
 
 /obj/machinery/mining/brace
 	name = "mining drill brace"
-	desc = "A machinery brace for an industrial drill. It looks easily two feet thick."
+	desc = "A machinery brace for an industrial drill. It looks easily two feet thick.\n <span class='notice'>\[Accepts Upgrades\]</span>"
 	icon_state = "mining_brace"
 	circuit = /obj/item/circuitboard/miningdrillbrace
+	var/brace_tier = 1
 	var/obj/machinery/mining/drill/connected
 
-/obj/machinery/mining/brace/Initialize(mapload, newdir)
+/obj/machinery/mining/brace/examine(mob/user)
 	. = ..()
-	component_parts = list()
+	if(brace_tier >= 3)
+		. += SPAN_NOTICE("The internals of the brace look resilient enough to support a drill by itself.")
+	. += SPAN_INFO("Alt-click to rotate the brace.")
+
+/obj/machinery/mining/brace/Initialize()
+	. = ..()
+
+
+/obj/machinery/mining/brace/RefreshParts()
+	..()
+	brace_tier = 0
+	for(var/obj/item/stock_parts/manipulator/M in component_parts)
+		brace_tier += M.rating
 
 /obj/machinery/mining/brace/attackby(obj/item/W as obj, mob/user as mob)
 	if(connected && connected.active)
@@ -337,6 +369,8 @@
 		return
 	if(default_deconstruction_crowbar(user, W))
 		return
+	if(default_part_replacement(user,W))
+		return
 
 	if(W.is_wrench())
 
@@ -344,7 +378,7 @@
 			to_chat(user, "<span class='notice'>You can't anchor something to empty space. Idiot.</span>")
 			return
 
-		playsound(src, W.usesound, 100, 1)
+		playsound(src, W.tool_sound, 100, 1)
 		to_chat(user, "<span class='notice'>You [anchored ? "un" : ""]anchor the brace.</span>")
 
 		anchored = !anchored
@@ -387,14 +421,22 @@
 
 /obj/machinery/mining/brace/verb/rotate_clockwise()
 	set name = "Rotate Brace Clockwise"
-	set category = "Object"
+	set category = VERB_CATEGORY_OBJECT
 	set src in oview(1)
 
-	if(usr.stat) return
+	rotating_clockwise(usr)
+
+/obj/machinery/mining/brace/AltClick(user) //TODO: just make select objects rotatable with altclick for fucks sake
+	. = ..()
+	rotating_clockwise(user)
+
+/obj/machinery/mining/brace/proc/rotating_clockwise(mob/user)
+	if(user.stat || !user.Adjacent(src)) return
 
 	if (src.anchored)
-		to_chat(usr, "It is anchored in place!")
+		to_chat(user, SPAN_WARNING("[src] is anchored in place!"))
 		return 0
 
+	to_chat(user, SPAN_NOTICE("You rotate [src] clockwise."))
 	src.setDir(turn(src.dir, 270))
 	return 1

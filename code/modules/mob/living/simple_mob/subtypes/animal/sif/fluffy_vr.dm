@@ -13,7 +13,7 @@
 	maxHealth = 20 //don't want Fluff to die on a missclick
 	health = 20
 
-	movement_cooldown = 5
+	movement_base_speed = 10 / 5
 	makes_dirt = 0
 
 	see_in_dark = 5
@@ -34,7 +34,7 @@
 	hide_amount = 1
 
 	say_list_type = /datum/say_list/fluffy_vr
-	ai_holder_type = /datum/ai_holder/simple_mob/passive
+	ai_holder_type = /datum/ai_holder/polaris/simple_mob/passive
 
 /datum/say_list/fluffy_vr
 	speak = list("Squee","Arf arf","Awoo","Squeak")

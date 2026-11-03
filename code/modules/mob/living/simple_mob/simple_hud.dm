@@ -4,6 +4,7 @@
 
 	var/ui_style = 'icons/mob/screen1_animal.dmi'
 	if(ui_icons)
+		hud.ui_style = ui_icons
 		ui_style = ui_icons
 
 	var/ui_color = "#ffffff"
@@ -12,7 +13,7 @@
 	var/list/adding = list()
 	var/list/other = list()
 	var/list/hotkeybuttons = list()
-	var/list/slot_info = list()
+
 
 	hud.adding = adding
 	hud.other = other
@@ -20,42 +21,6 @@
 
 	var/list/hud_elements = list()
 	var/atom/movable/screen/using
-	var/atom/movable/screen/inventory/inv_box
-
-	var/has_hidden_gear
-	if(LAZYLEN(hud_gears))
-		for(var/gear_slot in hud_gears)
-			inv_box = new /atom/movable/screen/inventory()
-			inv_box.icon = ui_style
-			inv_box.color = ui_color
-			inv_box.alpha = ui_alpha
-
-			var/list/slot_data =  hud_gears[gear_slot]
-			inv_box.name =        gear_slot
-			inv_box.screen_loc =  slot_data["loc"]
-			inv_box.slot_id =     slot_data["slot"]
-			inv_box.icon_state =  slot_data["state"]
-			slot_info["[inv_box.slot_id]"] = inv_box.screen_loc
-
-			if(slot_data["dir"])
-				inv_box.setDir(slot_data["dir"])
-
-			if(slot_data["toggle"])
-				other += inv_box
-				has_hidden_gear = 1
-			else
-				adding += inv_box
-
-	if(has_hidden_gear)
-		using = new /atom/movable/screen()
-		using.name = "toggle"
-		using.icon = ui_style
-		using.icon_state = "other"
-		using.screen_loc = ui_inventory
-		using.hud_layerise()
-		using.color = ui_color
-		using.alpha = ui_alpha
-		adding += using
 
 	//Intent Backdrop
 	using = new /atom/movable/screen()
@@ -81,7 +46,7 @@
 	using.icon = ico
 	using.screen_loc = ui_acti
 	using.alpha = ui_alpha
-	using.layer = LAYER_HUD_ITEM //These sit on the intent box
+	using.layer = HUD_LAYER_ABOVE //These sit on the intent box
 	hud.adding += using
 	hud.help_intent = using
 
@@ -93,7 +58,7 @@
 	using.icon = ico
 	using.screen_loc = ui_acti
 	using.alpha = ui_alpha
-	using.layer = LAYER_HUD_ITEM
+	using.layer = HUD_LAYER_ABOVE
 	hud.adding += using
 	hud.disarm_intent = using
 
@@ -105,7 +70,7 @@
 	using.icon = ico
 	using.screen_loc = ui_acti
 	using.alpha = ui_alpha
-	using.layer = LAYER_HUD_ITEM
+	using.layer = HUD_LAYER_ABOVE
 	hud.adding += using
 	hud.grab_intent = using
 
@@ -117,7 +82,7 @@
 	using.icon = ico
 	using.screen_loc = ui_acti
 	using.alpha = ui_alpha
-	using.layer = LAYER_HUD_ITEM
+	using.layer = HUD_LAYER_ABOVE
 	hud.adding += using
 	hud.hurt_intent = using
 
@@ -213,12 +178,12 @@
 	zone_sel.icon = ui_style
 	zone_sel.color = ui_color
 	zone_sel.alpha = ui_alpha
-	zone_sel.overlays.Cut()
-	zone_sel.overlays += image('icons/mob/zone_sel.dmi', "[zone_sel.selecting]")
+	zone_sel.cut_overlays()
+	zone_sel.add_overlay(image('icons/mob/zone_sel.dmi', "[zone_sel.selecting]"))
 	hud_elements |= zone_sel
 
 	//Hand things
-	if(has_hands)
+	if(get_nominal_hand_count() > 0)
 		//Drop button
 		using = new /atom/movable/screen()
 		using.name = "drop"
@@ -229,74 +194,8 @@
 		using.alpha = ui_alpha
 		hud.hotkeybuttons += using
 
-		//Equip detail
-		using = new /atom/movable/screen()
-		using.name = "equip"
-		using.icon = ui_style
-		using.icon_state = "act_equip"
-		using.screen_loc = ui_equip
-		using.color = ui_color
-		using.alpha = ui_alpha
-		hud.adding += using
-
-		//Hand slots themselves
-		inv_box = new /atom/movable/screen/inventory/hand()
-		inv_box.hud = src
-		inv_box.name = "r_hand"
-		inv_box.icon = ui_style
-		inv_box.icon_state = "r_hand_inactive"
-		if(!hand)	//This being 0 or null means the right hand is in use
-			inv_box.icon_state = "r_hand_active"
-		inv_box.screen_loc = ui_rhand
-		inv_box.slot_id = slot_r_hand
-		inv_box.color = ui_color
-		inv_box.alpha = ui_alpha
-		hud.r_hand_hud_object = inv_box
-		hud.adding += inv_box
-		slot_info["[slot_r_hand]"] = inv_box.screen_loc
-
-		inv_box = new /atom/movable/screen/inventory/hand()
-		inv_box.hud = src
-		inv_box.name = "l_hand"
-		inv_box.icon = ui_style
-		inv_box.icon_state = "l_hand_inactive"
-		if(hand)	//This being 1 means the left hand is in use
-			inv_box.icon_state = "l_hand_active"
-		inv_box.screen_loc = ui_lhand
-		inv_box.slot_id = slot_l_hand
-		inv_box.color = ui_color
-		inv_box.alpha = ui_alpha
-		hud.l_hand_hud_object = inv_box
-		hud.adding += inv_box
-		slot_info["[slot_l_hand]"] = inv_box.screen_loc
-
-		//Swaphand titlebar
-		using = new /atom/movable/screen/inventory()
-		using.name = "hand"
-		using.icon = ui_style
-		using.icon_state = "hand1"
-		using.screen_loc = ui_swaphand1
-		using.color = ui_color
-		using.alpha = ui_alpha
-		hud.adding += using
-
-		using = new /atom/movable/screen/inventory()
-		using.name = "hand"
-		using.icon = ui_style
-		using.icon_state = "hand2"
-		using.screen_loc = ui_swaphand2
-		using.color = ui_color
-		using.alpha = ui_alpha
-		hud.adding += using
-
 		//Throw button
-		throw_icon = new /atom/movable/screen()
-		throw_icon.icon = ui_style
-		throw_icon.icon_state = "act_throw_off"
-		throw_icon.name = "throw"
-		throw_icon.screen_loc = ui_drop_throw
-		throw_icon.color = ui_color
-		throw_icon.alpha = ui_alpha
+		throw_icon = new /atom/movable/screen/hud/throwmode(null, hud)
 		hud.hotkeybuttons += throw_icon
 		hud_elements |= throw_icon
 

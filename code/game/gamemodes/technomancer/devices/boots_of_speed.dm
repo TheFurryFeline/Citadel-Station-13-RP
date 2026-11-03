@@ -9,11 +9,11 @@
 	name = "boots of speed"
 	desc = "The latest in sure footing technology."
 	icon_state = "swat"
-	item_flags = NOSLIP
+	clothing_flags = NOSLIP
 	siemens_coefficient = 0.6
 	slowdown = -1
 
-	cold_protection = FEET
+	cold_protection_cover = FEET
 	min_cold_protection_temperature = SHOE_MIN_COLD_PROTECTION_TEMPERATURE
-	heat_protection = FEET
+	heat_protection_cover = FEET
 	max_heat_protection_temperature = SHOE_MAX_HEAT_PROTECTION_TEMPERATURE

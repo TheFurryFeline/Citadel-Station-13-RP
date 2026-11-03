@@ -1,11 +1,13 @@
 /obj/item/storage/wallet
 	name = "wallet"
 	desc = "It can hold a few small and personal things."
-	storage_slots = 10
+	max_items = 10
 	icon = 'icons/obj/wallet.dmi'
 	icon_state = "wallet-orange"
-	w_class = ITEMSIZE_SMALL
-	can_hold = list(
+	w_class = WEIGHT_CLASS_SMALL
+	max_combined_volume = WEIGHT_VOLUME_SMALL * 4
+	max_single_weight_class = WEIGHT_CLASS_SMALL
+	insertion_whitelist = list(
 		/obj/item/spacecash,
 		/obj/item/card,
 		/obj/item/clothing/mask/smokable/cigarette/,
@@ -36,9 +38,13 @@
 		/obj/item/stamp,
 		/obj/item/clothing/accessory/permit,
 		/obj/item/clothing/accessory/badge,
-		/obj/item/makeover
+		/obj/item/clothing/gloves/ring,
+		/obj/item/clothing/accessory/bracelet,
+		/obj/item/clothing/accessory/necklace,
+		/obj/item/clothing/accessory/metal_necklace,
+		/obj/item/makeover,
 		)
-	cant_hold = list(/obj/item/tool/screwdriver/power)
+	insertion_blacklist = list(/obj/item/tool/screwdriver/power)
 	slot_flags = SLOT_ID
 
 	var/obj/item/card/id/front_id = null
@@ -46,31 +52,36 @@
 	drop_sound = 'sound/items/drop/cloth.ogg'
 	pickup_sound = 'sound/items/pickup/cloth.ogg'
 
-/obj/item/storage/wallet/remove_from_storage(obj/item/W as obj, atom/new_location)
-	. = ..(W, new_location)
-	if(.)
-		if(W == front_id)
-			front_id = null
-			name = initial(name)
-			update_icon()
+/obj/item/storage/wallet/Entered(atom/movable/AM, atom/oldLoc)
+	. = ..()
+	update_front_id()
 
-/obj/item/storage/wallet/handle_item_insertion(obj/item/W as obj, prevent_warning = 0)
-	. = ..(W, prevent_warning)
-	if(.)
-		if(!front_id && istype(W, /obj/item/card/id))
-			front_id = W
-			name = "[name] ([front_id])"
-			update_icon()
+/obj/item/storage/wallet/Exited(atom/movable/AM, atom/newLoc)
+	. = ..()
+	update_front_id()
+
+/obj/item/storage/wallet/proc/update_front_id()
+	// todo: lol fuck this is bad ~ silicons
+	var/obj/item/card/id/found = locate(/obj/item/card/id) in contents
+	if(isnull(front_id) == isnull(found))
+		return
+	front_id = found
+	if(isnull(front_id))
+		name = initial(name)
+	else
+		name = "[initial(name)] ([front_id])"
+	update_icon()
 
 /obj/item/storage/wallet/update_icon()
-	overlays.Cut()
+	cut_overlays()
+	. = ..()
 	if(front_id)
 		var/tiny_state = "id-generic"
 		if(("id-"+front_id.icon_state) in icon_states(icon))
 			tiny_state = "id-"+front_id.icon_state
 		var/image/tiny_image = new/image(icon, icon_state = tiny_state)
 		tiny_image.appearance_flags = RESET_COLOR
-		overlays += tiny_image
+		add_overlay(tiny_image)
 
 /obj/item/storage/wallet/GetID()
 	return front_id
@@ -102,12 +113,12 @@
 
 /obj/item/storage/wallet/poly/Initialize(mapload)
 	. = ..()
-	add_atom_colour("#"+get_random_colour(), FIXED_COLOUR_PRIORITY)
+	add_atom_color(get_random_colour())
 	update_icon()
 
 /obj/item/storage/wallet/poly/verb/change_color()
 	set name = "Change Wallet Color"
-	set category = "Object"
+	set category = VERB_CATEGORY_OBJECT
 	set desc = "Change the color of the wallet."
 	set src in usr
 
@@ -117,7 +128,7 @@
 	var/new_color = input(usr, "Pick a new color", "Wallet Color", color) as color|null
 
 	if(new_color)
-		add_atom_colour(new_color, FIXED_COLOUR_PRIORITY)
+		add_atom_color(new_color)
 
 /obj/item/storage/wallet/poly/emp_act()
 	var/original_state = icon_state
@@ -133,4 +144,4 @@
 	name = "women's wallet"
 	desc = "A stylish wallet typically used by women."
 	icon_state = "girl_wallet"
-	item_state_slots = list(slot_r_hand_str = "wowallet", slot_l_hand_str = "wowallet")
+	item_state_slots = list(SLOT_ID_RIGHT_HAND = "wowallet", SLOT_ID_LEFT_HAND = "wowallet")

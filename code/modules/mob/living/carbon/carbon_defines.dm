@@ -1,25 +1,51 @@
-/mob/living/carbon/
+/**
+ * The root type of complex mobs.
+ *
+ * These mobs have:
+ * * organ / bodypart simulation
+ * * reagent metabolism
+ * * species
+ * * virus simulation
+ * * and more.
+ *
+ * todo: this should be carbon.dm at some point
+ */
+/mob/living/carbon
 	gender = MALE
-	var/datum/species/species //Contains icon generation and language information, set during New().
+	throw_force = 10
+
+	//* Composition *//
+	/// species - datumized handling of racial intrinsics like health, environmental, breathing, etc. set using set_species() **only**
+	var/datum/species/species
+
+	//* Rendering *//
+	/// keyed overlay storage list
+	/// must map key to an overlay or a list of overlays
+	/// the overlay in question must be an image or a mutable appearance
+	var/list/standing_overlays = list()
+
 	var/list/stomach_contents = list()
-	var/list/datum/disease2/disease/virus2 = list()
+	///var/list/datum/disease2/disease/virus2 = list()
 	var/list/antibodies = list()
 	var/last_eating = 0 	//Not sure what this does... I found it hidden in food.dm
 
 	var/life_tick = 0      // The amount of life ticks that have processed on this mob.
 
 	// total amount of wounds on mob, used to spread out healing and the like over all wounds
-	var/number_wounds = 0
+	var/wound_tally = 0
+
+	// inventory
 	var/obj/item/handcuffed = null //Whether or not the mob is handcuffed
 	var/obj/item/legcuffed = null  //Same as handcuffs but for legs. Bear traps use this.
+
 	//Surgery info
 	var/datum/surgery_status/op_stage = new/datum/surgery_status
 	//Active emote/pose
 	var/pose = null
 	var/list/chem_effects = list()
-	var/datum/reagents/metabolism/bloodstream/bloodstr = null
-	var/datum/reagents/metabolism/ingested/ingested = null
-	var/datum/reagents/metabolism/touch/touching = null
+	var/datum/reagent_holder/metabolism/bloodstream/bloodstr = null
+	var/datum/reagent_holder/metabolism/ingested/ingested = null
+	var/datum/reagent_holder/metabolism/touch/touching = null
 
 	var/pulse = PULSE_NORM	//current pulse level
 

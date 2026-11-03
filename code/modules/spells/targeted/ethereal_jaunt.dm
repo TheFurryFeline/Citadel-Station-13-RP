@@ -40,7 +40,8 @@
 			mobloc = holder.last_valid_turf
 			animation.loc = mobloc
 			jaunt_steam(mobloc)
-			target.canmove = 0
+			ADD_TRAIT(target, TRAIT_MOBILITY_MOVE_BLOCKED, "JAUNT")
+			target.update_mobility_blocked()
 			holder.reappearing = 1
 			sleep(20)
 			jaunt_reappear(animation, target)
@@ -52,7 +53,8 @@
 						if(target.forceMove(T))
 							break
 			target.update_perspective()
-			target.canmove = 1
+			REMOVE_TRAIT(target, TRAIT_MOBILITY_MOVE_BLOCKED, "JAUNT")
+			target.update_mobility_blocked()
 			qdel(animation)
 			qdel(holder)
 
@@ -91,7 +93,7 @@
 /obj/effect/dummy/spell_jaunt/relaymove(var/mob/user, direction)
 	if (!src.canmove || reappearing) return
 	var/turf/newLoc = get_step(src,direction)
-	if(!(newLoc.flags & NO_JAUNT))
+	if(!(newLoc.turf_flags & NO_JAUNT))
 		loc = newLoc
 		var/turf/T = get_turf(loc)
 		if(!T.contains_dense_objects())
@@ -101,7 +103,5 @@
 	src.canmove = 0
 	spawn(2) src.canmove = 1
 
-/obj/effect/dummy/spell_jaunt/ex_act(blah)
-	return
-/obj/effect/dummy/spell_jaunt/bullet_act(blah)
+/obj/effect/dummy/spell_jaunt/legacy_ex_act(blah)
 	return

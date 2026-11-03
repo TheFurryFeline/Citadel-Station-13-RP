@@ -1,7 +1,9 @@
+// TODO: this should be in the hypospray mark 2 ecosystem.
+// TODO: ontop of that, use fucking item mounts + cyborg resource stores!!
 /obj/item/reagent_containers/borghypo
 	name = "cyborg hypospray"
 	desc = "An advanced chemical synthesizer and injection system, designed for heavy-duty medical equipment."
-	icon = 'icons/obj/syringe.dmi'
+	icon = 'icons/obj/medical/syringe.dmi'
 	item_state = "hypo"
 	icon_state = "borghypo"
 	amount_per_transfer_from_this = 5
@@ -27,19 +29,40 @@
 /obj/item/reagent_containers/borghypo/lost
 	reagent_ids = list("bicaridine", "kelotane", "alkysine", "imidazoline", "tricordrazine", "inaprovaline", "dexalin", "anti_toxin", "tramadol", "spaceacillin", "paracetamol")
 
+/obj/item/reagent_containers/borghypo/stabilizer
+	name = "cyborg hypospray (stabilizer)"
+	desc = "A basic chemical synthesizer for stabilizing wounded."
+	reagent_ids = list(
+		/datum/reagent/tricordrazine::id,
+		/datum/reagent/dexalin::id,
+		/datum/reagent/inaprovaline::id,
+		/datum/reagent/dylovene::id,
+		/datum/reagent/paracetamol::id,
+	)
+
 /obj/item/reagent_containers/borghypo/merc
 	name = "advanced cyborg hypospray"
 	desc = "An advanced nanite and chemical synthesizer and injection system, designed for heavy-duty medical equipment.  This type is capable of safely bypassing \
 	thick materials that other hyposprays would struggle with."
 	bypass_protection = TRUE // Because mercs tend to be in spacesuits.
-	reagent_ids = list("healing_nanites", "hyperzine", "tramadol", "oxycodone", "spaceacillin", "peridaxon", "osteodaxon", "myelamine", "synthblood")
+	reagent_ids = list(
+		/datum/reagent/nanite::id,
+		/datum/reagent/hyperzine::id,
+		/datum/reagent/tramadol::id,
+		/datum/reagent/oxycodone::id,
+		/datum/reagent/spaceacillin::id,
+		/datum/reagent/peridaxon::id,
+		/datum/reagent/osteodaxon::id,
+		/datum/reagent/myelamine::id,
+		/datum/reagent/blood::id,
+	)
 
 /obj/item/reagent_containers/borghypo/Initialize(mapload)
 	. = ..()
 
 	for(var/T in reagent_ids)
 		reagent_volumes[T] = volume
-		var/datum/reagent/R = SSchemistry.chemical_reagents[T]
+		var/datum/reagent/R = SSchemistry.reagent_lookup[T]
 		reagent_names += R.name
 
 	START_PROCESSING(SSobj, src)
@@ -55,22 +78,23 @@
 
 	if(isrobot(loc))
 		var/mob/living/silicon/robot/R = loc
-		if(R && R.cell)
+		if(R && R.cell?.charge > 1000)
 			for(var/T in reagent_ids)
 				if(reagent_volumes[T] < volume)
 					R.cell.use(charge_cost)
 					reagent_volumes[T] = min(reagent_volumes[T] + 5, volume)
 	return 1
 
-/obj/item/reagent_containers/borghypo/attack(var/mob/living/M, var/mob/user)
-	if(!istype(M))
+/obj/item/reagent_containers/borghypo/legacy_mob_melee_hook(mob/target, mob/user, clickchain_flags, list/params, mult, target_zone, intent)
+	var/mob/living/L = target
+	if(!istype(L))
 		return
 
 	if(!reagent_volumes[reagent_ids[mode]])
 		to_chat(user, "<span class='warning'>The injector is empty.</span>")
 		return
 
-	var/mob/living/carbon/human/H = M
+	var/mob/living/carbon/human/H = L
 	if(istype(H))
 		var/obj/item/organ/external/affected = H.get_organ(user.zone_sel.selecting)
 		if(!affected)
@@ -82,19 +106,21 @@
 			return
 		*/
 
-	if(M.can_inject(user, 1, ignore_thickness = bypass_protection))
-		to_chat(user, "<span class='notice'>You inject [M] with the injector.</span>")
-		to_chat(M, "<span class='notice'>You feel a tiny prick!</span>")
+	if(L.can_inject(user, 1, ignore_thickness = bypass_protection))
+		to_chat(user, "<span class='notice'>You inject [L] with the injector.</span>")
+		L.custom_pain(SPAN_WARNING("You feel a tiny prick!"), 1, TRUE)
 
-		if(M.reagents)
+		if(L.reagents)
 			var/t = min(amount_per_transfer_from_this, reagent_volumes[reagent_ids[mode]])
-			M.reagents.add_reagent(reagent_ids[mode], t)
+			L.reagents.add_reagent(reagent_ids[mode], t)
 			reagent_volumes[reagent_ids[mode]] -= t
-			add_attack_logs(user, M, "Borg injected with [reagent_ids[mode]]")
+			add_attack_logs(user, L, "Borg injected with [reagent_ids[mode]]")
 			to_chat(user, "<span class='notice'>[t] units injected. [reagent_volumes[reagent_ids[mode]]] units remaining.</span>")
-	return
 
-/obj/item/reagent_containers/borghypo/attack_self(mob/user as mob) //Change the mode
+/obj/item/reagent_containers/borghypo/attack_self(mob/user, datum/event_args/actor/actor)
+	. = ..()
+	if(.)
+		return //Change the mode
 	var/t = ""
 	for(var/i = 1 to reagent_ids.len)
 		if(t)
@@ -114,11 +140,11 @@
 		if(t)
 			playsound(src, 'sound/effects/pop.ogg', 50, 0)
 			mode = t
-			var/datum/reagent/R = SSchemistry.chemical_reagents[reagent_ids[mode]]
+			var/datum/reagent/R = SSchemistry.reagent_lookup[reagent_ids[mode]]
 			to_chat(usr, "<span class='notice'>Synthesizer is now producing '[R.name]'.</span>")
 
-/obj/item/reagent_containers/borghypo/examine(mob/user)
-	var/datum/reagent/R = SSchemistry.chemical_reagents[reagent_ids[mode]]
+/obj/item/reagent_containers/borghypo/examine(mob/user, dist)
+	var/datum/reagent/R = SSchemistry.reagent_lookup[reagent_ids[mode]]
 	. = ..()
 	. += "<span class='notice'>It is currently producing [R.name] and has [reagent_volumes[reagent_ids[mode]]] out of [volume] units left.</span>"
 
@@ -133,16 +159,20 @@
 	volume = 60
 	possible_transfer_amounts = list(5, 10, 20, 30)
 	reagent_ids = list("ale",
-		"cider",
 		"beer",
 		"berryjuice",
 		"bitters",
+		"cider",
+		"coco",
+		"coconutmilk",
 		"coffee",
 		"cognac",
 		"cola",
+		"cream",
 		"dr_gibb",
 		"egg",
 		"gin",
+		"grenadine",
 		"gingerale",
 		"hot_coco",
 		"ice",
@@ -151,6 +181,7 @@
 		"lemonjuice",
 		"lemon_lime",
 		"limejuice",
+		"matchapowder",
 		"mead",
 		"milk",
 		"mint",
@@ -164,8 +195,9 @@
 		"spacespice",
 		"specialwhiskey",
 		"sugar",
+		"taropowder",
 		"tea",
-		"tequilla",
+		"tequila",
 		"tomatojuice",
 		"tonic",
 		"vermouth",
@@ -175,11 +207,11 @@
 		"whiskey",
 		"wine")
 
-/obj/item/reagent_containers/borghypo/service/attack(var/mob/M, var/mob/user)
+/obj/item/reagent_containers/borghypo/service/legacy_mob_melee_hook(mob/target, mob/user, clickchain_flags, list/params, mult, target_zone, intent)
 	return
 
-/obj/item/reagent_containers/borghypo/service/afterattack(var/obj/target, var/mob/user, var/proximity)
-	if(!proximity)
+/obj/item/reagent_containers/borghypo/service/afterattack(atom/target, mob/user, clickchain_flags, list/params)
+	if(!(clickchain_flags & CLICKCHAIN_HAS_PROXIMITY))
 		return
 
 	if(!target.is_open_container() || !target.reagents)
@@ -189,7 +221,7 @@
 		to_chat(user, "<span class='notice'>[src] is out of this reagent, give it some time to refill.</span>")
 		return
 
-	if(!target.reagents.get_free_space())
+	if(!target.reagents.available_volume())
 		to_chat(user, "<span class='notice'>[target] is full.</span>")
 		return
 

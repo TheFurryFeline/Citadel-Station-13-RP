@@ -18,7 +18,7 @@
 // It can be manually refilled or by clicking on a storage item containing lights.
 // If it's part of a robot module, it will charge when the Robot is inside a Recharge Station.
 //
-// EMAGGED FEATURES
+// OBJ_EMAGGED FEATURES
 //
 // NOTICE: The Cyborg cannot use the emagged Light Replacer and the light's explosion was nerfed. It cannot create holes in the station anymore.
 //
@@ -42,7 +42,7 @@
 
 	name = "light replacer"
 	desc = "A device to automatically replace lights. Refill with working lightbulbs, broken lightbulbs, or sheets of glass."
-	force = 8
+	damage_force = 8
 	icon = 'icons/obj/janitor.dmi'
 	icon_state = "lightreplacer0"
 	slot_flags = SLOT_BELT
@@ -64,39 +64,41 @@
 	. = ..()
 	failmsg = "The [name]'s refill light blinks red."
 
-/obj/item/lightreplacer/examine(mob/user)
+/obj/item/lightreplacer/examine(mob/user, dist)
 	. = ..()
 	. += "It has [uses] lights remaining."
 
 /obj/item/lightreplacer/attackby(obj/item/W, mob/user)
-	if(istype(W, /obj/item/stack/material) && W.get_material_name() == "glass")
-		var/obj/item/stack/G = W
-		if(uses >= max_uses)
-			to_chat(user, "<span class='warning'>[src.name] is full.</span>")
-			return
-		else if(G.use(1))
-			add_uses(16) //Autolathe converts 1 sheet into 16 lights.
-			to_chat(user, "<span class='notice'>You insert a piece of glass into \the [src.name]. You have [uses] light\s remaining.</span>")
-			return
-		else
-			to_chat(user, "<span class='warning'>You need one sheet of glass to replace lights.</span>")
+	if(istype(W, /obj/item/stack/material))
+		var/obj/item/stack/material/G = W
+		if(G.material.type == /datum/prototype/material/glass)
+			if(uses >= max_uses)
+				to_chat(user, "<span class='warning'>[src.name] is full.</span>")
+				return
+			else if(G.use(1))
+				add_uses(16) //Autolathe converts 1 sheet into 16 lights.
+				to_chat(user, "<span class='notice'>You insert a piece of glass into \the [src.name]. You have [uses] light\s remaining.</span>")
+				return
+			else
+				to_chat(user, "<span class='warning'>You need one sheet of glass to replace lights.</span>")
 
 	if(istype(W, /obj/item/light))
 		var/obj/item/light/L = W
 		if(L.status == 0) // LIGHT OKAY
 			if(uses < max_uses)
+				if(!user.attempt_consume_item_for_construction(L))
+					return
 				add_uses(1)
 				to_chat(user, "You insert \the [L.name] into \the [src.name]. You have [uses] light\s remaining.")
-				user.drop_item()
-				qdel(L)
 				return
 		else if(L.status == 2)
 			if(uses >= max_uses)
 				to_chat(user, "<span class='warning'>[src.name] is full.</span>")
 				return
+			if(!user.attempt_consume_item_for_construction(W))
+				return
 			AddShards(1, user)
 			to_chat(user, "<span class='notice'>You insert a shard of glass into the [src.name]. You have [uses] light\s remaining.</span>")
-			qdel(W)
 			return
 /*		else
 			to_chat(user, "You need a working light.")
@@ -133,7 +135,10 @@
 			return
 
 
-/obj/item/lightreplacer/attack_self(mob/user)
+/obj/item/lightreplacer/attack_self(mob/user, datum/event_args/actor/actor)
+	. = ..()
+	if(.)
+		return
 	/* // This would probably be a bit OP. If you want it though, uncomment the code.
 	if(isrobot(user))
 		var/mob/living/silicon/robot/R = user
@@ -156,8 +161,8 @@
 	return new_bulbs
 
 /obj/item/lightreplacer/update_icon()
+	. = ..()
 	icon_state = "lightreplacer[emagged]"
-
 
 /obj/item/lightreplacer/proc/Use(var/mob/user)
 
@@ -194,7 +199,7 @@
 
 /obj/item/lightreplacer/emag_act(var/remaining_charges, var/mob/user)
 	emagged = !emagged
-	playsound(src.loc, "sparks", 100, 1)
+	playsound(src.loc, /datum/soundbyte/sparks, 100, 1)
 	update_icon()
 	return 1
 

@@ -105,6 +105,7 @@
 		/obj/item/seeds/cherryseed = 3,
 		/obj/item/seeds/chiliseed = 3,
 		/obj/item/seeds/cocoapodseed = 3,
+		/obj/item/seeds/coconutseed = 3,
 		/obj/item/seeds/cornseed = 3,
 		/obj/item/seeds/durian = 3,
 		/obj/item/seeds/disho = 3,
@@ -120,6 +121,7 @@
 		/obj/item/seeds/orangeseed = 3,
 		/obj/item/seeds/onionseed = 3,
 		/obj/item/seeds/peanutseed = 3,
+		/obj/item/seeds/peaseed = 3,
 		/obj/item/seeds/plumpmycelium = 3,
 		/obj/item/seeds/poppyseed = 3,
 		/obj/item/seeds/potatoseed = 3,
@@ -132,14 +134,16 @@
 		/obj/item/seeds/sugarcaneseed = 3,
 		/obj/item/seeds/sunflowerseed = 3,
 		/obj/item/seeds/shandseed = 2,
+		/obj/item/seeds/taroseed = 3,
 		/obj/item/seeds/tobaccoseed = 3,
 		/obj/item/seeds/tomatoseed = 3,
 		/obj/item/seeds/towermycelium = 3,
 		/obj/item/seeds/vanilla = 3,
 		/obj/item/seeds/watermelonseed = 3,
 		/obj/item/seeds/wheatseed = 3,
-		/obj/item/seeds/whitebeetseed = 3
-		)
+		/obj/item/seeds/whitebeetseed = 3,
+		/obj/item/seeds/wabback = 2
+)
 
 /obj/machinery/seed_storage/xenobotany
 	name = "Xenobotany seed storage"
@@ -158,6 +162,7 @@
 		/obj/item/seeds/cherryseed = 3,
 		/obj/item/seeds/chiliseed = 3,
 		/obj/item/seeds/cocoapodseed = 3,
+		/obj/item/seeds/coconutseed = 3,
 		/obj/item/seeds/cornseed = 3,
 		/obj/item/seeds/durian = 3,
 		/obj/item/seeds/disho = 3,
@@ -175,6 +180,7 @@
 		/obj/item/seeds/nettleseed = 2,
 		/obj/item/seeds/orangeseed = 3,
 		/obj/item/seeds/peanutseed = 3,
+		/obj/item/seeds/peaseed = 3,
 		/obj/item/seeds/plastiseed = 3,
 		/obj/item/seeds/plumpmycelium = 3,
 		/obj/item/seeds/poppyseed = 3,
@@ -189,6 +195,7 @@
 		/obj/item/seeds/sugarcaneseed = 3,
 		/obj/item/seeds/sunflowerseed = 3,
 		/obj/item/seeds/shandseed = 2,
+		/obj/item/seeds/taroseed = 3,
 		/obj/item/seeds/tobaccoseed = 3,
 		/obj/item/seeds/tomatoseed = 3,
 		/obj/item/seeds/towermycelium = 3,
@@ -197,10 +204,10 @@
 		/obj/item/seeds/watermelonseed = 3,
 		/obj/item/seeds/wheatseed = 3,
 		/obj/item/seeds/whitebeetseed = 3
-		)
+)
 
-/obj/machinery/seed_storage/attack_hand(mob/user as mob)
-	if(stat & (BROKEN|NOPOWER))
+/obj/machinery/seed_storage/attack_hand(mob/user, datum/event_args/actor/clickchain/e_args)
+	if(machine_stat & (BROKEN|NOPOWER))
 		return
 
 	if(seconds_electrified != 0)
@@ -237,7 +244,7 @@
 		ui = new(user, src, "SeedStorage", name)
 		ui.open()
 
-/obj/machinery/seed_storage/ui_data(mob/user, datum/tgui/ui, datum/ui_state/state)
+/obj/machinery/seed_storage/ui_data(mob/user, datum/tgui/ui)
 	var/list/data = ..()
 
 	if(smart)
@@ -348,7 +355,7 @@
 
 	return data
 
-/obj/machinery/seed_storage/ui_act(action, list/params, datum/tgui/ui, datum/ui_state/state)
+/obj/machinery/seed_storage/ui_act(action, list/params, datum/tgui/ui, datum/ui_state/state, datum/event_args/actor/actor)
 	if(..())
 		return TRUE
 	var/ID = text2num(params["id"])
@@ -397,16 +404,16 @@
 			to_chat(user, "<span class='notice'>There are no seeds in \the [O.name].</span>")
 		return
 	else if(O.is_wrench())
-		playsound(loc, O.usesound, 50, 1)
+		playsound(loc, O.tool_sound, 50, 1)
 		anchored = !anchored
 		to_chat(user, "You [anchored ? "wrench" : "unwrench"] \the [src].")
 	else if(O.is_screwdriver())
 		panel_open = !panel_open
 		to_chat(user, "You [panel_open ? "open" : "close"] the maintenance panel.")
-		playsound(src, O.usesound, 50, 1)
-		overlays.Cut()
+		playsound(src, O.tool_sound, 50, 1)
+		cut_overlays()
 		if(panel_open)
-			overlays += image(icon, "[initial(icon_state)]-panel")
+			add_overlay(image(icon, "[initial(icon_state)]-panel"))
 	else if((O.is_wirecutter() || istype(O, /obj/item/multitool)) && panel_open)
 		wires.Interact(user)
 
@@ -428,14 +435,7 @@
 		return 1
 
 /obj/machinery/seed_storage/proc/add(var/obj/item/seeds/O as obj, var/contraband = 0)
-	if (istype(O.loc, /mob))
-		var/mob/user = O.loc
-		user.remove_from_mob(O)
-	else if(istype(O.loc,/obj/item/storage))
-		var/obj/item/storage/S = O.loc
-		S.remove_from_storage(O, src)
-
-	O.loc = src
+	O.forceMove(src)
 	var/newID = 0
 
 	if(contraband)

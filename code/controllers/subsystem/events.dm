@@ -3,6 +3,8 @@ SUBSYSTEM_DEF(events)
 	wait = 2 SECONDS
 	init_order = INIT_ORDER_EVENTS
 
+	runlevels = RUNLEVEL_GAME
+
 	/// Current holidays
 	var/list/holidays = list()
 
@@ -16,24 +18,24 @@ SUBSYSTEM_DEF(events)
 
 	var/datum/event_meta/new_event = new
 
-/datum/controller/subsystem/events/PreInit()
+/datum/controller/subsystem/events/PreInit(recovering)
 	// unfortunately, character setup server startup hooks fire before /Initialize so :/
 	// SScharactersetup but not shit when :)
 	InitializeHolidays(force = TRUE)
 	return ..()
 
 /datum/controller/subsystem/events/Initialize()
-	SSticker.OnRoundstart(CALLBACK(src, .proc/HolidayRoundstart))
+	SSticker.OnRoundstart(CALLBACK(src, PROC_REF(HolidayRoundstart)))
 	allEvents = typesof(/datum/event) - /datum/event
 	event_containers = list(
-			EVENT_LEVEL_MUNDANE 	= new/datum/event_container/mundane,
-			EVENT_LEVEL_MODERATE	= new/datum/event_container/moderate,
-			EVENT_LEVEL_MAJOR 		= new/datum/event_container/major
+			new/datum/event_container/mundane,
+			new/datum/event_container/moderate,
+			new/datum/event_container/major
 		)
 	// unfortunately, character setup server startup hooks fire before /Initialize so :/
 	// SScharactersetup but not shit when :)
 	InitializeHolidays()
-	return ..()
+	return SS_INIT_SUCCESS
 
 /datum/controller/subsystem/events/fire(resumed)
 	if (!resumed)
@@ -41,7 +43,7 @@ SUBSYSTEM_DEF(events)
 
 	//cache for sanic speed (lists are references anyways)
 	var/list/currentrun = src.currentrun
-	var/dt = (flags & SS_TICKER)? (wait * world.tick_lag * 0.1) : (wait * 0.1)
+	var/dt = nominal_dt_s
 	while (currentrun.len)
 		var/datum/event/E = currentrun[currentrun.len]
 		currentrun.len--
@@ -55,7 +57,7 @@ SUBSYSTEM_DEF(events)
 		EC.process(dt)
 
 /datum/controller/subsystem/events/stat_entry()
-	..("E:[active_events.len]")
+	return ..() + " E:[active_events.len]"
 
 /datum/controller/subsystem/events/Recover()
 	if(SSevents.active_events)
@@ -67,7 +69,7 @@ SUBSYSTEM_DEF(events)
 	active_events -= E
 
 	if(!E.event_meta || !E.severity)	// datum/event is used here and there for random reasons, maintaining "backwards compatibility"
-		log_debug("Event of '[E.type]' with missing meta-data has completed.")
+		log_debug(SPAN_DEBUG("Event of '[E.type]' with missing meta-data has completed."))
 		return
 
 	finished_events += E
@@ -78,7 +80,7 @@ SUBSYSTEM_DEF(events)
 	if(EM.add_to_queue)
 		EC.available_events += EM
 
-	log_debug("Event '[EM.name]' has completed at [worldtime2stationtime(world.time)].")
+	log_debug(SPAN_DEBUG("Event '[EM.name]' has completed at [worldtime2stationtime(world.time)]."))
 
 /datum/controller/subsystem/events/proc/delay_events(var/severity, var/delay)
 	var/datum/event_container/EC = event_containers[severity]
@@ -103,7 +105,7 @@ SUBSYSTEM_DEF(events)
 				message += "and ran to completion."
 		to_chat(world, message)
 
-/*
+
 //////////////
 // HOLIDAYS //
 //////////////
@@ -122,7 +124,7 @@ SUBSYSTEM_DEF(events)
 //////////////////////////////////////////////////////////////////////////////////////////////////////////
 //ALSO, MOST IMPORTANTLY: Don't add stupid stuff! Discuss bonus content with Project-Heads first please!//
 //////////////////////////////////////////////////////////////////////////////////////////////////////////
-*/
+
 
 //sets up the holidays and holidays list
 /datum/controller/subsystem/events/proc/InitializeHolidays(force = FALSE)
@@ -130,12 +132,12 @@ SUBSYSTEM_DEF(events)
 		QDEL_LIST_ASSOC_VAL(holidays)
 	holidays = list()
 	if(!force && !CONFIG_GET(flag/allow_holidays))
-		return		// Holiday stuff was not enabled in the config!
+		return // Holiday stuff was not enabled in the config!
 
-	var/YY = text2num(time2text(world.timeofday, "YY")) 	// get the current year
-	var/MM = text2num(time2text(world.timeofday, "MM")) 	// get the current month
-	var/DD = text2num(time2text(world.timeofday, "DD")) 	// get the current day
-	var/DDD = time2text(world.timeofday, "DDD")	// get the current weekday
+	var/YY = text2num(time2text(world.timeofday, "YY", world.timezone)) // get the current year
+	var/MM = text2num(time2text(world.timeofday, "MM", world.timezone)) // get the current month
+	var/DD = text2num(time2text(world.timeofday, "DD", world.timezone)) // get the current day
+	var/DDD = time2text(world.timeofday, "DDD", world.timezone)	// get the current weekday
 	var/W = weekdayofthemonth()	// is this the first monday? second? etc.
 
 	for(var/H in subtypesof(/datum/holiday))
@@ -146,7 +148,7 @@ SUBSYSTEM_DEF(events)
 		else
 			qdel(holiday)
 
-	sortTim(holidays, /proc/cmp_holiday_priority)
+	tim_sort(holidays, GLOBAL_PROC_REF(cmp_holiday_priority), associative = TRUE)
 	// // regenerate station name because holiday prefixes.
 	// set_station_name(new_station_name())
 	// world.update_status()
@@ -155,6 +157,24 @@ SUBSYSTEM_DEF(events)
 	for(var/name in holidays)
 		var/datum/holiday/holiday = holidays[name]
 		holiday.OnRoundstart()
+
+	// handle announcing holidays where needed
+	if(SSevents.holidays.len != 0)
+		var/list/holiday_names = list()
+		var/list/holiday_blurbs = list()
+		for(var/holiday_name in SSevents.holidays)
+			var/datum/holiday/H = SSevents.holidays[holiday_name]
+			if(H.announce)
+				holiday_names.Add(holiday_name)
+				holiday_blurbs.Add("[H.desc]")
+		if(!length(holiday_names))
+			return
+		var/holidays_string = english_list(holiday_names, nothing_text = "nothing", and_text = " and ", comma_text = ", ", final_comma_text = "" )
+		to_chat(world, "<font color=#4F49AF>and...</font>")
+		to_chat(world, "<h4>Happy [holidays_string] Everybody!</h4>")
+		if(holiday_blurbs.len != 0)
+			for(var/blurb in holiday_blurbs)
+				to_chat(world, "<div align='center'><font color=#4F49AF>[blurb]</font></div>")
 
 /proc/IsHoliday(name)
 	return SSevents.holidays[name]? TRUE : FALSE

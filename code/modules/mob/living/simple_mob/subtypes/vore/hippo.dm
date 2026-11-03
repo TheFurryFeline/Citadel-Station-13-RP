@@ -22,10 +22,10 @@
 	randomized = TRUE
 	mod_min = 100
 	mod_max = 150
-	movement_cooldown = 5
+	movement_base_speed = 10 / 5
 	see_in_dark = 3
 
-	armor = list(
+	armor_legacy_mob = list(
 		"melee" = 15,//They thick as fuck boi
 		"bullet" = 15,
 		"laser" = 15,
@@ -39,55 +39,24 @@
 	response_harm = "hits the"
 	attacktext = list("bit")
 
-	melee_damage_upper = 12
-	melee_damage_lower = 7
+	legacy_melee_damage_upper = 12
+	legacy_melee_damage_lower = 7
 	attack_sharp = TRUE
 
-	old_x = -16
-	old_y = 0
-	default_pixel_x = -16
-	pixel_x = -16
-	pixel_y = 0
+	base_pixel_x = -16
 
 	meat_amount = 10 //Infinite meat!
 	bone_amount = 6
 	hide_amount = 6
 	hide_type = /obj/item/stack/hairlesshide
 
-	max_buckled_mobs = 1 //Yeehaw
-	can_buckle = TRUE
-	buckle_movable = TRUE
-	buckle_lying = FALSE
-	mount_offset_y = 20
-
 	say_list_type = /datum/say_list/hippo
-	ai_holder_type = /datum/ai_holder/simple_mob/retaliate
+	ai_holder_type = /datum/ai_holder/polaris/simple_mob/retaliate
 
 // Activate Noms!
 /mob/living/simple_mob/vore/hippo //I don't know why it's in a seperate line but everyone does it so i do it
-	vore_active = 1
-	vore_capacity = 1
-	vore_bump_chance = 15
-	vore_bump_emote = "lazily wraps its tentacles around"
-	vore_standing_too = 1
-	vore_ignores_undigestable = 0
-	vore_default_mode = DM_HOLD
-	vore_digest_chance = 10
-	vore_escape_chance = 20
-	vore_pounce_chance = 35 //it's hippo sized it doesn't care it just eats you
-	vore_stomach_name = "rumen" //First stomach of a ruminant. It's where the pre digestion bacteria stuff happens. Very warm.
-	vore_stomach_flavor	= "You are squeezed into the sweltering insides of the herbivore rumen."
-	vore_icons = SA_ICON_LIVING
 
-/* //VOREStation AI Temporary Removal
-/mob/living/simple_mob/vore/hippo/Login()
-	. = ..()
-	if(!riding_datum)
-		riding_datum = new /datum/riding/simple_animal(src)
-	verbs |= /mob/living/simple_animal/proc/animal_mount
-*/
-
-/mob/living/simple_mob/vore/hippo/MouseDrop_T(mob/living/M, mob/living/user)
+/mob/living/simple_mob/vore/hippo/MouseDroppedOnLegacy(mob/living/M, mob/living/user)
 	return
 
 /datum/say_list/hippo

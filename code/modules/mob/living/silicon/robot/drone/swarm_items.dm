@@ -9,9 +9,9 @@
 	var/field_cooldown = 1 MINUTE
 	var/last_field = 0
 
-/obj/item/matter_decompiler/swarm/afterattack(atom/target as mob|obj|turf|area, mob/living/user as mob|obj, proximity, params)
+/obj/item/matter_decompiler/swarm/afterattack(atom/target, mob/user, clickchain_flags, list/params)
 
-	if(!proximity) return //Not adjacent.
+	if(!(clickchain_flags & CLICKCHAIN_HAS_PROXIMITY)) return //Not adjacent.
 
 	//We only want to deal with using this on turfs. Specific items aren't important.
 	var/turf/T = get_turf(target)
@@ -24,12 +24,11 @@
 	for(var/mob/M in T)
 		if(istype(M,/mob/living/simple_mob/animal/passive/lizard) || istype(M,/mob/living/simple_mob/animal/passive/mouse))
 			src.loc.visible_message("<span class='danger'>[src.loc] sucks [M] into its decompiler. There's a horrible crunching noise.</span>","<span class='danger'>It's a bit of a struggle, but you manage to suck [M] into your decompiler. It makes a series of visceral crunching noises.</span>")
-			new/obj/effect/decal/cleanable/blood/splatter(get_turf(src))
+			new/obj/effect/debris/cleanable/blood/splatter(get_turf(src))
 			qdel(M)
-			if(wood)
-				wood.add_charge(2000)
-			if(plastic)
-				plastic.add_charge(2000)
+
+			item_mount?.material_give_amount(src, null, /datum/prototype/material/wood_plank, 2000)
+			item_mount?.material_give_amount(src, null, /datum/prototype/material/plastic, 2000)
 			return
 
 		else if(istype(M,/mob/living/silicon/robot/drone) && !M.client)
@@ -49,16 +48,12 @@
 
 			to_chat(D, "<span class='danger'>You carefully and thoroughly decompile [M], storing as much of its resources as you can within yourself.</span>")
 			qdel(M)
-			new/obj/effect/decal/cleanable/blood/oil(get_turf(src))
+			new/obj/effect/debris/cleanable/blood/oil(get_turf(src))
 
-			if(metal)
-				metal.add_charge(15000)
-			if(glass)
-				glass.add_charge(15000)
-			if(wood)
-				wood.add_charge(2000)
-			if(plastic)
-				plastic.add_charge(1000)
+			item_mount?.material_give_amount(src, null, /datum/prototype/material/steel::id, 15000)
+			item_mount?.material_give_amount(src, null, /datum/prototype/material/glass::id, 15000)
+			item_mount?.material_give_amount(src, null, /datum/prototype/material/wood_plank::id, 2000)
+			item_mount?.material_give_amount(src, null, /datum/prototype/material/plastic::id, 1000)
 			return
 		else
 			continue
@@ -66,31 +61,23 @@
 	for(var/obj/W in T)
 		//Different classes of items give different commodities.
 		if(istype(W,/obj/structure/girder))
-			if(metal)
-				metal.add_charge(500)
+			item_mount?.material_give_amount(src, null, /datum/prototype/material/steel::id, 500)
 		else if(istype(W,/obj/machinery/power/emitter))
-			if(metal)
-				metal.add_charge(3000)
-			if(plastic)
-				plastic.add_charge(1000)
+			item_mount?.material_give_amount(src, null, /datum/prototype/material/steel::id, 3000)
+			item_mount?.material_give_amount(src, null, /datum/prototype/material/plastic::id, 1000)
 		else if(istype(W,/obj/machinery/space_heater))
-			if(metal)
-				metal.add_charge(1500)
-			if(plastic)
-				plastic.add_charge(750)
+			item_mount?.material_give_amount(src, null, /datum/prototype/material/steel::id, 1500)
+			item_mount?.material_give_amount(src, null, /datum/prototype/material/plastic::id, 750)
 		else if(istype(W,/obj/structure/closet))
 			var/obj/structure/closet/C = W
 			if(!C.opened)
 				continue
 			if(istype(W,/obj/structure/closet/coffin))
-				if(wood)
-					wood.add_charge(1000)
+				item_mount?.material_give_amount(src, null, /datum/prototype/material/wood_plank::id, 1000)
 			else if(istype(W,/obj/structure/closet/crate/plastic))
-				if(plastic)
-					plastic.add_charge(750)
+				item_mount?.material_give_amount(src, null, /datum/prototype/material/plastic::id, 1000)
 			else
-				if(metal)
-					metal.add_charge(1000)
+				item_mount?.material_give_amount(src, null, /datum/prototype/material/steel::id, 1000)
 		else
 			continue
 
@@ -110,7 +97,6 @@
 		to_chat(user, "<span class='notice'>You deploy your decompiler and clear out the contents of \the [T].</span>")
 	else
 		to_chat(user, "<span class='danger'>Nothing on \the [T] is useful to you.</span>")
-	return
 
 /obj/effect/temporary_effect/pulse/disintegrate
 	name = "molecular debonding field"
@@ -139,24 +125,23 @@
 		explosion(get_turf(src), -1, 1, 2, 5, adminlog = 1)
 	..()
 
-/obj/item/gun/energy/xray/swarm
+/obj/item/gun/projectile/energy/xray/swarm
 	name = "spectral projector"
 	desc = "A high-power laser gun capable of expelling concentrated gamma blasts, which are able to penetrate matter easier than \
 	standard xray beams, resulting in an effective 'anti-everything' energy weapon."
 	icon_state = "xray"
 	item_state = "xray"
 	origin_tech = list(TECH_COMBAT = 5, TECH_MATERIAL = 3, TECH_MAGNET = 2)
-	projectile_type = /obj/item/projectile/beam/shock
-	charge_cost = 175
+	projectile_type = /obj/projectile/beam/shock
 
 	self_recharge = TRUE
 	use_external_power = TRUE
 
 	firemodes = list(
-		list(mode_name="kill", projectile_type=/obj/item/projectile/beam/gamma, charge_cost = 300),
-		list(mode_name="deter", projectile_type=/obj/item/projectile/beam/shock, charge_cost = 175),
+		list(mode_name="kill", projectile_type=/obj/projectile/beam/gamma, charge_cost = POWER_CELL_CAPACITY_WEAPON / 8),
+		list(mode_name="deter", projectile_type=/obj/projectile/beam/shock, charge_cost = POWER_CELL_CAPACITY_WEAPON / 16),
 		)
 
-/obj/item/gun/energy/xray/swarm/Initialize(mapload)
+/obj/item/gun/projectile/energy/xray/swarm/Initialize(mapload)
 	. = ..()
 	adjust_scale(-1, 1)

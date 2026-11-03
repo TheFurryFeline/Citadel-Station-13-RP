@@ -24,13 +24,13 @@
 	opacity = 0
 
 /obj/machinery/vending/nifsoft_shop/Initialize(mapload)
+	var/mutable_appearance/A = new(src)
+	A.icon_state = "beacon"
+	ar_image_holder = new(null, src, A)
 	. = ..()
 	if(wires)
 		qdel(wires)
 	wires = new /datum/wires/vending/no_contraband(src) //These wires can't be hacked for contraband.
-	var/mutable_appearance/A = new(src)
-	A.icon_state = "beacon"
-	ar_image_holder = new(null, src, A)
 
 /obj/machinery/vending/nifsoft_shop/Destroy()
 	QDEL_NULL(ar_image_holder)
@@ -38,11 +38,11 @@
 
 /obj/machinery/vending/nifsoft_shop/power_change()
 	..()
-	if(stat & BROKEN)
+	if(machine_stat & BROKEN)
 		icon_state = "[initial(icon_state)]-broken"
 		ar_image_holder.alpha = 0
 	else
-		if(!(stat & NOPOWER))
+		if(!(machine_stat & NOPOWER))
 			icon_state = initial(icon_state)
 			ar_image_holder.alpha = 255
 		else
@@ -51,7 +51,7 @@
 				ar_image_holder.alpha = 0
 
 /obj/machinery/vending/nifsoft_shop/malfunction()
-	stat |= BROKEN
+	machine_stat |= BROKEN
 	icon_state = "[initial(icon_state)]-broken"
 	ar_image_holder.alpha = 0
 
@@ -63,6 +63,8 @@
 		starting_illegal_nifsoft = list()
 		for(var/P in (subtypesof(/datum/nifsoft) - typesof(/datum/nifsoft/package)))
 			var/datum/nifsoft/NS = P
+			if(initial(NS.abstract_type) == P)
+				continue
 			if(initial(NS.vended))
 				switch(initial(NS.illegal))
 					if(TRUE)
@@ -112,7 +114,7 @@
 
 //Had to override this too
 /obj/machinery/vending/nifsoft_shop/Topic(href, href_list)
-	if(stat & (BROKEN|NOPOWER))
+	if(machine_stat & (BROKEN|NOPOWER))
 		return
 	if(usr.stat || usr.restrained())
 		return
@@ -123,7 +125,7 @@
 			return
 
 		coin.forceMove(src.loc)
-		if(!usr.get_active_hand())
+		if(!usr.get_active_held_item())
 			usr.put_in_hands(coin)
 		to_chat(usr, "<span class='notice'>You remove \the [coin] from \the [src]</span>")
 		coin = null
@@ -160,7 +162,7 @@
 				return
 			else
 				currently_vending = R
-				if(!vendor_account || vendor_account.suspended)
+				if(!GLOB.vendor_account || GLOB.vendor_account.suspended)
 					status_message = "This machine is currently unable to process payments due to problems with the associated account."
 					status_error = 1
 				else

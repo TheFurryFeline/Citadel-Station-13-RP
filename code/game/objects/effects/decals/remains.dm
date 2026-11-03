@@ -14,7 +14,7 @@
 
 /obj/effect/decal/remains/robot
 	desc = "They look like the remains of something mechanical. They have a strange aura about them."
-	icon = 'icons/mob/robots.dmi'
+	icon = 'icons/mob/robot-legacy.dmi'
 	icon_state = "remainsrobot"
 
 /obj/effect/decal/remains/mouse
@@ -55,12 +55,9 @@
 	desc = "They look like human remains. They've been here a long time."
 	icon_state = "mummified2"
 
-/obj/effect/decal/remains/attack_hand(mob/user as mob)
+/obj/effect/decal/remains/attack_hand(mob/user, datum/event_args/actor/clickchain/e_args)
 	to_chat(user, "<span class='notice'>[src] sinks together into a pile of ash.</span>")
 	var/turf/simulated/floor/F = get_turf(src)
 	if (istype(F))
-		new /obj/effect/decal/cleanable/ash(F)
+		new /obj/effect/debris/cleanable/ash(F)
 	qdel(src)
-
-/obj/effect/decal/remains/robot/attack_hand(mob/user as mob)
-	return

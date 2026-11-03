@@ -6,9 +6,10 @@
 	pixel_x = -16
 	plane = MOB_PLANE // You know what, let's play it safe.
 	layer = ABOVE_MOB_LAYER
-	var/base_state = null	// Used for stumps.
-	var/health = 200		// Used for chopping down trees.
-	var/max_health = 200
+
+	integrity = 400
+	integrity_max = 400
+
 	var/shake_animation_degrees = 4	// How much to shake the tree when struck.  Larger trees should have smaller numbers or it looks weird.
 	var/obj/item/stack/material/product = null	// What you get when chopping this tree down.  Generally it will be a type of wood.
 	var/product_amount = 10 // How much of a stack you get, if the above is defined.
@@ -17,14 +18,15 @@
 
 /obj/structure/flora/tree/Initialize(mapload)
 	icon_state = choose_icon_state()
-
 	return ..()
 
-/obj/structure/flora/tree/update_transform()
-	var/matrix/M = matrix()
-	M.Scale(icon_scale_x, icon_scale_y)
-	M.Translate(0, 16*(icon_scale_y-1))
-	animate(src, transform = M, time = 10)
+/obj/structure/flora/tree/apply_transform(matrix/to_apply)
+	animate(src, transform = to_apply, time = 1 SECONDS)
+
+/obj/structure/flora/tree/base_transform(matrix/applying)
+	var/matrix/base_matrix = ..()
+	base_matrix.Translate(0, 16 * (icon_scale_y - 1))
+	return base_matrix
 
 // Override this for special icons.
 /obj/structure/flora/tree/proc/choose_icon_state()
@@ -36,39 +38,23 @@
 		. = TRUE
 	return .
 
-/obj/structure/flora/tree/attackby(var/obj/item/W, var/mob/living/user)
-	if(can_harvest(W))
-		..(W, user)
-		return
-
-	if(!istype(W))
+/obj/structure/flora/tree/attackby(obj/item/I, mob/living/user, list/params, clickchain_flags, damage_multiplier)
+	if(user.a_intent == INTENT_HARM)
 		return ..()
-
+	if(can_harvest(I))
+		return ..(I, user)
 	if(is_stump)
-		if(istype(W,/obj/item/shovel))
+		if(istype(I,/obj/item/shovel))
 			if(do_after(user, 5 SECONDS))
-				visible_message("<span class='notice'>\The [user] digs up \the [src] stump with \the [W].</span>")
+				visible_message("<span class='notice'>\The [user] digs up \the [src] stump with \the [I].</span>")
 				qdel(src)
 		return
+	return ..()
 
-	visible_message("<span class='danger'>\The [user] hits \the [src] with \the [W]!</span>")
-
-	var/damage_to_do = W.force
-	if(!W.sharp && !W.edge)
-		damage_to_do = round(damage_to_do / 4)
-	if(damage_to_do > 0)
-		if(W.sharp && W.edge)
-			playsound(get_turf(src), 'sound/effects/woodcutting.ogg', 50, 1)
-		else
-			playsound(get_turf(src), W.hitsound, 50, 1)
-		if(damage_to_do > 5 && !indestructable)
-			adjust_health(-damage_to_do)
-		else
-			to_chat(user, "<span class='warning'>\The [W] is ineffective at harming \the [src].</span>")
-
-	hit_animation()
-	user.setClickCooldown(user.get_attack_speed(W))
-	user.do_attack_animation(src)
+/obj/structure/flora/tree/hitsound_melee(obj/item/I)
+	if((I.damage_mode & DAMAGE_MODE_EDGE) && I.damage_force >= 5)
+		return 'sound/effects/woodcutting.ogg'
+	return ..()
 
 // Shakes the tree slightly, more or less stolen from lockers.
 /obj/structure/flora/tree/proc/hit_animation()
@@ -80,25 +66,14 @@
 	animate(src, transform=turn(M, shake_animation_degrees * shake_dir), pixel_x=init_px + 2*shake_dir, time=1)
 	animate(transform=M, pixel_x=init_px, time=6, easing=ELASTIC_EASING)
 
-// Used when the tree gets hurt.
-/obj/structure/flora/tree/proc/adjust_health(var/amount, var/damage_wood = FALSE)
-	if(is_stump || indestructable)
-		return
+/obj/structure/flora/tree/inflict_atom_damage(damage, damage_type, damage_tier, damage_flag, damage_mode, hit_zone, attack_type, datum/attack_source)
+	. = ..()
+	// ruins some of the wood if you use high power modes or types
+	if(. > 5 && ((damage_mode & (DAMAGE_MODE_ABLATING | DAMAGE_MODE_PIERCE | DAMAGE_MODE_SHRED)) || (damage_flag == ARMOR_BOMB)))
+		product_amount -= round((. * 0.5) / integrity_max * initial(product_amount))
 
-	// Bullets and lasers ruin some of the wood
-	if(damage_wood && product_amount > 0)
-		var/wood = initial(product_amount)
-		product_amount -= round(wood * (abs(amount)/max_health))
-
-	health = between(0, health + amount, max_health)
-	if(health <= 0)
-		die()
-		return
-
-// Called when the tree loses all health, for whatever reason.
-/obj/structure/flora/tree/proc/die()
-	if(is_stump || indestructable)
-		return
+/obj/structure/flora/tree/atom_break()
+	. = ..()
 
 	if(product && product_amount) // Make wooden logs.
 		var/obj/item/stack/material/M = new product(get_turf(src))
@@ -114,26 +89,15 @@
 
 	is_stump = TRUE
 	density = FALSE
-	icon_state = "[base_state]_stump"
-	overlays.Cut() // For the Sif tree and other future glowy trees.
+	icon_state = "[base_icon_state]_stump"
+	cut_overlays() // For the Sif tree and other future glowy trees.
 	set_light(0)
 
-/obj/structure/flora/tree/ex_act(var/severity)
-	adjust_health(-(max_health / severity), TRUE)
-
-/obj/structure/flora/tree/bullet_act(var/obj/item/projectile/Proj)
-	if(Proj.get_structure_damage())
-		adjust_health(-Proj.get_structure_damage(), TRUE)
-
-/obj/structure/flora/tree/tesla_act(power, explosive)
-	adjust_health(-power / 100, TRUE) // Kills most trees in one lightning strike.
-	..()
-
-/obj/structure/flora/tree/get_description_interaction()
+/obj/structure/flora/tree/get_description_interaction(mob/user)
 	var/list/results = list()
 
 	if(!is_stump)
-		results += "[desc_panel_image("hatchet")]to cut down this tree into logs.  Any sharp and strong weapon will do."
+		results += "[desc_panel_image("hatchet", user)]to cut down this tree into logs.  Any sharp and strong weapon will do."
 
 	results += ..()
 
@@ -147,12 +111,12 @@
 	name = "pine tree"
 	icon = 'icons/obj/flora/pinetrees.dmi'
 	icon_state = "pine_1"
-	base_state = "pine"
+	base_icon_state = "pine"
 	product = /obj/item/stack/material/log
 	shake_animation_degrees = 3
 
 /obj/structure/flora/tree/pine/choose_icon_state()
-	return "[base_state]_[rand(1, 3)]"
+	return "[base_icon_state]_[rand(1, 3)]"
 
 
 /obj/structure/flora/tree/pine/xmas
@@ -170,7 +134,7 @@
 /obj/structure/flora/tree/pine/xmas/presents/choose_icon_state()
 	return "pinepresents"
 
-/obj/structure/flora/tree/pine/xmas/presents/attack_hand(mob/living/user)
+/obj/structure/flora/tree/pine/xmas/presents/attack_hand(mob/user, datum/event_args/actor/clickchain/e_args)
 	. = ..()
 	if(.)
 		return
@@ -190,15 +154,15 @@
 /obj/structure/flora/tree/palm
 	icon = 'icons/obj/flora/palmtrees.dmi'
 	icon_state = "palm1"
-	base_state = "palm"
+	base_icon_state = "palm"
 	product = /obj/item/stack/material/log
 	product_amount = 5
-	health = 200
-	max_health = 200
+	integrity = 200
+	integrity_max = 200
 	pixel_x = 0
 
 /obj/structure/flora/tree/palm/choose_icon_state()
-	return "[base_state][rand(1, 2)]"
+	return "[base_icon_state][rand(1, 2)]"
 
 
 // Dead trees
@@ -206,46 +170,46 @@
 /obj/structure/flora/tree/dead
 	icon = 'icons/obj/flora/deadtrees.dmi'
 	icon_state = "tree_1"
-	base_state = "tree"
+	base_icon_state = "tree"
 	product = /obj/item/stack/material/log
-	product_amount = 5
-	health = 200
-	max_health = 200
+	product_amount = 10
+	integrity = 200
+	integrity_max = 200
 
 /obj/structure/flora/tree/dead/choose_icon_state()
-	return "[base_state]_[rand(1, 6)]"
+	return "[base_icon_state]_[rand(1, 6)]"
 
 // Small jungle trees
 
 /obj/structure/flora/tree/jungle_small
 	icon = 'icons/obj/flora/jungletreesmall.dmi'
 	icon_state = "tree"
-	base_state = "tree"
+	base_icon_state = "tree"
 	product = /obj/item/stack/material/log
-	product_amount = 10
-	health = 400
-	max_health = 400
+	product_amount = 20
+	integrity = 400
+	integrity_max = 400
 	pixel_x = -32
 
 /obj/structure/flora/tree/jungle_small/choose_icon_state()
-	return "[base_state][rand(1, 6)]"
+	return "[base_icon_state][rand(1, 6)]"
 
 // Big jungle trees
 
 /obj/structure/flora/tree/jungle
 	icon = 'icons/obj/flora/jungletree.dmi'
 	icon_state = "tree"
-	base_state = "tree"
+	base_icon_state = "tree"
 	product = /obj/item/stack/material/log
-	product_amount = 20
-	health = 800
-	max_health = 800
+	product_amount = 40
+	integrity = 800
+	integrity_max = 800
 	pixel_x = -48
 	pixel_y = -16
 	shake_animation_degrees = 2
 
 /obj/structure/flora/tree/jungle/choose_icon_state()
-	return "[base_state][rand(1, 6)]"
+	return "[base_icon_state][rand(1, 6)]"
 
 // Sif trees
 
@@ -264,7 +228,7 @@
 	desc = "It's a tree, except this one seems quite alien.  It glows a deep blue."
 	icon = 'icons/obj/flora/deadtrees.dmi'
 	icon_state = "tree_sif"
-	base_state = "tree_sif"
+	base_icon_state = "tree_sif"
 	product = /obj/item/stack/material/log/sif
 	catalogue_data = list(/datum/category_item/catalogue/flora/sif_tree)
 	randomize_size = TRUE
@@ -280,7 +244,7 @@
 
 /obj/structure/flora/tree/sif/choose_icon_state()
 	light_shift = rand(0, 5)
-	return "[base_state][light_shift]"
+	return "[base_icon_state][light_shift]"
 
 /obj/structure/flora/tree/sif/Initialize(mapload)
 	. = ..()
@@ -288,6 +252,6 @@
 
 /obj/structure/flora/tree/sif/update_icon()
 	set_light(5 - light_shift, 1, "#33ccff")	// 5 variants, missing bulbs. 5th has no bulbs, so no glow.
-	var/image/glow = image(icon = icon, icon_state = "[base_state][light_shift]_glow")
+	var/image/glow = image(icon = icon, icon_state = "[base_icon_state][light_shift]_glow")
 	glow.plane = ABOVE_LIGHTING_PLANE
-	overlays = list(glow)
+	add_overlay(glow)

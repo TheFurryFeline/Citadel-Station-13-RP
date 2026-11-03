@@ -25,9 +25,9 @@
 /obj/machinery/artifact_harvester/attackby(var/obj/I as obj, var/mob/user as mob)
 	if(istype(I,/obj/item/anobattery))
 		if(!inserted_battery)
+			if(!user.attempt_insert_item_for_installation(I, src))
+				return
 			to_chat(user, "<font color=#4F49AF>You insert [I] into [src].</font>")
-			user.drop_item()
-			I.loc = src
 			inserted_battery = I
 			SStgui.update_uis(src)
 		else
@@ -35,9 +35,9 @@
 	else
 		return..()
 
-/obj/machinery/artifact_harvester/attack_hand(var/mob/user as mob)
+/obj/machinery/artifact_harvester/attack_hand(mob/user, datum/event_args/actor/clickchain/e_args)
 	add_fingerprint(user)
-	if(stat & (NOPOWER|BROKEN))
+	if(machine_stat & (NOPOWER|BROKEN))
 		return
 	ui_interact(user)
 
@@ -47,7 +47,7 @@
 		ui = new(user, src, "XenoarchArtifactHarvester", name)
 		ui.open()
 
-/obj/machinery/artifact_harvester/ui_data(mob/user, datum/tgui/ui, datum/ui_state/state)
+/obj/machinery/artifact_harvester/ui_data(mob/user, datum/tgui/ui)
 	var/list/data = ..()
 
 	data["info"] = list(
@@ -72,7 +72,7 @@
 				data["info"]["inserted_battery"]["artifact_id"] = "N/A"
 	return data
 
-/obj/machinery/artifact_harvester/ui_act(action, list/params, datum/tgui/ui, datum/ui_state/state)
+/obj/machinery/artifact_harvester/ui_act(action, list/params, datum/tgui/ui, datum/ui_state/state, datum/event_args/actor/actor)
 	if(..())
 		return TRUE
 
@@ -216,7 +216,7 @@
 				inserted_battery.stored_charge = 0
 
 /obj/machinery/artifact_harvester/process(delta_time)
-	if(stat & (NOPOWER|BROKEN))
+	if(machine_stat & (NOPOWER|BROKEN))
 		return
 
 	if(harvesting > 0)

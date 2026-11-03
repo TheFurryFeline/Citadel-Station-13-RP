@@ -7,21 +7,21 @@
 
 	var/spawncount = 1
 
-	var/spawntype = /obj/effect/spider/spiderling
+	var/spawntype = /obj/structure/spider/spiderling
 
 /datum/gm_action/spider_infestation/set_up()
-	severity = pickweight(EVENT_LEVEL_MUNDANE = max(1,(12 - (3 * metric.count_people_in_department(DEPARTMENT_SECURITY)))),
-	EVENT_LEVEL_MODERATE = (7 + (2 * metric.count_people_in_department(DEPARTMENT_SECURITY))),
-	EVENT_LEVEL_MAJOR = (1 + (2 * metric.count_people_in_department(DEPARTMENT_SECURITY)))
-	)
+	severity = pick_weight(mundande_weight = max(1,(12 - (3 * metric.count_people_in_department(DEPARTMENT_SECURITY)))),
+							moderate_weight = (7 + (2 * metric.count_people_in_department(DEPARTMENT_SECURITY))),
+							major_weight = (1 + (2 * metric.count_people_in_department(DEPARTMENT_SECURITY)))
+							)
 
 	switch(severity)
 		if(EVENT_LEVEL_MUNDANE)
-			spawntype = /obj/effect/spider/spiderling/stunted
+			spawntype = /obj/structure/spider/spiderling/stunted
 		if(EVENT_LEVEL_MODERATE)
-			spawntype = /obj/effect/spider/spiderling
+			spawntype = /obj/structure/spider/spiderling
 		if(EVENT_LEVEL_MAJOR)
-			spawntype = /obj/effect/spider/spiderling
+			spawntype = /obj/structure/spider/spiderling
 
 	spawncount = rand(4 * severity, 6 * severity)
 
@@ -35,14 +35,14 @@
 /datum/gm_action/spider_infestation/start()
 	..()
 	var/list/vents = list()
-	for(var/obj/machinery/atmospherics/unary/vent_pump/temp_vent in machines)
-		if(!temp_vent.welded && temp_vent.network && (temp_vent.loc.z in GLOB.using_map.station_levels))
+	for(var/obj/machinery/atmospherics/component/unary/vent_pump/temp_vent in GLOB.machines)
+		if(!temp_vent.welded && temp_vent.network && (temp_vent.loc.z in (LEGACY_MAP_DATUM).station_levels))
 			if(temp_vent.network.normal_members.len > 50)
 				vents += temp_vent
 
 	while((spawncount >= 1) && vents.len)
 		var/obj/vent = pick(vents)
-		new /obj/effect/spider/spiderling(vent.loc)
+		new /obj/structure/spider/spiderling(vent.loc)
 		vents -= vent
 		spawncount--
 

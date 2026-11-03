@@ -23,7 +23,7 @@
 
 /datum/getrev/proc/get_log_message()
 	var/list/msg = list()
-	msg += "Running /tg/ revision: [date]"
+	msg += "Running CitRP revision: [date]"
 	if(originmastercommit)
 		msg += "origin/master: [originmastercommit]"
 
@@ -36,6 +36,8 @@
 		msg += "HEAD: [commit]"
 	else if(!originmastercommit)
 		msg += "No commit information"
+
+	msg += "Running rust-g version [rustg_get_version()]"
 
 	return msg.Join("\n")
 
@@ -52,7 +54,7 @@
 		. += "<a href=\"[CONFIG_GET(string/githuburl)]/pull/[tm.number]\">#[tm.number][details]</a><br>"
 
 /client/verb/showrevinfo()
-	set category = "OOC"
+	set category = VERB_CATEGORY_OOC
 	set name = "Show Server Revision"
 	set desc = "Check the current server code revision"
 
@@ -126,5 +128,5 @@
 			if(probabilities[ctag] > 0)
 				var/percentage = round(probabilities[ctag] / sum * 100, 0.1)
 				msg += "[ctag] [percentage]%"
-	to_chat(src, msg.Join("<br>"))
 */
+	to_chat(src, msg.Join("<br>"))

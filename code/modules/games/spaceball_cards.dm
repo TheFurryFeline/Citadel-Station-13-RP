@@ -8,16 +8,16 @@
 	. = ..()
 	var/datum/playingcard/P
 	var/i
-	var/year = 554 + text2num(time2text(world.timeofday, "YYYY"))
+	var/year = CURRENT_STATION_YEAR // was at 554 for some reason?? so this sport event happened in the future?? (ic game starts at +544)
 	for(i=0;i<5;i++)
 		P = new()
 		if(prob(1))
 			P.name = "Spaceball Jones, [year] Brickburn Galaxy Trekers"
 			P.card_icon = "spaceball_jones"
 		else
-			var/language_type = pick(/datum/language/human,/datum/language/diona_local,/datum/language/tajaran,/datum/language/unathi)
-			var/datum/language/L = new language_type()
-			var/team = pick("Brickburn Galaxy Trekers","Mars Rovers", "Qerrbalak Saints", "Moghes Rockets", "Meralar Lightning", "[GLOB.using_map.starsys_name] Vixens", "Euphoric-Earth Alligators")
+			var/language_type = pick(/datum/prototype/language/human,/datum/prototype/language/diona_local,/datum/prototype/language/tajaran,/datum/prototype/language/unathi)
+			var/datum/prototype/language/L = new language_type()
+			var/team = pick("Brickburn Galaxy Trekers","Mars Rovers", "Qerrbalak Saints", "Moghes Rockets", "Meralar Lightning", "[(LEGACY_MAP_DATUM).starsys_name] Vixens", "Euphoric-Earth Alligators")
 			P.name = "[L.get_random_name(pick(MALE,FEMALE))], [year - rand(0,50)] [team]"
 			P.card_icon = "spaceball_standard"
 		P.back_icon = "card_back_spaceball"

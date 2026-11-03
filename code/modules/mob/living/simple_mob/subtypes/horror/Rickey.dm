@@ -12,7 +12,6 @@
 	icon_living = "Rickey"
 	icon_dead = "r_head"
 	icon_rest = "Rickey"
-	faction = "horror"
 	icon = 'icons/mob/horror_show/GHPS.dmi'
 	icon_gib = "generic_gib"
 	catalogue_data = list(/datum/category_item/catalogue/fauna/horror/Rickey)
@@ -22,8 +21,8 @@
 	maxHealth = 175
 	health = 175
 
-	melee_damage_lower = 25
-	melee_damage_upper = 35
+	legacy_melee_damage_lower = 25
+	legacy_melee_damage_upper = 35
 	grab_resist = 100
 
 	response_help = "pets the"
@@ -34,7 +33,7 @@
 
 
 	say_list_type = /datum/say_list/Rickey
-	ai_holder_type = /datum/ai_holder/simple_mob/horror
+	ai_holder_type = /datum/ai_holder/polaris/simple_mob/horror
 
 	meat_amount = 4
 	meat_type = /obj/item/reagent_containers/food/snacks/meat/human
@@ -42,25 +41,29 @@
 	hide_amount = 2
 	exotic_amount = 2
 
+/mob/living/simple_mob/horror/Rickey/Initialize(mapload)
+	. = ..()
+	AddComponent(/datum/component/horror_aura/weak)
+
 /mob/living/simple_mob/horror/Rickey/death()
 	playsound(src, 'sound/h_sounds/headcrab.ogg', 50, 1)
 	..()
 
-/mob/living/simple_mob/horror/Rickey/bullet_act()
-    playsound(src, 'sound/h_sounds/holla.ogg', 50, 1)
-    ..()
+/mob/living/simple_mob/horror/Rickey/on_bullet_act(obj/projectile/proj, impact_flags, list/bullet_act_args)
+	. = ..()
+	playsound(src, 'sound/h_sounds/holla.ogg', 50, 1)
 
-/mob/living/simple_mob/horror/Rickey/attack_hand()
-    playsound(src, 'sound/h_sounds/holla.ogg', 50, 1)
-    ..()
+/mob/living/simple_mob/horror/Rickey/attack_hand(mob/user, datum/event_args/actor/clickchain/e_args)
+	playsound(src, 'sound/h_sounds/holla.ogg', 50, 1)
+	..()
 
-/mob/living/simple_mob/horror/Rickey/hitby()
-    playsound(src, 'sound/h_sounds/holla.ogg', 50, 1)
-    ..()
+/mob/living/simple_mob/horror/Rickey/throw_impacted(atom/movable/AM, datum/thrownthing/TT)
+	. = ..()
+	playsound(src, 'sound/h_sounds/holla.ogg', 50, 1)
 
 /mob/living/simple_mob/horror/Rickey/attackby()
-    playsound(src, 'sound/h_sounds/holla.ogg', 50, 1)
-    ..()
+	playsound(src, 'sound/h_sounds/holla.ogg', 50, 1)
+	..()
 
 /datum/say_list/Rickey
 	speak = list("Uuurrgh?","Aauuugghh...", "AAARRRGH!")

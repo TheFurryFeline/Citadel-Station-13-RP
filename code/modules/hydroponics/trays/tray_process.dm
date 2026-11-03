@@ -3,7 +3,7 @@
 		return
 
 	// Handle nearby smoke if any.
-	for(var/obj/effect/smoke/chem/smoke in view(1, src))
+	for(var/obj/effect/particle_effect/smoke/chem/smoke in view(1, src))
 		if(smoke.reagents.total_volume)
 			smoke.reagents.trans_to_obj(src, 5, copy = 1)
 
@@ -28,6 +28,8 @@
 	// There's a chance for a weed explosion to happen if the weeds take over.
 	// Plants that are themselves weeds (weed_tolerance > 10) are unaffected.
 	if (weedlevel >= 10 && prob(10))
+		if(hostile_soil)
+			return
 		if(!seed || weedlevel >= seed.get_trait(TRAIT_WEED_TOLERANCE))
 			weed_invasion()
 
@@ -51,18 +53,18 @@
 			mutate((rand(100) < 15) ? 2 : 1)
 			mutation_level = 0
 
-	// Maintain tray nutrient and water levels.
-	if(seed.get_trait(TRAIT_NUTRIENT_CONSUMPTION) > 0 && nutrilevel > 0 && prob(25))
+	// Maintain tray nutrient and water levels, only if they don't have nutrient/water requirements.
+	if(seed.get_trait(TRAIT_REQUIRES_NUTRIENTS) && seed.get_trait(TRAIT_NUTRIENT_CONSUMPTION) > 0 && nutrilevel > 0 && prob(25))
 		nutrilevel -= max(0,seed.get_trait(TRAIT_NUTRIENT_CONSUMPTION) * HYDRO_SPEED_MULTIPLIER)
-	if(seed.get_trait(TRAIT_WATER_CONSUMPTION) > 0 && waterlevel > 0 && prob(25))
+	if(seed.get_trait(TRAIT_REQUIRES_WATER) && seed.get_trait(TRAIT_WATER_CONSUMPTION) > 0 && waterlevel > 0 && prob(25))
 		waterlevel -= max(0,seed.get_trait(TRAIT_WATER_CONSUMPTION) * HYDRO_SPEED_MULTIPLIER)
 
 	// Make sure the plant is not starving or thirsty. Adequate
 	// water and nutrients will cause a plant to become healthier.
 	var/healthmod = rand(1,3) * HYDRO_SPEED_MULTIPLIER
-	if(seed.get_trait(TRAIT_REQUIRES_NUTRIENTS) && prob(35))
+	if(prob(35))
 		health += (nutrilevel < 2 ? -healthmod : healthmod)
-	if(seed.get_trait(TRAIT_REQUIRES_WATER) && prob(35))
+	if(prob(35))
 		health += (waterlevel < 10 ? -healthmod : healthmod)
 
 	// Check that pressure, heat and light are all within bounds.
@@ -126,9 +128,9 @@
 	if(!closed_system && \
 	 seed.get_trait(TRAIT_SPREAD) == 2 && \
 	 2 * age >= seed.get_trait(TRAIT_MATURATION) && \
-	 !(locate(/obj/effect/plant) in get_turf(src)) && \
+	 !(locate(/obj/structure/plant) in get_turf(src)) && \
 	 prob(2 * seed.get_trait(TRAIT_POTENCY)))
-		new /obj/effect/plant(get_turf(src), seed)
+		new /obj/structure/plant(get_turf(src), seed)
 
 	if(prob(3))  // On each tick, there's a chance the pest population will increase
 		pestlevel += 0.1 * HYDRO_SPEED_MULTIPLIER

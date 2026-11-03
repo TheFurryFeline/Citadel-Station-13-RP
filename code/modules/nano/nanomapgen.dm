@@ -20,8 +20,12 @@
 	set name = "Generate NanoUI Map"
 	set category = "Server"
 
+	var/chosen_z = input(usr,"Enter the Z level to generate") as num|null
+	if(!chosen_z)
+		return
+
 	if(holder)
-		nanomapgen_DumpTile(1, 1, text2num(input(usr,"Enter the Z level to generate")))
+		nanomapgen_DumpTile(1, 1, chosen_z)
 
 /client/proc/nanomapgen_DumpTile(var/startX = 1, var/startY = 1, var/currentZ = 1, var/endX = -1, var/endY = -1)
 
@@ -54,7 +58,7 @@
 		sleep(3)
 		return NANOMAP_TERMINALERR
 
-	Tile.Scale((endX - startX + 1) * NANOMAP_ICON_SIZE, (endY - startY + 1) * NANOMAP_ICON_SIZE) // VOREStation Edit - Scale image to actual size mapped.
+	Tile.Scale((endX - startX + 1) * NANOMAP_ICON_SIZE, (endY - startY + 1) * NANOMAP_ICON_SIZE) // Scale image to actual size mapped.
 
 	log_world("NanoMapGen: <B>GENERATE MAP ([startX],[startY],[currentZ]) to ([endX],[endY],[currentZ])</B>")
 	to_chat(usr, "NanoMapGen: <B>GENERATE MAP ([startX],[startY],[currentZ]) to ([endX],[endY],[currentZ])</B>")

@@ -70,8 +70,8 @@
 
 	// Add the core to the asteroid's map
 	rm_controller.dbg("ZM(ga): Starting core generation for [A.coresize] size core..")
-	for(var/x = 1; x <= A.coresize, x++)
-		for(var/y = 1; y <= A.coresize, y++)
+	for(var/x = 1; x <= A.coresize; x++)
+		for(var/y = 1; y <= A.coresize; y++)
 			rm_controller.dbg("ZM(ga): Doing core-relative [x],[y] at [A.coresize+x],[A.coresize+y], [A.type_wall].")
 			A.spot_add(A.coresize+x, A.coresize+y, A.type_wall)
 
@@ -79,7 +79,7 @@
 
 	// Add the arms to the asteroid's map
 	// Vertical arms
-	for(var/x = A.coresize+1, x <= A.coresize*2, x++)	// Start at leftmost side of core, work towards higher X.
+	for(var/x = A.coresize+1; x <= A.coresize*2; x++)	// Start at leftmost side of core, work towards higher X.
 		rm_controller.dbg("ZM(ga): Vert arms. My current column is x:[x].")
 		var/B_arm = rand(0,max_armlen)
 		var/T_arm = rand(0,max_armlen)
@@ -167,8 +167,8 @@
 	#define DIGSITESIZE_LOWER 4
 	#define DIGSITESIZE_UPPER 12
 	#define ARTIFACTSPAWNNUM_LOWER 1
-	#define ARTIFACTSPAWNNUM_UPPER 4 //Replace with difficulty-based ones.
-
+	///Replace with difficulty-based ones.
+#define ARTIFACTSPAWNNUM_UPPER 4
 	if(!M.mineral && prob(rm_controller.diffstep_chances[rm_controller.diffstep]))	// Difficulty translates directly into ore chance
 		rm_controller.dbg("ZM(par): Adding mineral to [M.x],[M.y].")
 		M.make_ore(rm_controller.diffstep >= 3 ? 1 : 0)
@@ -178,9 +178,6 @@
 
 	if(!M.density)
 		return
-
-	if(isnull(M.geologic_data))
-		M.geologic_data = new /datum/geosample(M)
 
 	if(!prob(XENOARCH_SPAWN_CHANCE))
 		return
@@ -298,7 +295,7 @@
 			var/mobchoice = pickweight(rm_controller.mobs["tier[rm_controller.diffstep]"])
 			rm_controller.dbg("ZM(p): Picked [mobchoice] to spawn.")
 			var/mob/living/newmob = new mobchoice(get_turf(SP))
-			newmob.faction = "asteroid_belt"
+			newmob.set_iff_factions(MOB_IFF_FACTION_BIND_AUTO)
 			spawned_mobs += newmob
 			if(delay)
 				sleep(delay)
@@ -339,13 +336,13 @@
 
 	// Ore-bearing rocks that were mined
 	for(var/turf/T in mineral_rocks)
-		var/has_minerals = 0
-		for(var/atom/I in T.contents)
-			if(istype(I,/obj/effect/mineral))
-				has_minerals++
-				break
-		if(has_minerals == 0)
-			tally += RM_DIFF_VALUE_ORE
+		if(!istype(T, /turf/simulated/mineral))
+			continue
+		var/turf/simulated/mineral/mine_turf = T
+		if(mine_turf.mineral)
+			continue
+		// no mineral..
+		tally += RM_DIFF_VALUE_ORE
 
 	mineral_rocks.Cut()	// For good measure, to prevent rescoring.
 

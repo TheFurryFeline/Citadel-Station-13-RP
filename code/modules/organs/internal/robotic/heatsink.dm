@@ -34,11 +34,11 @@
 	return
 
 /obj/item/organ/internal/robotic/heatsink/proc/get_environment_temperature()
-	if(istype(owner.loc, /obj/mecha))
-		var/obj/mecha/M = owner.loc
+	if(istype(owner.loc, /obj/vehicle/sealed/mecha))
+		var/obj/vehicle/sealed/mecha/M = owner.loc
 		return M.return_temperature()
-	else if(istype(owner.loc, /obj/machinery/atmospherics/unary/cryo_cell))
-		var/obj/machinery/atmospherics/unary/cryo_cell/cc = owner.loc
+	else if(istype(owner.loc, /obj/machinery/atmospherics/component/unary/cryo_cell))
+		var/obj/machinery/atmospherics/component/unary/cryo_cell/cc = owner.loc
 		return cc.air_contents.temperature
 
 	var/turf/T = get_turf(src)

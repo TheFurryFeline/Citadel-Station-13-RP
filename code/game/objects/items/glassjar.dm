@@ -3,9 +3,9 @@
 	desc = "A small empty jar."
 	icon = 'icons/obj/items.dmi'
 	icon_state = "jar"
-	w_class = ITEMSIZE_SMALL
-	matter = list(MAT_GLASS = 200)
-	flags = NOBLUDGEON
+	w_class = WEIGHT_CLASS_SMALL
+	materials_base = list(MAT_GLASS = 200)
+	item_flags = ITEM_NO_BLUDGEON | ITEM_ENCUMBERS_WHILE_HELD
 	var/list/accept_mobs = list(/mob/living/simple_mob/animal/passive/lizard, /mob/living/simple_mob/animal/passive/mouse, /mob/living/simple_mob/animal/sif/leech, /mob/living/simple_mob/animal/sif/frostfly, /mob/living/simple_mob/animal/sif/glitterfly)
 	var/contains = 0 // 0 = nothing, 1 = money, 2 = animal, 3 = spiderling
 	drop_sound = 'sound/items/drop/glass.ogg'
@@ -15,25 +15,25 @@
 	. = ..()
 	update_icon()
 
-/obj/item/glass_jar/afterattack(var/atom/A, var/mob/user, var/proximity)
-	if(!proximity || contains)
+/obj/item/glass_jar/afterattack(atom/target, mob/user, clickchain_flags, list/params)
+	if(!(clickchain_flags & CLICKCHAIN_HAS_PROXIMITY) || contains)
 		return
-	if(istype(A, /mob))
+	if(istype(target, /mob))
 		var/accept = 0
 		for(var/D in accept_mobs)
-			if(istype(A, D))
+			if(istype(target, D))
 				accept = 1
 		if(!accept)
-			to_chat(user, "[A] doesn't fit into \the [src].")
+			to_chat(user, "[target] doesn't fit into \the [src].")
 			return
-		var/mob/L = A
+		var/mob/L = target
 		user.visible_message("<span class='notice'>[user] scoops [L] into \the [src].</span>", "<span class='notice'>You scoop [L] into \the [src].</span>")
 		L.loc = src
 		contains = 2
 		update_icon()
 		return
-	else if(istype(A, /obj/effect/spider/spiderling))
-		var/obj/effect/spider/spiderling/S = A
+	else if(istype(target, /obj/structure/spider/spiderling))
+		var/obj/structure/spider/spiderling/S = target
 		user.visible_message("<span class='notice'>[user] scoops [S] into \the [src].</span>", "<span class='notice'>You scoop [S] into \the [src].</span>")
 		S.loc = src
 		STOP_PROCESSING(SSobj, S) // No growing inside jars
@@ -41,25 +41,28 @@
 		update_icon()
 		return
 
-/obj/item/glass_jar/attack_self(var/mob/user)
+/obj/item/glass_jar/attack_self(mob/user, datum/event_args/actor/actor)
+	. = ..()
+	if(.)
+		return
 	switch(contains)
 		if(1)
 			for(var/obj/O in src)
-				O.loc = user.loc
+				O.forceMove(user.loc)
 			to_chat(user, "<span class='notice'>You take money out of \the [src].</span>")
 			contains = 0
 			update_icon()
 			return
 		if(2)
 			for(var/mob/M in src)
-				M.loc = user.loc
+				M.forceMove(user.loc)
 				user.visible_message("<span class='notice'>[user] releases [M] from \the [src].</span>", "<span class='notice'>You release [M] from \the [src].</span>")
 			contains = 0
 			update_icon()
 			return
 		if(3)
-			for(var/obj/effect/spider/spiderling/S in src)
-				S.loc = user.loc
+			for(var/obj/structure/spider/spiderling/S in src)
+				S.forceMove(user.loc)
 				user.visible_message("<span class='notice'>[user] releases [S] from \the [src].</span>", "<span class='notice'>You release [S] from \the [src].</span>")
 				START_PROCESSING(SSobj, S) // They can grow after being let out though
 			contains = 0
@@ -72,15 +75,16 @@
 			contains = 1
 		if(contains != 1)
 			return
+		if(!user.attempt_insert_item_for_installation(W, src))
+			return
 		var/obj/item/spacecash/S = W
 		user.visible_message("<span class='notice'>[user] puts [S.worth] [S.worth > 1 ? "thalers" : "thaler"] into \the [src].</span>")
-		user.drop_from_inventory(S)
-		S.loc = src
 		update_icon()
 
 /obj/item/glass_jar/update_icon() // Also updates name and desc
 	underlays.Cut()
-	overlays.Cut()
+	cut_overlays()
+	. = ..()
 	switch(contains)
 		if(0)
 			name = initial(name)
@@ -108,7 +112,7 @@
 				name = "glass jar with [M]"
 				desc = "A small jar with [M] inside."
 		if(3)
-			for(var/obj/effect/spider/spiderling/S in src)
+			for(var/obj/structure/spider/spiderling/S in src)
 				var/image/victim = image(S.icon, S.icon_state)
 				underlays += victim
 				name = "glass jar with [S]"

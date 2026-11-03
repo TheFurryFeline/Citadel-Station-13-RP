@@ -7,7 +7,7 @@
 	density = 0
 	opacity = 0
 	plane = ABOVE_PLANE
-	simulated = 0
+	atom_flags = ATOM_ABSTRACT
 	mouse_opacity = 0
 
 	var/mob/living/aiming_at   // Who are we currently targeting, if anyone?
@@ -23,6 +23,12 @@
 	owner = loc
 	moveToNullspace()
 	verbs.Cut()
+
+/obj/aiming_overlay/Destroy()
+	owner = null
+	aiming_at = null
+	aiming_with = null
+	return ..()
 
 /obj/aiming_overlay/proc/toggle_permission(var/perm)
 
@@ -92,7 +98,7 @@
 	STOP_PROCESSING(SSobj, src)
 	return ..()
 
-obj/aiming_overlay/proc/update_aiming_deferred()
+/obj/aiming_overlay/proc/update_aiming_deferred()
 	set waitfor = 0
 	sleep(0)
 	update_aiming()
@@ -116,9 +122,9 @@ obj/aiming_overlay/proc/update_aiming_deferred()
 	var/cancel_aim = 1
 
 	var/mob/living/carbon/human/H = owner
-	if(!(aiming_with in owner) || (istype(H) && !H.item_is_in_hands(aiming_with)))
+	if(!(aiming_with in owner) || (istype(H) && !H.is_holding(aiming_with)))
 		to_chat(owner, "<span class='warning'>You must keep hold of your weapon!</span>")
-	else if(owner.eye_blind)
+	else if(owner.has_status_effect(/datum/status_effect/sight/blindness))
 		to_chat(owner, "<span class='warning'>You are blind and cannot see your target!</span>")
 	else if(!aiming_at || !istype(aiming_at.loc, /turf))
 		to_chat(owner, "<span class='warning'>You have lost sight of your target!</span>")
@@ -170,8 +176,7 @@ obj/aiming_overlay/proc/update_aiming_deferred()
 
 	if(owner.client)
 		owner.client.add_gun_icons()
-	to_chat(target, "<span class='danger'>You now have a gun pointed at you. No sudden moves!</span>")
-	to_chat(target, "<span class='critical'>If you fail to comply with your assailant, you accept the consequences of your actions.</span>")
+	to_chat(target, SPAN_BIG(SPAN_DANGER("You have a gun pointed at you. No sudden movements!")))
 	aiming_with = thing
 	aiming_at = target
 	if(istype(aiming_with, /obj/item/gun))
@@ -224,4 +229,3 @@ obj/aiming_overlay/proc/update_aiming_deferred()
 	aiming_at = null
 	moveToNullspace()
 	STOP_PROCESSING(SSobj, src)
-

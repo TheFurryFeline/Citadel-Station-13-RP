@@ -4,7 +4,7 @@
 	name = "Commlink"
 	desc = "An internal communicator for keeping in touch with people."
 	list_pos = NIF_COMMLINK
-	cost = 250
+	cost = 25
 	wear = 0
 	p_drain = 0.01
 	other_flags = (NIF_O_COMMLINK)
@@ -118,6 +118,10 @@
 		var/obj/item/communicator/comm = candidate
 		who = comm.owner
 		comm.im_contacts |= src
+		im_list += list(list("address" = origin_address, "to_address" = exonet.address, "im" = text))
+	else if(istype(candidate, /obj/item/integrated_circuit))
+		var/obj/item/integrated_circuit/CIRC = candidate
+		who = (CIRC.displayed_name)
 		im_list += list(list("address" = origin_address, "to_address" = exonet.address, "im" = text))
 	else return
 

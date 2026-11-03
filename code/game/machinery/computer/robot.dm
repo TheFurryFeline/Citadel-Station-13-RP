@@ -4,17 +4,17 @@
 	icon_keyboard = "tech_key"
 	icon_screen = "robot"
 	light_color = "#a97faa"
-	req_access = list(access_robotics)
+	req_access = list(ACCESS_SCIENCE_ROBOTICS)
 	circuit = /obj/item/circuitboard/robotics
 	var/safety = TRUE
 
 /obj/machinery/computer/robotics/attack_ai(var/mob/user as mob)
 	ui_interact(user)
 
-/obj/machinery/computer/robotics/attack_hand(var/mob/user as mob)
+/obj/machinery/computer/robotics/attack_hand(mob/user, datum/event_args/actor/clickchain/e_args)
 	if(..())
 		return
-	if(stat & (NOPOWER|BROKEN))
+	if(machine_stat & (NOPOWER|BROKEN))
 		return
 	ui_interact(user)
 
@@ -121,7 +121,7 @@
 		ui = new(user, src, "RoboticsControlConsole",  name)
 		ui.open()
 
-/obj/machinery/computer/robotics/ui_data(mob/user)
+/obj/machinery/computer/robotics/ui_data(mob/user, datum/tgui/ui)
 	var/list/data = list()
 	data["auth"] = is_authenticated(user)
 	data["can_hack"] = can_hack_any(user)
@@ -140,8 +140,8 @@
 			status = R.stat,
 			health = round(R.health * 100 / R.maxHealth, 0.1),
 			charge = R.cell ? round(R.cell.percent()) : null,
-			cell_capacity = R.cell ? R.cell.maxcharge : null,
-			module = R.module ? R.module.name : "No Module Detected",
+			cell_capacity = R.cell ? R.cell.max_charge : null,
+			module = R.module ? R.module.get_display_name() : "No Module Detected",
 			synchronization = R.connected_ai,
 			is_hacked =  R.connected_ai && R.emagged,
 			hackable = can_hack(user, R),
@@ -150,7 +150,7 @@
 	data["show_detonate_all"] = (data["auth"] && length(data["cyborgs"]) > 0 && ishuman(user))
 	return data
 
-/obj/machinery/computer/robotics/ui_act(action, params)
+/obj/machinery/computer/robotics/ui_act(action, list/params, datum/tgui/ui, datum/ui_state/state, datum/event_args/actor/actor)
 	if(..())
 		return TRUE
 	. = FALSE

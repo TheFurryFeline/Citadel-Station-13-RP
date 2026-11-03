@@ -1,13 +1,8 @@
 /obj/structure/closet/secure_closet/medical1
 	name = "medicine closet"
 	desc = "Filled with medical junk."
-	icon_state = "medical1"
-	icon_closed = "medical"
-	icon_locked = "medical1"
-	icon_opened = "medicalopen"
-	icon_broken = "medicalbroken"
-	icon_off = "medicaloff"
-	req_access = list(access_medical)
+	closet_appearance = /singleton/closet_appearance/secure_closet/medical
+	req_access = list(ACCESS_MEDICAL_MAIN)
 
 	starts_with = list(
 		/obj/item/storage/box/autoinjectors,
@@ -21,13 +16,8 @@
 /obj/structure/closet/secure_closet/medical2
 	name = "anesthetics closet"
 	desc = "Used to knock people out."
-	icon_state = "medical1"
-	icon_closed = "medical"
-	icon_locked = "medical1"
-	icon_opened = "medicalopen"
-	icon_broken = "medicalbroken"
-	icon_off = "medicaloff"
-	req_access = list(access_surgery)
+	closet_appearance = /singleton/closet_appearance/secure_closet/medical/alt
+	req_access = list(ACCESS_MEDICAL_SURGERY)
 
 	starts_with = list(
 		/obj/item/tank/anesthetic = 3,
@@ -36,13 +26,8 @@
 
 /obj/structure/closet/secure_closet/medical3
 	name = "medical doctor's locker"
-	req_access = list(access_medical_equip)
-	icon_state = "securemed1"
-	icon_closed = "securemed"
-	icon_locked = "securemed1"
-	icon_opened = "securemedopen"
-	icon_broken = "securemedbroken"
-	icon_off = "securemedoff"
+	req_access = list(ACCESS_MEDICAL_EQUIPMENT)
+	closet_appearance = /singleton/closet_appearance/secure_closet/medical
 
 	starts_with = list(
 		/obj/item/clothing/under/rank/medical,
@@ -59,7 +44,8 @@
 		/obj/item/clothing/under/rank/nursesuit,
 		/obj/item/clothing/head/nursehat,
 		/obj/item/gps/medical,
-		/obj/item/storage/box/freezer = 3)
+		/obj/item/storage/box/freezer = 3,
+		/obj/item/clothing/glasses/hud/health)
 
 /obj/structure/closet/secure_closet/medical3/Initialize(mapload)
 	if(prob(50))
@@ -106,13 +92,8 @@
 /obj/structure/closet/secure_closet/paramedic
 	name = "paramedic locker"
 	desc = "Supplies for a first responder."
-	icon_state = "medical1"
-	icon_closed = "medical"
-	icon_locked = "medical1"
-	icon_opened = "medicalopen"
-	icon_broken = "medicalbroken"
-	icon_off = "medicaloff"
-	req_access = list(access_medical_equip)
+	closet_appearance = /singleton/closet_appearance/secure_closet/medical/paramedic
+	req_access = list(ACCESS_MEDICAL_EQUIPMENT)
 
 	starts_with = list(
 		/obj/item/storage/backpack/dufflebag/emt,
@@ -126,6 +107,7 @@
 		/obj/item/clothing/suit/storage/toggle/fr_jacket,
 		/obj/item/clothing/suit/storage/toggle/labcoat/emt,
 		/obj/item/radio/headset/headset_med/alt,
+		/obj/item/clothing/accessory/armor/helmetcamera/body,
 		/obj/item/clothing/suit/storage/hooded/wintercoat/medical/para,
 		/obj/item/cartridge/medical,
 		/obj/item/storage/briefcase/inflatable,
@@ -149,13 +131,8 @@
 
 /obj/structure/closet/secure_closet/CMO
 	name = "chief medical officer's locker"
-	req_access = list(access_cmo)
-	icon_state = "cmosecure1"
-	icon_closed = "cmosecure"
-	icon_locked = "cmosecure1"
-	icon_opened = "cmosecureopen"
-	icon_broken = "cmosecurebroken"
-	icon_off = "cmosecureoff"
+	req_access = list(ACCESS_MEDICAL_CMO)
+	closet_appearance = /singleton/closet_appearance/secure_closet/cmo
 
 	starts_with = list(
 		/obj/item/clothing/under/rank/chief_medical_officer,
@@ -169,7 +146,7 @@
 		/obj/item/radio/headset/heads/cmo,
 		/obj/item/radio/headset/heads/cmo/alt,
 		/obj/item/flash,
-		/obj/item/reagent_containers/hypospray/vial,
+		/obj/item/storage/hypokit/advanced/cmo/full/loaded,
 		/obj/item/clothing/suit/storage/hooded/wintercoat/medical/cmo,
 		/obj/item/clothing/shoes/boots/winter/medical,
 		/obj/item/storage/box/freezer,
@@ -179,7 +156,6 @@
 		/obj/item/clothing/head/bio_hood/cmo,
 		/obj/item/gps/medical/cmo,
 		/obj/item/clothing/shoes/white,
-		/obj/item/reagent_containers/glass/beaker/vial, //VOREStation Add
 		/obj/item/clothing/under/rank/chief_medical_officer/turtleneck)
 
 /obj/structure/closet/secure_closet/CMO/Initialize(mapload)
@@ -210,7 +186,7 @@
 
 /obj/structure/closet/secure_closet/animal
 	name = "animal control closet"
-	req_access = list(access_surgery)
+	req_access = list(ACCESS_MEDICAL_SURGERY)
 
 	starts_with = list(
 		/obj/item/assembly/signaler,
@@ -220,13 +196,8 @@
 /obj/structure/closet/secure_closet/chemical
 	name = "chemical closet"
 	desc = "Store dangerous chemicals in here."
-	icon_state = "medical1"
-	icon_closed = "medical"
-	icon_locked = "medical1"
-	icon_opened = "medicalopen"
-	icon_broken = "medicalbroken"
-	icon_off = "medicaloff"
-	req_access = list(access_chemistry)
+	closet_appearance = /singleton/closet_appearance/secure_closet/medical/chemicals
+	req_access = list(ACCESS_MEDICAL_CHEMISTRY)
 
 	starts_with = list(
 		/obj/item/storage/box/pillbottles = 2,
@@ -236,19 +207,14 @@
 		/obj/item/reagent_containers/dropper = 2,
 		/obj/item/reagent_containers/glass/bottle/inaprovaline = 2,
 		/obj/item/reagent_containers/glass/bottle/antitoxin = 2,
-		/obj/item/storage/fancy/vials) //VOREStation Add
+		/obj/item/storage/fancy/vials)
 
 
 /obj/structure/closet/secure_closet/psych
 	name = "psychiatric closet"
 	desc = "Store psychology tools and medicines in here."
-	icon_state = "medical1"
-	icon_closed = "medical"
-	icon_locked = "medical1"
-	icon_opened = "medicalopen"
-	icon_broken = "medicalbroken"
-	icon_off = "medicaloff"
-	req_access = list(access_psychiatrist)
+	closet_appearance = /singleton/closet_appearance/secure_closet/medical
+	req_access = list(ACCESS_MEDICAL_PSYCH)
 
 	starts_with = list(
 		/obj/item/clothing/under/rank/psych,
@@ -269,30 +235,13 @@
 /obj/structure/closet/secure_closet/medical_wall
 	name = "first aid closet"
 	desc = "It's a secure wall-mounted storage unit for first aid supplies."
-	icon_state = "medical_wall_locked"
-	icon_closed = "medical_wall_unlocked"
-	icon_locked = "medical_wall_locked"
-	icon_opened = "medical_wall_open"
-	icon_broken = "medical_wall_spark"
-	icon_off = "medical_wall_off"
+	closet_appearance = /singleton/closet_appearance/wall/medical
 	plane = TURF_PLANE
 	layer = ABOVE_TURF_LAYER
 	anchored = 1
 	density = 0
 	wall_mounted = 1
-	req_access = list(access_medical_equip)
-
-/obj/structure/closet/secure_closet/medical_wall/update_icon()
-	if(broken)
-		icon_state = icon_broken
-	else
-		if(!opened)
-			if(locked)
-				icon_state = icon_locked
-			else
-				icon_state = icon_closed
-		else
-			icon_state = icon_opened
+	req_access = list(ACCESS_MEDICAL_EQUIPMENT)
 
 /obj/structure/closet/secure_closet/medical_wall/pills
 	name = "pill cabinet"
@@ -307,7 +256,7 @@
 /obj/structure/closet/secure_closet/medical_wall/anesthetics
 	name = "anesthetics wall closet"
 	desc = "Used to knock people out."
-	req_access = list(access_surgery)
+	req_access = list(ACCESS_MEDICAL_SURGERY)
 
 	starts_with = list(
 		/obj/item/tank/anesthetic = 3,
@@ -316,7 +265,7 @@
 /obj/structure/closet/secure_closet/medical_wall/synth_anesthetics
 	name = "robotics anesthetics wall closet"
 	desc = "Used to knock people out."
-	req_access = list(access_robotics)
+	req_access = list(ACCESS_SCIENCE_ROBOTICS)
 
 	starts_with = list(
 		/obj/item/tank/anesthetic = 3,

@@ -22,8 +22,8 @@
 	Also known as 'Virgo', the system is most notable for the presence of one of only two known [quick_link("Phoron")] gas giants, designated [quick_link("Virgo 3")]. This makes the \
 	system a popular location for Phoron research and refining.\
 	<br><br>\
-	Virgo-Erigone is mainly administered by [quick_link("Virgo-Erigone Governmental Authority","the Virgo-Erigone Governmental Authority")], which is owned by [quick_link("NanoTrasen")],\
-	as it resides over 30,000 lightyears away from [quick_link("SolGov")]'s sphere of influence. Despite its isolation, it generally abides by Sol's laws, as NanoTrasen is a human-owned \
+	Virgo-Erigone is mainly administered by [quick_link("Virgo-Erigone Governmental Authority","the Virgo-Erigone Governmental Authority")], which is owned by [quick_link("Nanotrasen")],\
+	as it resides over 30,000 lightyears away from [quick_link("SolGov")]'s sphere of influence. Despite its isolation, it generally abides by Sol's laws, as Nanotrasen is a human-owned \
 	company."
 
 /datum/lore/codex/page/radiance_energy_chain/add_content()
@@ -41,14 +41,14 @@
 /datum/lore/codex/page/virgo_one/add_content()
 	name = "Virgo 1 (Hot-Ice Giant)"
 	keywords += list("Virgo 1")
-	data = "Virgo 1 is a tidally locked hot ice giant located closest to the star. Temperatures soar and drop between 490캩 and 120캩. Winds on the planet often surpass \
+	data = "Virgo 1 is a tidally locked hot ice giant located closest to the star. Temperatures soar and drop between 490째K and 120째K. Winds on the planet often surpass \
 	supersonic speeds."
 
 /datum/lore/codex/page/virgo_two/add_content()
 	name = "Virgo 2 (Metal-Rich Planet)"
 	keywords += list("Virgo 2")
 	data = "The second closest planet to [quick_link("Virgo-Erigone")], this planet has a high concentration of minerals inside its crust, as well as active volcanism and plate tectonics.  \
-	The temperature on the surface can reach up to 405 degrees kelvin (132캜) due to the relatively high albedo of the surface, which has deterred most people from the planet, except for two [quick_link("TSC", "TSCs")], \
+	The temperature on the surface can reach up to 405 degrees kelvin (132째C) due to the relatively high albedo of the surface, which has deterred most people from the planet, except for two [quick_link("TSC", "TSCs")], \
 	Greyson Manufactories and [quick_link("Xion Manufacturing Group")]. In orbit, the two companies each have a space station, used to coordinate and \
 	control their stations on the surface without having to suffer the intense heat. Xion's station also doubles as a control and oversight facility for their \
 	[quick_link("drones","autonomous mining drones")].\
@@ -69,7 +69,7 @@
 	the system to exploit the resources available here for mining and research. Virgo 3 itself has several moons, though the only noteworthy moon is [quick_link("Virgo-3B")] which \
 	has native life and an abundance of phoron deposits, as well as a phoron rich atmosphere. \
 	<br><br>\
-	The largest TSC to exploit this planet is none other than Phoron research giant [quick_link("NanoTrasen")], having built several stations orbiting the planet \
+	The largest TSC to exploit this planet is none other than Phoron research giant [quick_link("Nanotrasen")], having built several stations orbiting the planet \
 	for both research and phoron refining purposes."
 
 /datum/lore/codex/page/virgo_three_bee/add_content()
@@ -83,12 +83,12 @@
 	Virgo-Erigone by Virgo 3, leaving the planet fairly cold for a terrestrial world.\
 	<br><br>\
 	The presence of several [quick_link("TSC", "TSCs")] on the surface has introduced new life forms to the planet via bioengineering, and now several 'new' species are commonly sighted per year. \
-	Currently, [quick_link("NanoTrasen")] is constructing a 'space elevator' for commercial purposes, as the atmosphere of Virgo-3B is inimical to shuttles, and engines in particular."
+	Currently, [quick_link("Nanotrasen")] is constructing a 'space elevator' for commercial purposes, as the atmosphere of Virgo-3B is inimical to shuttles, and engines in particular."
 
 /datum/lore/codex/page/virgo_prime/add_content() // Virgo 4 technically.
 	name = "Virgo 4 / Virgo-Prime (Terrestrial Planet)"
 	keywords += list("Virgo 4","Virgo-Prime")
-	data = "Virgo 4, also known as Virgo-Prime, is the fourth planet of Virgo-Eirgone. Although primarily desert, temperatures linger around only 287 kelvin (~14캜). \
+	data = "Virgo 4, also known as Virgo-Prime, is the fourth planet of Virgo-Eirgone. Although primarily desert, temperatures linger around only 287 kelvin (~14째C). \
 	It is the only planet in the system with an environment that supports oxygen-breathing lifeforms. \
 	<br><br> \
 	While being about the size of Earth, it is home to only about 750,000 known residents, most of whom live \
@@ -103,7 +103,7 @@
 /datum/lore/codex/page/virgo_five/add_content()
 	name = "Virgo 5 (Rocky Ice Planet)"
 	keywords += list("Virgo 5")
-	data = "Virgo 5 is a cold, inhospitable wasteland contaminated with toxic phoron-based compounds. At temperatures around 213 kelvin (-60캜), \
+	data = "Virgo 5 is a cold, inhospitable wasteland contaminated with toxic phoron-based compounds. At temperatures around 213 kelvin (-60째C), \
 	it can support only the most hardy of phoron-based life, such as space carp, which are unaffected by the frigid temperatures or deadly \
 	atmosphere. Scientists believe this planet was once closer to its host star, but over time was pushed out beyond the habitable zone by \
 	other large planets."
@@ -112,7 +112,7 @@
 	name = "The Outer Worlds"
 	keywords += list("The Outer Worlds")
 	data = "The last three planets in the system are two small rocky worlds, Virgo 6 and 7, and finally Virgo 8 which is a frozen gas giant \
-	whose temperatures reach only 49캩. The planet has several moons, but none of these worlds are of any significance. Virgo 6 and 7, as well \
+	whose temperatures reach only 49째K. The planet has several moons, but none of these worlds are of any significance. Virgo 6 and 7, as well \
 	as 8's moons have no substantial deposits of any useful minerals, nor do they have an abundance of phoron. They are left largely ignored by \
 	the local [quick_link("TSC", "TSCs")], though this also makes them a safe haven for various pirate and smuggler stations."
 
@@ -122,7 +122,7 @@
 	data = "<i>This page has been ripped out. Odd.</i>"
 	/*data = "The Virgo Central Command is a large facility on [quick_link("Virgo-3B")] which handles the loading and \
 	unloading, refuelling, and general maintenance of large spacecraft. The main structure is owned by \
-	[quick_link("NanoTrasen")], but individual offices, docking/loading bays, and warehouses are often leased to individuals \
+	[quick_link("Nanotrasen")], but individual offices, docking/loading bays, and warehouses are often leased to individuals \
 	or organisations.  The position of the spaceport allows it to function not only as a key node for transport inside the Virgo-Erigone \
 	system, especially to and from the planet Virgo 3, but also as a key stopping point for interstellar craft travelling via Virgo-Erigone which need refuelling. \
 	<br><br>\
@@ -135,7 +135,7 @@
 	name = "NSB Adephagia (Space Elevator)"
 	keywords += list("NSB Adephagia", "Tether")
 	data = "Also known as the 'Tether', the NSB Adephagia is one of the most prominent installations in the [quick_link("Virgo-Erigone")] star system. \
-	Owned and operated by [quick_link("NanoTrasen")], the facility was built on [quick_link("Virgo-3B")] in 2561 to provide easy access to mining \
+	Owned and operated by [quick_link("Nanotrasen")], the facility was built on [quick_link("Virgo-3B")] in 2561 to provide easy access to mining \
 	operations on the surface. Both phoron and alien artifacts are often found in the rocks, provoking substantial scientific interest into the moon's \
 	largely unknown history.\
 	<br><br>\

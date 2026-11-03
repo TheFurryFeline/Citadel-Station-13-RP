@@ -4,9 +4,9 @@
 	icon_state = "taperecorder_empty"
 	item_state = "analyzer"
 	icon = 'icons/obj/device.dmi'
-	w_class = ITEMSIZE_SMALL
+	w_class = WEIGHT_CLASS_SMALL
 
-	matter = list(MAT_STEEL = 60, MAT_GLASS = 30)
+	materials_base = list(MAT_STEEL = 60, MAT_GLASS = 30)
 
 	var/emagged = 0.0
 	var/recording = 0.0
@@ -15,7 +15,7 @@
 	var/obj/item/cassette_tape/mytape = /obj/item/cassette_tape/random
 	var/canprint = 1
 	slot_flags = SLOT_BELT
-	throwforce = 2
+	throw_force = 2
 	throw_speed = 4
 	throw_range = 20
 
@@ -42,9 +42,8 @@
 		if(mytape)
 			to_chat(user, "<span class='notice'>There's already a tape inside.</span>")
 			return
-		if(!user.unEquip(I))
+		if(!user.attempt_insert_item_for_installation(I, src))
 			return
-		I.forceMove(src)
 		mytape = I
 		to_chat(user, "<span class='notice'>You insert [I] into [src].</span>")
 		update_icon()
@@ -58,8 +57,8 @@
 	return ..()
 
 
-/obj/item/tape_recorder/attack_hand(mob/user)
-	if(user.get_inactive_hand() == src)
+/obj/item/tape_recorder/attack_hand(mob/user, datum/event_args/actor/clickchain/e_args)
+	if(user.get_inactive_held_item() == src)
 		if(mytape)
 			eject()
 			return
@@ -68,7 +67,7 @@
 
 /obj/item/tape_recorder/verb/eject()
 	set name = "Eject Tape"
-	set category = "Object"
+	set category = VERB_CATEGORY_OBJECT
 
 	if(usr.incapacitated())
 		return
@@ -87,7 +86,7 @@
 	update_icon()
 
 
-/obj/item/tape_recorder/hear_talk(mob/living/M as mob, msg, var/verb="says", datum/language/speaking=null)
+/obj/item/tape_recorder/hear_talk(mob/living/M as mob, msg, var/verb="says", datum/prototype/language/speaking=null)
 	if(mytape && recording)
 
 		if(speaking)
@@ -139,7 +138,7 @@
 
 /obj/item/tape_recorder/verb/record()
 	set name = "Start Recording"
-	set category = "Object"
+	set category = VERB_CATEGORY_OBJECT
 
 	if(usr.incapacitated())
 		return
@@ -194,7 +193,7 @@
 
 /obj/item/tape_recorder/verb/stop()
 	set name = "Stop"
-	set category = "Object"
+	set category = VERB_CATEGORY_OBJECT
 
 	if(usr.incapacitated())
 		return
@@ -212,7 +211,7 @@
 
 /obj/item/tape_recorder/verb/wipe_tape()
 	set name = "Wipe Tape"
-	set category = "Object"
+	set category = VERB_CATEGORY_OBJECT
 
 	if(usr.incapacitated())
 		return
@@ -235,7 +234,7 @@
 
 /obj/item/tape_recorder/verb/playback_memory()
 	set name = "Playback Tape"
-	set category = "Object"
+	set category = VERB_CATEGORY_OBJECT
 
 	if(usr.incapacitated())
 		return
@@ -307,7 +306,7 @@
 
 /obj/item/tape_recorder/verb/print_transcript()
 	set name = "Print Transcript"
-	set category = "Object"
+	set category = VERB_CATEGORY_OBJECT
 
 	if(usr.incapacitated())
 		return
@@ -342,7 +341,10 @@
 	canprint = 1
 
 
-/obj/item/tape_recorder/attack_self(mob/user)
+/obj/item/tape_recorder/attack_self(mob/user, datum/event_args/actor/actor)
+	. = ..()
+	if(.)
+		return
 	if(recording || playing)
 		stop()
 	else
@@ -367,10 +369,10 @@
 	icon = 'icons/obj/device.dmi'
 	icon_state = "tape_white"
 	item_state = "analyzer"
-	w_class = ITEMSIZE_TINY
-	matter = list(MAT_STEEL=20, "glass"=5)
-	force = 1
-	throwforce = 0
+	w_class = WEIGHT_CLASS_TINY
+	materials_base = list(MAT_STEEL=20, "glass"=5)
+	damage_force = 1
+	throw_force = 0
 	var/max_capacity = 1800
 	var/used_capacity = 0
 	var/list/storedinfo = new/list()
@@ -379,15 +381,18 @@
 
 
 /obj/item/cassette_tape/update_icon()
-	overlays.Cut()
+	cut_overlays()
 	if(ruined)
-		overlays += "ribbonoverlay"
+		add_overlay("ribbonoverlay")
 
 
 /obj/item/cassette_tape/fire_act()
 	ruin()
 
-/obj/item/cassette_tape/attack_self(mob/user)
+/obj/item/cassette_tape/attack_self(mob/user, datum/event_args/actor/actor)
+	. = ..()
+	if(.)
+		return
 	if(!ruined)
 		to_chat(user, "<span class='notice'>You pull out all the tape!</span>")
 		ruin()
@@ -405,20 +410,20 @@
 
 /obj/item/cassette_tape/proc/record_speech(text)
 	timestamp += used_capacity
-	storedinfo += "\[[time2text(used_capacity*10,"mm:ss")]\] [text]"
+	storedinfo += "\[[time2text(used_capacity*10,"mm:ss", NO_TIMEZONE)]\] [text]"
 
 
 //shows up on the printed transcript as (Unrecognized sound)
 /obj/item/cassette_tape/proc/record_noise(text)
 	timestamp += used_capacity
-	storedinfo += "*\[[time2text(used_capacity*10,"mm:ss")]\] [text]"
+	storedinfo += "*\[[time2text(used_capacity*10,"mm:ss", NO_TIMEZONE)]\] [text]"
 
 
 /obj/item/cassette_tape/attackby(obj/item/I, mob/user, params)
 	if(ruined && I.is_screwdriver())
 		to_chat(user, "<span class='notice'>You start winding the tape back in...</span>")
-		playsound(src, I.usesound, 50, 1)
-		if(do_after(user, 120 * I.toolspeed, target = src))
+		playsound(src, I.tool_sound, 50, 1)
+		if(do_after(user, 120 * I.tool_speed, target = src))
 			to_chat(user, "<span class='notice'>You wound the tape back in.</span>")
 			fix()
 		return

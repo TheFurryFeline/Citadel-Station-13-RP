@@ -1,4 +1,4 @@
-GLOBAL_DATUM_INIT(catalogue_data, /datum/category_collection/catalogue, new)
+GLOBAL_DATUM(catalogue_data, /datum/category_collection/catalogue)
 
 // The collection holds everything together and is GLOB accessible.
 /datum/category_collection/catalogue
@@ -135,23 +135,6 @@ GLOBAL_DATUM_INIT(catalogue_data, /datum/category_collection/catalogue, new)
 
 /datum/category_item/catalogue/fauna
 
-/datum/category_item/catalogue/fauna/humans
-	name = "Sapients - Humans"
-	desc = "Humans are a space-faring species hailing originally from the planet Earth in the Sol system. \
-	They are currently among the most numerous known species in the galaxy, in both population and holdings, \
-	and are relatively technologically advanced. With good healthcare and a reasonable lifestyle, \
-	they can live to around 110 years. The oldest humans are around 150 years old.\
-	<br><br>\
-	Humanity is the primary driving force for rapid space expansion, owing to their strong, expansionist central \
-	government and opportunistic Trans-Stellar Corporations. The prejudices of the 21st century have mostly \
-	given way to bitter divides on the most important issue of the times� technological expansionism, \
-	with the major human factions squabbling over their approach to technology in the face of a \
-	looming singularity.\
-	<br><br>\
-	While most humans have accepted the existence of aliens in their communities and workplaces as a \
-	fact of life, exceptions abound. While more culturally diverse than most species, humans are \
-	generally regarded as somewhat technophobic and isolationist by members of other species."
-	value = CATALOGUER_REWARD_TRIVIAL
 
 /datum/category_item/catalogue/fauna/skrell
 	name = "Sapients - Skrell"
@@ -246,6 +229,24 @@ GLOBAL_DATUM_INIT(catalogue_data, /datum/category_collection/catalogue, new)
 	and as such many things about them have yet to be comprehensively studied."
 	value = CATALOGUER_REWARD_TRIVIAL
 
+/datum/category_item/catalogue/fauna/krisitik
+	name = "Sapients - Krisitik"
+	desc = "Krisitik are a species of subterranean mammals from the planet of Murith. \
+	Their unstable genetics mean the species has a varied appearance, though they \
+	can generally be described as murine. Their unstable genetics also mean \
+	they are prone to cancers and lethal mutations, which is aggravated by the species' \
+	reliance on nuclear energy. \
+	<br><br>\
+	Their society is highly competitive, and the frequent disasters in their underground \
+	cities mean the species as a whole has a degree of paranoia far above average for \
+	most sapients, instinctively prepping for any kind of disaster. \
+	<br><br>\
+	Even before their discovery of FTL, the Krisitik had a very advanced society. \
+	Their discovery of FTL was likely delayed due to the subterranean nature of Krisitik \
+	society and the toxic atmosphere of their homeworld. This edge has meant the Krisitik \
+	have faired better as an independent species than other 'newcomers' to the galaxy. "
+	value = CATALOGUER_REWARD_TRIVIAL
+
 /datum/category_item/catalogue/fauna/vox
 	name = "Sapients - Vox"
 	desc = "Probably the best known of these aliens are the Vox, a bird-like species \
@@ -259,6 +260,14 @@ GLOBAL_DATUM_INIT(catalogue_data, /datum/category_collection/catalogue, new)
 	an assumption which is at odds with their ramshackle technological level."
 	value = CATALOGUER_REWARD_MEDIUM // Since Vox are much rarer.
 
+/datum/category_item/catalogue/fauna/ashlander
+	name = "Sapients - Ashlanders"
+	desc = "The native inhabitants of Surt. Much of their history has been lost, save for artistic \
+	depictions sometimes recovered on archaeological digs. Insular and deeply xenophobic, Ashlanders \
+	were believed to have gone extinct some tens of thousands of years ago following an as yet \
+	unknown cataclysm. Dwelling deep underground in caves, or travelling across the planet's surface \
+	in nomadic caravans, Ashlanders are to be treated with caution."
+	value = CATALOGUER_REWARD_MEDIUM
 
 /datum/category_item/catalogue/technology
 
@@ -305,24 +314,26 @@ GLOBAL_DATUM_INIT(catalogue_data, /datum/category_collection/catalogue, new)
 
 /datum/category_item/catalogue/information/organization/New()
 	..()
-	if(datum_to_copy)
-		// I'd just access the loremaster object but it might not exist because its ugly.
-		var/datum/lore/organization/O = new datum_to_copy()
-		// I would also change the name based on the org datum but changing the name messes up indexing in some lists in the category/collection object attached to us.
+	spawn(-1)
+		UNTIL(SSlegacy_lore.initialized)
+		if(datum_to_copy)
+			// I'd just access the loremaster object but it might not exist because its ugly.
+			var/datum/lore/organization/O = new datum_to_copy()
+			// I would also change the name based on the org datum but changing the name messes up indexing in some lists in the category/collection object attached to us.
 
-		// Now lets combine the data in the datum for a slightly more presentable entry.
-		var/constructed_desc = ""
+			// Now lets combine the data in the datum for a slightly more presentable entry.
+			var/constructed_desc = ""
 
-		if(O.motto)
-			constructed_desc += "<center><b><i>\"[O.motto]\"</i></b></center><br><br>"
+			if(O.motto)
+				constructed_desc += "<center><b><i>\"[O.motto]\"</i></b></center><br><br>"
 
-		constructed_desc += O.desc
+			constructed_desc += O.desc
 
-		desc = constructed_desc
-		qdel(O)
+			desc = constructed_desc
+			qdel(O)
 
 /datum/category_item/catalogue/information/organization/nanotrasen
-	name = "TSC - NanoTrasen Incorporated"
+	name = "TSC - Nanotrasen Incorporated"
 	datum_to_copy = /datum/lore/organization/tsc/nanotrasen
 
 /datum/category_item/catalogue/information/organization/hephaestus
@@ -438,6 +449,24 @@ GLOBAL_DATUM_INIT(catalogue_data, /datum/category_collection/catalogue, new)
 /datum/category_item/catalogue/anomalous/precursor_b/precursor_b_basic
 	name = "Precursors - Precursor Group Beta"
 
+/datum/category_item/catalogue/anomalous/scorian_religion
+	name = "Scorian Religion"
+	desc = "To date, anthropologists and Nanotrasen researchers have been unable to fully decipher \
+	the Scorian language. A fusion of pictographs and script, much of the modern conception of Ashlander \
+	religious practices comes from diagrams and depictions found on carved sandstone monuments and cave \
+	paintings. The Scorian people appear to be monotheistic, with different tribes worshipping members of \
+	a pantheon known only to researchers as the 'Buried Ones'.\
+	<br><br>\
+	With the return of Ashlanders to the surface of Surt, archaeologists have confirmed several assumptions \
+	about the existence of a religious class within Scorian society. However, multiple hypotheses regarding \
+	religious rites and rituals have also been proven incorrect. The Scorian people are naturally insular and \
+	distrusting of outside observers. This distrust, paired with the existing language barrier, has prevented \
+	any further understanding of Scorian religion to develop. Therefore, many records in this entry may be \
+	disproven at a later date."
+	value = CATALOGUER_REWARD_TRIVIAL
+	unlocked_by_any = list(
+		/datum/category_item/catalogue/anomalous/scorian_religion
+	)
 
 /datum/category_item/catalogue/material
 
@@ -519,16 +548,6 @@ GLOBAL_DATUM_INIT(catalogue_data, /datum/category_collection/catalogue, new)
 	name = "Sapients - Apidaen"
 	desc = ""
 	value = CATALOGUER_REWARD_EASY
-
-/datum/category_item/catalogue/fauna/vetala_ruddy
-	name = "Sapients - Ruddy Vetalan"
-	desc = ""
-	value = CATALOGUER_REWARD_MEDIUM
-
-/datum/category_item/catalogue/fauna/vetala_pale
-	name = "Sapients - Pale Vetalan"
-	desc = ""
-	value = CATALOGUER_REWARD_MEDIUM
 
 /datum/category_item/catalogue/fauna/auril
 	name = "Sapients - Auril"

@@ -4,13 +4,16 @@
 	icon = 'icons/obj/wizard.dmi'
 	icon_state = "scroll"
 	var/uses = 4.0
-	w_class = ITEMSIZE_TINY
+	w_class = WEIGHT_CLASS_TINY
 	item_state = "paper"
 	throw_speed = 4
 	throw_range = 20
 	origin_tech = list(TECH_BLUESPACE = 4)
 
-/obj/item/teleportation_scroll/attack_self(mob/user as mob)
+/obj/item/teleportation_scroll/attack_self(mob/user, datum/event_args/actor/actor)
+	. = ..()
+	if(.)
+		return
 	if((user.mind && !wizards.is_antagonist(user.mind)))
 		to_chat(usr, "<span class='warning'>You stare at the scroll but cannot make sense of the markings!</span>")
 		return
@@ -22,7 +25,7 @@
 	dat += "<B>Four uses use them wisely:</B><BR>"
 	dat += "<A href='byond://?src=\ref[src];spell_teleport=1'>Teleport</A><BR>"
 	dat += "Kind regards,<br>Wizards Federation<br><br>P.S. Don't forget to bring your gear, you'll need it to cast most spells.<HR>"
-	user << browse(dat, "window=scroll")
+	user << browse(HTML_SKELETON(dat), "window=scroll")
 	onclose(user, "scroll")
 	return
 
@@ -80,14 +83,14 @@
 	var/success = 0
 	while(tempL.len)
 		attempt = pick(tempL)
-		success = user.Move(attempt)
+		success = user.forceMove(attempt)
 		if(!success)
 			tempL.Remove(attempt)
 		else
 			break
 
 	if(!success)
-		user.loc = pick(L)
+		user.forceMove(pick(L))
 
 	smoke.start()
 	src.uses -= 1

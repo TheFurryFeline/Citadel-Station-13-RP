@@ -25,9 +25,9 @@
 
 	health = 30
 	maxHealth = 30
-	melee_damage_lower = 2
-	melee_damage_upper = 4
-	movement_cooldown = 0
+	legacy_melee_damage_lower = 2
+	legacy_melee_damage_upper = 4
+	movement_base_speed = 6.66
 	hovering = TRUE
 
 	attacktext = list("slams into")
@@ -53,8 +53,8 @@
 	name = "fragile blob spore"
 	health = 15
 	maxHealth = 15
-	melee_damage_lower = 1
-	melee_damage_upper = 2
+	legacy_melee_damage_lower = 1
+	legacy_melee_damage_upper = 2
 
 /mob/living/simple_mob/blob/spore/Initialize(mapload, var/obj/structure/blob/factory/my_factory)
 	if(istype(my_factory))
@@ -93,12 +93,10 @@
 	if(is_infesting)
 		icon = infested.icon
 		copy_overlays(infested)
-	//	overlays = infested.overlays
 		var/mutable_appearance/blob_head_overlay = mutable_appearance('icons/mob/blob.dmi', "blob_head")
 		if(overmind)
 			blob_head_overlay.color = overmind.blob_type.complementary_color
 		color = initial(color)//looks better.
-	//	overlays += blob_head_overlay
 		add_overlay(blob_head_overlay, TRUE)
 
 /mob/living/simple_mob/blob/spore/handle_special()
@@ -119,15 +117,14 @@
 	is_infesting = TRUE
 	if(H.wear_suit)
 		var/obj/item/clothing/suit/A = H.wear_suit
-		if(A.armor && A.armor["melee"])
-			maxHealth += A.armor["melee"] //That zombie's got armor, I want armor!
+		maxHealth += A.fetch_armor().get_mitigation(ARMOR_MELEE) * 100 //That zombie's got armor, I want armor!
 
 	maxHealth += 40
 	health = maxHealth
 	name = "Infested [H.real_name]" // Not using the Z word.
 	desc = "A parasitic organism attached to a deceased body, controlling it directly as if it were a puppet."
-	melee_damage_lower += 8  // 10 total.
-	melee_damage_upper += 11 // 15 total.
+	legacy_melee_damage_lower += 8  // 10 total.
+	legacy_melee_damage_upper += 11 // 15 total.
 	attacktext = list("claws")
 
 	H.forceMove(src)
@@ -150,7 +147,7 @@
 		if(!IIsAlly(S)) // Only friendly spores make us stronger.
 			continue
 		// Friendly spores contribute 1/4th of their averaged attack power to our attack.
-		damage_to_do += ((S.melee_damage_lower + S.melee_damage_upper) / 2) / 4
+		damage_to_do += ((S.legacy_melee_damage_lower + S.legacy_melee_damage_upper) / 2) / 4
 		helpers++
 
 	if(helpers)

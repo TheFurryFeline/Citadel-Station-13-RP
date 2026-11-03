@@ -15,7 +15,7 @@
 
 	var/datum/changeling/changeling = changeling_power(5,0,100,CONSCIOUS)
 
-	var/obj/held_item = get_active_hand()
+	var/obj/held_item = get_active_held_item()
 
 	if(!changeling)
 		return 0
@@ -37,15 +37,15 @@
 	if(ismob(loc))
 		to_chat(loc, "<span class='notice'>We shape our finger to fit inside electronics, and are ready to force them open.</span>")
 
-/obj/item/finger_lockpick/dropped(mob/user)
+/obj/item/finger_lockpick/dropped(mob/user, flags, atom/newLoc)
 	. = ..()
 	to_chat(user, "<span class='notice'>We discreetly shape our finger back to a less suspicious form.</span>")
 	qdel(src)
 
-/obj/item/finger_lockpick/afterattack(var/atom/target, var/mob/living/user, proximity)
+/obj/item/finger_lockpick/afterattack(atom/target, mob/user, clickchain_flags, list/params)
 	if(!target)
 		return
-	if(!proximity)
+	if(!(clickchain_flags & CLICKCHAIN_HAS_PROXIMITY))
 		return
 	if(!user.mind.changeling)
 		return
@@ -62,7 +62,7 @@
 		to_chat(user, "<span class='notice'>We send an electrical pulse up our finger, and into \the [target], attempting to open it.</span>")
 
 		if(door.density && door.operable())
-			door.do_animate("spark")
+			door.do_animate(DOOR_ANIMATION_SPARK)
 			sleep(6)
 			//More typechecks, because windoors can't be locked.  Fun.
 			if(istype(target,/obj/machinery/door/airlock))

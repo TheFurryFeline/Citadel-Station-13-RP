@@ -1,4 +1,3 @@
-//This file was auto-corrected by findeclaration.exe on 25.5.2012 20:42:31
 
 /obj/machinery/computer/aiupload
 	name = "\improper AI upload console"
@@ -11,7 +10,7 @@
 
 
 /obj/machinery/computer/aiupload/verb/AccessInternals()
-	set category = "Object"
+	set category = VERB_CATEGORY_OBJECT
 	set name = "Access Computer's Internals"
 	set src in oview(1)
 	if(get_dist(src, usr) > 1 || usr.restrained() || usr.lying || usr.stat || istype(usr, /mob/living/silicon))
@@ -25,8 +24,8 @@
 	return
 
 
-/obj/machinery/computer/aiupload/attackby(obj/item/O as obj, mob/user as mob)
-	if (GLOB.using_map && !(user.z in GLOB.using_map.contact_levels))
+/obj/machinery/computer/aiupload/attackby(obj/item/O, mob/user)
+	if ((LEGACY_MAP_DATUM) && !(user.z in (LEGACY_MAP_DATUM).contact_levels))
 		to_chat(user, "<span class='danger'>Unable to establish a connection:</span> You're too far away from the station!")
 		return
 	if(istype(O, /obj/item/aiModule))
@@ -36,11 +35,11 @@
 		..()
 
 
-/obj/machinery/computer/aiupload/attack_hand(var/mob/user as mob)
-	if(src.stat & NOPOWER)
+/obj/machinery/computer/aiupload/attack_hand(mob/user, datum/event_args/actor/clickchain/e_args)
+	if(machine_stat & NOPOWER)
 		to_chat(user, "The upload computer has no power!")
 		return
-	if(src.stat & BROKEN)
+	if(machine_stat & BROKEN)
 		to_chat(user, "The upload computer is broken!")
 		return
 
@@ -52,9 +51,9 @@
 		to_chat(user, "[src.current.name] selected for law changes.")
 	return
 
-/obj/machinery/computer/aiupload/attack_ghost(user as mob)
+/obj/machinery/computer/aiupload/attack_ghost(mob/user)
 	. = ..()
-	return 1
+	return TRUE
 
 /obj/machinery/computer/borgupload
 	name = "cyborg upload console"
@@ -65,18 +64,18 @@
 	var/mob/living/silicon/robot/current = null
 
 
-/obj/machinery/computer/borgupload/attackby(obj/item/aiModule/module as obj, mob/user as mob)
+/obj/machinery/computer/borgupload/attackby(obj/item/aiModule/module, mob/user)
 	if(istype(module, /obj/item/aiModule))
 		module.install(src, user)
 	else
 		return ..()
 
 
-/obj/machinery/computer/borgupload/attack_hand(var/mob/user as mob)
-	if(src.stat & NOPOWER)
+/obj/machinery/computer/borgupload/attack_hand(mob/user, datum/event_args/actor/clickchain/e_args)
+	if(machine_stat& NOPOWER)
 		to_chat(user, "The upload computer has no power!")
 		return
-	if(src.stat & BROKEN)
+	if(machine_stat & BROKEN)
 		to_chat(user, "The upload computer is broken!")
 		return
 
@@ -88,6 +87,6 @@
 		to_chat(user, "[src.current.name] selected for law changes.")
 	return
 
-/obj/machinery/computer/borgupload/attack_ghost(user as mob)
+/obj/machinery/computer/borgupload/attack_ghost(mob/user)
 	. = ..()
 	return 1

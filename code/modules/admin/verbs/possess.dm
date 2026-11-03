@@ -1,11 +1,9 @@
 /proc/possess(obj/O as obj in world)
 	set name = "Possess Obj"
-	set category = "Object"
+	set category = VERB_CATEGORY_OBJECT
 
-	if(istype(O,/obj/singularity))
-		if(config_legacy.forbid_singulo_possession)
-			to_chat(usr, "It is forbidden to possess singularities.")
-			return
+	if(!O.loc)
+		return // erm erm erm maybe not?
 
 	var/turf/T = get_turf(O)
 
@@ -28,7 +26,7 @@
 
 /proc/release(obj/O as obj in world)
 	set name = "Release Obj"
-	set category = "Object"
+	set category = VERB_CATEGORY_OBJECT
 	//usr.loc = get_turf(usr)
 
 	if(usr.control_object && usr.name_archive) //if you have a name archived and if you are actually relassing an object
@@ -47,6 +45,6 @@
 	set desc = "Give this guy possess/release verbs"
 	set category = "Debug"
 	set name = "Give Possessing Verbs"
-	M.verbs += /proc/possess
-	M.verbs += /proc/release
+	add_verb(M, /proc/possess)
+	add_verb(M, /proc/release)
 	feedback_add_details("admin_verb","GPV") //If you are copy-pasting this, ensure the 2nd parameter is unique to the new proc!

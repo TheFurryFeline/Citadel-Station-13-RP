@@ -4,6 +4,7 @@
 	icon_state = "pipe_d"
 	density = TRUE
 	anchored = TRUE
+	worth_intrinsic = 500
 	var/unwrenched = FALSE
 	var/wait = FALSE
 	///The default layer selected on the machine.
@@ -11,15 +12,14 @@
 	var/disposals = FALSE
 
 
-/obj/machinery/pipedispenser/attack_hand(var/mob/user as mob)
+/obj/machinery/pipedispenser/attack_hand(mob/user, datum/event_args/actor/clickchain/e_args)
 	if((. = ..()))
 		return
 	ui_interact(user)
 
-/obj/machinery/pipedispenser/ui_assets(mob/user)
-	return list(
-		get_asset_datum(/datum/asset/spritesheet/pipes),
-	)
+/obj/machinery/pipedispenser/ui_asset_injection(datum/tgui/ui, list/immediate, list/deferred)
+	immediate += /datum/asset_pack/spritesheet/pipes
+	return ..()
 
 /obj/machinery/pipedispenser/ui_interact(mob/user, datum/tgui/ui)
 	ui = SStgui.try_update_ui(user, src, ui)
@@ -27,7 +27,7 @@
 		ui = new(user, src, "PipeDispenser", name)
 		ui.open()
 
-/obj/machinery/pipedispenser/ui_data(mob/user)
+/obj/machinery/pipedispenser/ui_data(mob/user, datum/tgui/ui)
 	var/list/data = list(
 		"disposals" = disposals,
 		"p_layer" = p_layer,
@@ -59,11 +59,11 @@
 
 	return data
 
-/obj/machinery/pipedispenser/ui_act(action, params)
+/obj/machinery/pipedispenser/ui_act(action, list/params, datum/tgui/ui, datum/ui_state/state, datum/event_args/actor/actor)
 	if(..())
 		return TRUE
 
-	if(unwrenched || !usr.canmove || usr.stat || usr.restrained() || !in_range(loc, usr))
+	if(unwrenched || !CHECK_MOBILITY(usr, MOBILITY_CAN_UI) || !in_range(loc, usr))
 		return TRUE
 
 	. = TRUE
@@ -104,36 +104,36 @@
 
 /obj/machinery/pipedispenser/attackby(var/obj/item/W as obj, var/mob/user as mob)
 	if (istype(W, /obj/item/pipe) || istype(W, /obj/item/pipe_meter))
+		if(!user.attempt_consume_item_for_construction(W))
+			return
 		to_chat(usr, SPAN_NOTICE("You put [W] back in [src]."))
-		user.drop_item()
 		add_fingerprint(usr)
-		qdel(W)
 		return
 	else if(W.is_wrench())
 		add_fingerprint(usr)
 		if (unwrenched==0)
-			playsound(src, W.usesound, 50, 1)
+			playsound(src, W.tool_sound, 50, 1)
 			to_chat(user, SPAN_NOTICE("You begin to unfasten \the [src] from the floor..."))
-			if (do_after(user, 40 * W.toolspeed))
+			if (do_after(user, 40 * W.tool_speed))
 				user.visible_message( \
 					SPAN_NOTICE("[user] unfastens \the [src]."), \
 					SPAN_NOTICE("You have unfastened \the [src]. Now it can be pulled somewhere else."), \
 					"You hear ratchet.")
 				src.anchored = 0
-				src.stat |= MAINT
+				src.machine_stat |= MAINT
 				src.unwrenched = 1
 				if (usr.machine==src)
 					usr << browse(null, "window=pipedispenser")
 		else /*if (unwrenched==1)*/
-			playsound(src, W.usesound, 50, 1)
+			playsound(src, W.tool_sound, 50, 1)
 			to_chat(user, SPAN_NOTICE("You begin to fasten \the [src] to the floor..."))
-			if (do_after(user, 20 * W.toolspeed))
+			if (do_after(user, 20 * W.tool_speed))
 				user.visible_message( \
 					SPAN_NOTICE("[user] fastens \the [src]."), \
 					SPAN_NOTICE("You have fastened \the [src]. Now it can dispense pipes."), \
 					"You hear ratchet.")
 				src.anchored = 1
-				src.stat &= ~MAINT
+				src.machine_stat &= ~MAINT
 				src.unwrenched = 0
 				power_change()
 	else
@@ -148,17 +148,17 @@
 	disposals = TRUE
 
 //Allow you to drag-drop disposal pipes into it
-/obj/machinery/pipedispenser/disposal/MouseDrop_T(var/obj/structure/disposalconstruct/pipe as obj, mob/usr as mob)
-	if(!usr.canmove || usr.stat || usr.restrained())
+/obj/machinery/pipedispenser/disposal/MouseDroppedOnLegacy(obj/structure/disposalconstruct/pipe as obj, mob/user as mob)
+	if(!CHECK_MOBILITY(user, MOBILITY_CAN_UI))
 		return
 
-	if (!istype(pipe) || get_dist(usr, src) > 1 || get_dist(src,pipe) > 1 )
+	if (!istype(pipe) || get_dist(user, src) > 1 || get_dist(src,pipe) > 1 )
 		return
 
 	if (pipe.anchored)
 		return
 
-	to_chat(usr, SPAN_NOTICE("You shove [pipe] back in [src]."))
+	to_chat(user, SPAN_NOTICE("You shove [pipe] back in [src]."))
 	qdel(pipe)
 
 //Adding a pipe dispensers that spawn unhooked from the ground

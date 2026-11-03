@@ -8,7 +8,7 @@
 	from rim to rim. The first to notice this font of power were those who \
 	were already the faithful devotees of esoteric religions. The rise of Blood \
 	Cultists in service to the Geometer quickly became an intergalactic incident. \
-	Although NanoTrasen and other entities have risen to combat these foes, a \
+	Although Nanotrasen and other entities have risen to combat these foes, a \
 	vast array of Hermetic Orders now command frightening power."
 	value = CATALOGUER_REWARD_TRIVIAL
 	unlocked_by_any = list(/datum/category_item/catalogue/fauna/cultist)
@@ -38,7 +38,7 @@
 	tt_desc = "NULL"
 	icon = 'icons/mob/cult.dmi'
 	icon_state = "initiate"
-	faction = "cult"
+	iff_factions = MOB_IFF_FACTION_SANGUINE_CULT
 	mob_class = MOB_CLASS_DEMONIC
 
 /datum/category_item/catalogue/fauna/cultist/human
@@ -64,16 +64,16 @@
 	response_harm = "hits"
 
 	harm_intent_damage = 5
-	melee_damage_lower = 30	//Cult Sword Damage
-	melee_damage_upper = 30
+	legacy_melee_damage_lower = 30	//Cult Sword Damage
+	legacy_melee_damage_upper = 30
 	attack_sharp = 1
 	attack_edge = 1
 	attacktext = list("slashed", "stabbed")
-	armor = list(melee = 60, bullet = 50, laser = 30, energy = 80, bomb = 30, bio = 100, rad = 100)	// Same armor are cult armor, may nerf since DAMN THAT IS GOOD ARMOR
+	armor_legacy_mob = list(melee = 60, bullet = 50, laser = 30, energy = 80, bomb = 30, bio = 100, rad = 100)	// Same armor are cult armor, may nerf since DAMN THAT IS GOOD ARMOR
 	attack_sound = 'sound/weapons/bladeslice.ogg'
-	movement_cooldown = 3
+	movement_base_speed = 10 / 3
 
-	ai_holder_type = /datum/ai_holder/simple_mob/melee
+	ai_holder_type = /datum/ai_holder/polaris/simple_mob/melee
 
 /mob/living/simple_mob/humanoid/cultist/human/death()
 	new /obj/effect/decal/remains/human (src.loc)
@@ -83,7 +83,7 @@
 
 /mob/living/simple_mob/humanoid/cultist/human/bloodjaunt //Teleporting Cultists
 
-	ai_holder_type = /datum/ai_holder/simple_mob/melee/evasive
+	ai_holder_type = /datum/ai_holder/polaris/simple_mob/melee/evasive
 
 	var/jaunt_warning = 0.5 SECONDS	// How long the jaunt telegraphing is.
 	var/jaunt_tile_speed = 20		// How long to wait between each tile. Higher numbers result in an easier to dodge tunnel attack.
@@ -108,7 +108,7 @@
 
 	// Do the dig!
 	visible_message(SPAN_DANGER("\The [src] sinks into a puddle of blood \the [A]!"))
-	new /obj/effect/decal/cleanable/blood (src.loc)
+	new /obj/effect/debris/cleanable/blood (src.loc)
 	flick("blood_out",A)
 	icon_state = "bloodout"
 
@@ -133,9 +133,9 @@
 			continue
 
 		visible_message(SPAN_DANGER("\The [src] suddenly rises from a pool of blood \the [L]!"))
-		new /obj/effect/decal/cleanable/blood (src.loc)
+		new /obj/effect/debris/cleanable/blood (src.loc)
 		playsound(L, 'sound/weapons/heavysmash.ogg', 75, 1)
-		L.Weaken(3)
+		L.afflict_paralyze(20 * 3)
 		overshoot = FALSE
 
 	if(!overshoot) // We hit the target, or something, at destination, so we're done.
@@ -178,7 +178,7 @@
 		if(T.check_density(ignore_mobs = TRUE))
 			to_chat(src, SPAN_CRITICAL("You hit something really solid!"))
 			playsound(src, "punch", 75, 1)
-			Weaken(5)
+			afflict_paralyze(20 * 5)
 			add_modifier(/datum/modifier/tunneler_vulnerable, 10 SECONDS)
 			return FALSE // Hit a wall.
 
@@ -222,8 +222,6 @@
 	health = 75
 	catalogue_data = list(/datum/category_item/catalogue/fauna/cultist/tesh)
 
-	faction = "cult"
-
 	status_flags = 0
 
 	response_help = "pokes"
@@ -231,20 +229,20 @@
 	response_harm = "hits"
 
 	harm_intent_damage = 5
-	melee_damage_lower = 15	//Ritual Knife
-	melee_damage_upper = 15
+	legacy_melee_damage_lower = 15	//Ritual Knife
+	legacy_melee_damage_upper = 15
 	attack_armor_pen = 25
 	attack_sharp = 1
 	attack_edge = 1
 	attacktext = list("slashed", "stabbed")
-	armor = list(melee = 45, bullet = 40, laser = 30, energy = 80, bomb = 20, bio = 100, rad = 100)	// Reduced Resistance to Approximate increased Tesh damage.
+	armor_legacy_mob = list(melee = 45, bullet = 40, laser = 30, energy = 80, bomb = 20, bio = 100, rad = 100)	// Reduced Resistance to Approximate increased Tesh damage.
 	attack_sound = 'sound/weapons/bladeslice.ogg'
-	movement_cooldown = 2
+	movement_base_speed = 10 / 2
 
-	ai_holder_type = /datum/ai_holder/simple_mob/melee
+	ai_holder_type = /datum/ai_holder/polaris/simple_mob/melee
 
 /mob/living/simple_mob/humanoid/cultist/tesh/death()
-	new /obj/effect/decal/cleanable/ash (src.loc)
+	new /obj/effect/debris/cleanable/ash (src.loc)
 	..(null,"let's out a shrill chirp as his body turns to dust.")
 	ghostize()
 	qdel(src)
@@ -273,8 +271,6 @@
 	health = 200
 	catalogue_data = list(/datum/category_item/catalogue/fauna/cultist/lizard)
 
-	faction = "cult"
-
 	status_flags = 0
 
 	response_help = "pokes"
@@ -282,17 +278,17 @@
 	response_harm = "hits"
 
 	harm_intent_damage = 5
-	melee_damage_lower = 15	//Ritual Knife
-	melee_damage_upper = 15
+	legacy_melee_damage_lower = 15	//Ritual Knife
+	legacy_melee_damage_upper = 15
 	attack_sharp = 1
 	attack_edge = 1
 	attacktext = list("slashed", "stabbed")
-	armor = list(melee = 70, bullet = 60, laser = 30, energy = 80, bomb = 35, bio = 100, rad = 100)	// Better Armor to match lizard brute resist
+	armor_legacy_mob = list(melee = 70, bullet = 60, laser = 30, energy = 80, bomb = 35, bio = 100, rad = 100)	// Better Armor to match lizard brute resist
 	attack_sound = 'sound/weapons/rapidslice.ogg'
-	movement_cooldown = 4
+	movement_base_speed = 10 / 4
 	base_attack_cooldown = 7.5 //Two knives mean double stab.
 
-	ai_holder_type = /datum/ai_holder/simple_mob/melee
+	ai_holder_type = /datum/ai_holder/polaris/simple_mob/melee
 
 /mob/living/simple_mob/humanoid/cultist/lizard/death()
 	new /obj/effect/decal/remains/unathi (src.loc)
@@ -324,8 +320,6 @@
 	health = 150
 	catalogue_data = list(/datum/category_item/catalogue/fauna/cultist/caster)
 
-	faction = "cult"
-
 	status_flags = 0
 
 	response_help = "pokes"
@@ -333,22 +327,22 @@
 	response_harm = "hits"
 
 	harm_intent_damage = 5
-	melee_damage_lower = 15	//Ritual Knife
-	melee_damage_upper = 15
+	legacy_melee_damage_lower = 15	//Ritual Knife
+	legacy_melee_damage_upper = 15
 	attack_sharp = 1
 	attack_edge = 1
 	attacktext = list("slashed", "stabbed")
-	armor = list(melee = 50, bullet = 30, laser = 50, energy = 80, bomb = 25, bio = 100, rad = 100)	//Armor Rebalanced for Cult Robes.
+	armor_legacy_mob = list(melee = 50, bullet = 30, laser = 50, energy = 80, bomb = 25, bio = 100, rad = 100)	//Armor Rebalanced for Cult Robes.
 	attack_sound = 'sound/weapons/rapidslice.ogg'
-	movement_cooldown = 4
-	projectiletype = /obj/item/projectile/beam/inversion
+	movement_base_speed = 10 / 4
+	projectiletype = /obj/projectile/beam/inversion
 	projectilesound = 'sound/weapons/spiderlunge.ogg'
 
-	ai_holder_type = /datum/ai_holder/simple_mob/ranged
+	ai_holder_type = /datum/ai_holder/polaris/simple_mob/ranged
 
 /mob/living/simple_mob/humanoid/cultist/caster/death()
 	new /obj/effect/decal/remains/human (src.loc)
-	new /obj/effect/decal/cleanable/blood/gibs (src.loc)
+	new /obj/effect/debris/cleanable/blood/gibs (src.loc)
 	..(null,"melts into a pile of blood and bones.")
 	ghostize()
 	qdel(src)
@@ -375,8 +369,6 @@
 	health = 150
 	catalogue_data = list(/datum/category_item/catalogue/fauna/cultist/initiate)
 
-	faction = "cult"
-
 	status_flags = 0
 
 	response_help = "pokes"
@@ -384,16 +376,16 @@
 	response_harm = "hits"
 
 	harm_intent_damage = 5
-	melee_damage_lower = 15	//Ritual Knife
-	melee_damage_upper = 15
+	legacy_melee_damage_lower = 15	//Ritual Knife
+	legacy_melee_damage_upper = 15
 	attack_sharp = 1
 	attack_edge = 1
 	attacktext = list("slashed", "stabbed")
-	armor = list(melee = 50, bullet = 30, laser = 50, energy = 80, bomb = 25, bio = 100, rad = 100)	//Armor Rebalanced for Cult Robes.
+	armor_legacy_mob = list(melee = 50, bullet = 30, laser = 50, energy = 80, bomb = 25, bio = 100, rad = 100)	//Armor Rebalanced for Cult Robes.
 	attack_sound = 'sound/weapons/rapidslice.ogg'
-	movement_cooldown = 4
+	movement_base_speed = 10 / 4
 
-	ai_holder_type = /datum/ai_holder/simple_mob/melee
+	ai_holder_type = /datum/ai_holder/polaris/simple_mob/melee
 
 /mob/living/simple_mob/humanoid/cultist/initiate/death()
 	new /obj/effect/decal/remains/human (src.loc)
@@ -423,8 +415,6 @@
 	health = 75
 	catalogue_data = list(/datum/category_item/catalogue/fauna/cultist/castertesh)
 
-	faction = "cult"
-
 	status_flags = 0
 
 	response_help = "pokes"
@@ -432,22 +422,22 @@
 	response_harm = "hits"
 
 	harm_intent_damage = 5
-	melee_damage_lower = 15	//Ritual Knife
-	melee_damage_upper = 15
+	legacy_melee_damage_lower = 15	//Ritual Knife
+	legacy_melee_damage_upper = 15
 	attack_sharp = 1
 	attack_edge = 1
 	attacktext = list("slashed", "stabbed")
-	armor = list(melee = 35, bullet = 20, laser = 35, energy = 60, bomb = 20, bio = 100, rad = 100)	//Rebalanced for Robes and Tesh damage
+	armor_legacy_mob = list(melee = 35, bullet = 20, laser = 35, energy = 60, bomb = 20, bio = 100, rad = 100)	//Rebalanced for Robes and Tesh damage
 	attack_sound = 'sound/weapons/rapidslice.ogg'
-	movement_cooldown = 2
+	movement_base_speed = 10 / 2
 	base_attack_cooldown = 7.5
-	projectiletype = /obj/item/projectile/beam/inversion
+	projectiletype = /obj/projectile/beam/inversion
 	projectilesound = 'sound/weapons/spiderlunge.ogg'
 
-	ai_holder_type = /datum/ai_holder/simple_mob/ranged/kiting
+	ai_holder_type = /datum/ai_holder/polaris/simple_mob/ranged/kiting
 
 /mob/living/simple_mob/humanoid/cultist/castertesh/death()
-	new /obj/effect/decal/cleanable/ash (src.loc)
+	new /obj/effect/debris/cleanable/ash (src.loc)
 	..(null,"burns away into nothing.")
 	ghostize()
 	qdel(src)
@@ -472,7 +462,6 @@
 	desc = "A heavily armed cultist with a mirror shield that hurts to look at."
 	icon_state = "cult_elite"
 	icon_living = "cult_elite"
-	faction = "cult"
 	catalogue_data = list(/datum/category_item/catalogue/fauna/cultist/elite)
 
 	status_flags = 0
@@ -482,23 +471,25 @@
 	response_harm = "hits"
 
 	harm_intent_damage = 5
-	melee_damage_lower = 30	//Cult Sword Damage
-	melee_damage_upper = 30
+	legacy_melee_damage_lower = 30	//Cult Sword Damage
+	legacy_melee_damage_upper = 30
 	attack_sharp = 1
 	attack_edge = 1
 	attacktext = list("slashed", "stabbed")
-	armor = list(melee = 60, bullet = 50, laser = 30, energy = 80, bomb = 30, bio = 100, rad = 100)	// Same armor are cult armor, may nerf since DAMN THAT IS GOOD ARMOR
+	armor_legacy_mob = list(melee = 60, bullet = 50, laser = 30, energy = 80, bomb = 30, bio = 100, rad = 100)	// Same armor are cult armor, may nerf since DAMN THAT IS GOOD ARMOR
 	attack_sound = 'sound/weapons/bladeslice.ogg'
-	movement_cooldown = 3
+	movement_base_speed = 10 / 3
 
-	ai_holder_type = /datum/ai_holder/simple_mob/melee
+	ai_holder_type = /datum/ai_holder/polaris/simple_mob/melee
 
 /mob/living/simple_mob/humanoid/cultist/elite/attackby(var/obj/item/O as obj, var/mob/user as mob)
-	if(O.force)
+	if(O.damage_force)
 		if(prob(30))
 			visible_message("<span class='danger'>\The [src] blocks \the [O] with its shield!</span>")
 			if(user)
-				ai_holder.react_to_attack(user)
+				if(istype(src.ai_holder, /datum/ai_holder/polaris))
+					var/datum/ai_holder/polaris/ai_holder = src.ai_holder
+					ai_holder.react_to_attack_polaris(user)
 			return
 		else
 			..()
@@ -506,19 +497,19 @@
 		to_chat(user, "<span class='warning'>This weapon is ineffective, it does no damage.</span>")
 		visible_message("<span class='warning'>\The [user] gently taps [src] with \the [O].</span>")
 
-/mob/living/simple_mob/humanoid/cultist/elite/bullet_act(var/obj/item/projectile/Proj)
-	if(!Proj)	return
+/mob/living/simple_mob/humanoid/cultist/elite/on_bullet_act(obj/projectile/proj, impact_flags, list/bullet_act_args)
 	if(prob(50))
-		visible_message("<font color='red'><B>[Proj] disappears into the mirror world as it hits the shield.</B></font>")
-		if(Proj.firer)
-			ai_holder.react_to_attack(Proj.firer)
-		return
-	else
-		..()
+		visible_message("<font color='red'><B>[proj] disappears into the mirror world as it hits the shield.</B></font>")
+		if(proj.firer)
+			if(istype(src.ai_holder, /datum/ai_holder/polaris))
+				var/datum/ai_holder/polaris/ai_holder = src.ai_holder
+				ai_holder.react_to_attack_polaris(proj.firer)
+		return PROJECTILE_IMPACT_DELETE
+	return ..()
 
 /mob/living/simple_mob/humanoid/cultist/elite/death()
 	new /obj/effect/decal/remains/human (src.loc)
-	new /obj/effect/decal/cleanable/blood/gibs (src.loc)
+	new /obj/effect/debris/cleanable/blood/gibs (src.loc)
 	new /obj/item/material/shard (src.loc)
 	..(null,"shatters into bone and blood like pieces like the now shattered mirror.")
 	playsound(src, 'sound/effects/Glassbr2.ogg', 100, 1)
@@ -548,8 +539,6 @@
 	health = 300
 	catalogue_data = list(/datum/category_item/catalogue/fauna/cultist/magus)
 
-	faction = "cult"
-
 	status_flags = 0
 
 	response_help = "pokes"
@@ -557,24 +546,24 @@
 	response_harm = "hits"
 
 	harm_intent_damage = 5
-	melee_damage_lower = 30	//Ritual Knife
-	melee_damage_upper = 30
+	legacy_melee_damage_lower = 30	//Ritual Knife
+	legacy_melee_damage_upper = 30
 	attack_sharp = 1
 	attack_edge = 1
 	attacktext = list("slashed", "stabbed")
-	armor = list(melee = 60, bullet = 50, laser = 50, energy = 80, bomb = 30, bio = 100, rad = 100)	//Super Armor since Boss Mob
+	armor_legacy_mob = list(melee = 60, bullet = 50, laser = 50, energy = 80, bomb = 30, bio = 100, rad = 100)	//Super Armor since Boss Mob
 	attack_sound = 'sound/weapons/bladeslice.ogg'
-	movement_cooldown = 4
+	movement_base_speed = 10 / 4
 
-	projectiletype = /obj/item/projectile/beam/inversion
+	projectiletype = /obj/projectile/beam/inversion
 	base_attack_cooldown = 5
 	projectilesound = 'sound/weapons/spiderlunge.ogg'
 	var/obj/item/shield_projector/shields = null
 
-	ai_holder_type = /datum/ai_holder/simple_mob/ranged/kiting
+	ai_holder_type = /datum/ai_holder/polaris/simple_mob/ranged/kiting
 
 /mob/living/simple_mob/humanoid/cultist/magus/death()
-	new /obj/effect/decal/cleanable/blood/gibs (src.loc)
+	new /obj/effect/debris/cleanable/blood/gibs (src.loc)
 	..(null,"let's out a dark laugh as it collapses into a puddle of blood.")
 	ghostize()
 	qdel(src)
@@ -621,8 +610,6 @@
 	health = 300
 	catalogue_data = list(/datum/category_item/catalogue/fauna/cultist/hunter)
 
-	faction = "cult"
-
 	status_flags = 0
 
 	response_help = "pokes"
@@ -630,29 +617,29 @@
 	response_harm = "hits"
 
 	harm_intent_damage = 5
-	melee_damage_lower = 42	//Saw Cleaver Brutality
-	melee_damage_upper = 42
+	legacy_melee_damage_lower = 42	//Saw Cleaver Brutality
+	legacy_melee_damage_upper = 42
 	attack_sharp = 1
 	attack_edge = 1
 	attacktext = list("slashed", "stabbed")
-	armor = list(melee = 60, bullet = 50, laser = 50, energy = 80, bomb = 30, bio = 100, rad = 100)	//Super Armor since Boss Mob
+	armor_legacy_mob = list(melee = 60, bullet = 50, laser = 50, energy = 80, bomb = 30, bio = 100, rad = 100)	//Super Armor since Boss Mob
 	attack_sound = 'sound/weapons/bladeslice.ogg'
-	movement_cooldown = 0 //This is so he can't be kited well
+	movement_base_speed = 6.66 //This is so he can't be kited well
 
-	projectiletype = /obj/item/projectile/bullet/pellet/shotgun
+	projectiletype = /obj/projectile/bullet/pellet/shotgun
 
 	base_attack_cooldown = 7.5
 
-	loot_list = list(/obj/item/material/butterfly/saw = 100, /obj/item/gun/projectile/shotgun/doublebarrel/sawn/alt = 100)
+	loot_list = list(/obj/item/material/butterfly/saw = 100, /obj/item/gun/projectile/ballistic/shotgun/doublebarrel/sawn/alt = 100)
 
 	needs_reload = TRUE
 	reload_max = 2
 	projectilesound = 'sound/weapons/Gunshot_shotgun.ogg'
 
-	ai_holder_type = /datum/ai_holder/simple_mob/ranged/aggressive/blood_hunter
+	ai_holder_type = /datum/ai_holder/polaris/simple_mob/ranged/aggressive/blood_hunter
 
 /mob/living/simple_mob/humanoid/cultist/hunter/death()
-	new /obj/effect/decal/cleanable/blood/gibs (src.loc)
+	new /obj/effect/debris/cleanable/blood/gibs (src.loc)
 	..(null,"laughs as he melts away. His laughs echo through the air even after only a dense red goo remains.")
 	ghostize()
 	qdel(src)
@@ -662,7 +649,7 @@
 //		Hunter AI
 ////////////////////////////
 
-/datum/ai_holder/simple_mob/ranged/aggressive/blood_hunter //This directs the AI to charge while shooting at its victim then entering Glorious melee combat.
+/datum/ai_holder/polaris/simple_mob/ranged/aggressive/blood_hunter //This directs the AI to charge while shooting at its victim then entering Glorious melee combat.
 	pointblank = FALSE
 	closest_distance = 0
 

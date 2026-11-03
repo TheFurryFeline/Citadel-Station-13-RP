@@ -1,28 +1,32 @@
 // Does a melee attack.
-/mob/living/simple_mob/proc/attack_target(atom/A)
+/mob/living/simple_mob/proc/attack_target(atom/target)
 	set waitfor = FALSE // For attack animations. Don't want the AI processor to get held up.
+	if(SEND_SIGNAL(src, COMSIG_HOSTILE_PRE_ATTACKINGTARGET, target) & COMPONENT_HOSTILE_NO_ATTACK)
+		return FALSE //but more importantly return before attack_animal called
 
-	if(!A.Adjacent(src))
+	if(!target.Adjacent(src))
 		return FALSE
-	var/turf/their_T = get_turf(A)
+	var/turf/their_T = get_turf(target)
 
-	face_atom(A)
+	face_atom(target)
 
 	if(melee_attack_delay)
 	//	their_T.color = "#FF0000"
-		melee_pre_animation(A)
-		handle_attack_delay(A, melee_attack_delay) // This will sleep this proc for a bit, which is why waitfor is false.
+		melee_pre_animation(target)
+		handle_attack_delay(target, melee_attack_delay) // This will sleep this proc for a bit, which is why waitfor is false.
 
 	// Cooldown testing is done at click code (for players) and interface code (for AI).
-	setClickCooldown(get_attack_speed())
+	setClickCooldownLegacy(get_attack_speed_legacy())
 
-	. = do_attack(A, their_T)
+	var/result = do_attack(target, their_T)
 
 	if(melee_attack_delay)
-		melee_post_animation(A)
+		melee_post_animation(target)
 	//	their_T.color = "#FFFFFF"
 
+	SEND_SIGNAL(src, COMSIG_HOSTILE_POST_ATTACKINGTARGET, target, result)
 
+	return result
 
 // This does the actual attack.
 // This is a seperate proc for the purposes of attack animations.
@@ -41,7 +45,7 @@
 		visible_message(SPAN_WARNING( "\The [src] misses their attack."))
 		return FALSE
 
-	var/damage_to_do = rand(melee_damage_lower, melee_damage_upper)
+	var/damage_to_do = rand(legacy_melee_damage_lower, legacy_melee_damage_upper)
 
 	damage_to_do = apply_bonus_melee_damage(A, damage_to_do)
 
@@ -58,10 +62,18 @@
 			playsound(src, 'sound/weapons/punchmiss.ogg', 75, 1)
 			return FALSE // We missed.
 
-		if(ishuman(L))
-			var/mob/living/carbon/human/H = L
-			if(H.check_shields(damage = damage_to_do, damage_source = src, attacker = src, def_zone = null, attack_text = "the attack"))
-				return FALSE // We were blocked.
+		var/datum/event_args/actor/clickchain/simulated_clickchain = new(src, target = L)
+		var/list/shieldcall_result = L.atom_shieldcall(
+			damage_to_do,
+			DAMAGE_TYPE_BRUTE,
+			3,
+			ARMOR_MELEE,
+			NONE,
+			ATTACK_TYPE_MELEE,
+			simulated_clickchain,
+		)
+		if(shieldcall_result[SHIELDCALL_ARG_FLAGS] & SHIELDCALL_FLAGS_BLOCK_ATTACK)
+			return FALSE
 
 	if(apply_attack(A, damage_to_do))
 		apply_melee_effects(A)
@@ -73,6 +85,13 @@
 // Generally used to do the regular attack.
 // Override for doing special stuff with the direct result of the attack.
 /mob/living/simple_mob/proc/apply_attack(atom/A, damage_to_do)
+	if(!ismob(A))
+		var/nominal_damage = melee_style.get_base_damage(src, A)
+		var/mult = nominal_damage? damage_to_do / nominal_damage : 0
+		var/datum/event_args/actor/clickchain/e_args = default_clickchain_event_args(A, TRUE)
+		e_args.attack_melee_multiplier = mult
+		melee_attack_chain(e_args)
+		return TRUE
 	return A.attack_generic(src, damage_to_do, pick(attacktext))
 
 // Override for special effects after a successful attack, like injecting poison or stunning the target.
@@ -88,7 +107,7 @@
 //The actual top-level ranged attack proc
 /mob/living/simple_mob/proc/shoot_target(atom/A)
 	set waitfor = FALSE
-	setClickCooldown(get_attack_speed())
+	setClickCooldownLegacy(get_attack_speed_legacy())
 
 	face_atom(A)
 
@@ -119,20 +138,20 @@
 
 	face_atom(A)
 
-	var/obj/item/projectile/P = new projectiletype(src.loc)
+	var/obj/projectile/P = new projectiletype(src.loc)
 	if(!P)
 		return
 
 	// If the projectile has its own sound, use it.
 	// Otherwise default to the mob's firing sound.
-	playsound(src, P.fire_sound ? P.fire_sound : projectilesound, 80, 1)
+	playsound(src, P.resolve_fire_sfx() || projectilesound, 80, 1)
 
 	// For some reason there isn't an argument for accuracy, so access the projectile directly instead.
 	// Also, placing dispersion here instead of in forced_spread will randomize the chosen angle between dispersion and -dispersion in fire() instead of having to do that here.
-	P.accuracy += calculate_accuracy()
+	P.accuracy_overall_modify *= 1 + calculate_accuracy() / 100
 	P.dispersion += calculate_dispersion()
 
-	P.launch_projectile(target = A, target_zone = null, user = src, params = null, angle_override = null, forced_spread = 0)
+	P.launch_projectile_legacy(target = A, target_zone = null, user = src, params = null, angle_override = null, forced_spread = 0)
 	if(needs_reload)
 		reload_count++
 
@@ -236,7 +255,7 @@
 		if(!isnull(M.attack_speed_percent))
 			true_attack_delay *= M.attack_speed_percent
 
-	setClickCooldown(true_attack_delay) // Insurance against a really long attack being longer than default click delay.
+	setClickCooldownLegacy(true_attack_delay) // Insurance against a really long attack being longer than default click delay.
 
 	sleep(true_attack_delay)
 

@@ -32,21 +32,22 @@ TODO: Make them light up and heat the air when exposed to oxygen.
 	icon_dead = "gaslamp-dead"
 	icon = 'icons/mob/vore32x64.dmi'
 
-	faction = "virgo3b"
+	iff_factions = MOB_IFF_FACTION_BIND_TO_MAP
+
 	maxHealth = 100
 	health = 100
 	randomized = TRUE
 	mod_min = 90
 	mod_max = 140
-	movement_cooldown = 12
+	movement_base_speed = 2
 
 	say_list_type = /datum/say_list/gaslamp
-	ai_holder_type = /datum/ai_holder/simple_mob/gaslamp
+	ai_holder_type = /datum/ai_holder/polaris/simple_mob/gaslamp
 
 	//speed = 2 not sure what this is, guessing animation, but it conflicts with new system.
 
-	melee_damage_lower = 15 // Because fuck anyone who hurts this sweet, innocent creature.
-	melee_damage_upper = 15
+	legacy_melee_damage_lower = 15 // Because fuck anyone who hurts this sweet, innocent creature.
+	legacy_melee_damage_upper = 15
 	attacktext = list("thrashed")
 	friendly = "caressed"
 
@@ -71,7 +72,7 @@ TODO: Make them light up and heat the air when exposed to oxygen.
 /datum/say_list/gaslamp
 	emote_see = list("looms", "sways gently")
 
-/datum/ai_holder/simple_mob/gaslamp
+/datum/ai_holder/polaris/simple_mob/gaslamp
 	hostile = FALSE // The majority of simplemobs are hostile, gaslamps are nice.
 	cooperative = FALSE
 	retaliate = TRUE //so the monster can attack back
@@ -80,19 +81,3 @@ TODO: Make them light up and heat the air when exposed to oxygen.
 	speak_chance = 1
 	wander = TRUE
 	base_wander_delay = 9
-
-// Activate Noms!
-/mob/living/simple_mob/animal/passive/gaslamp
-	vore_active = 1
-	vore_capacity = 2
-	vore_bump_chance = 90 //they're frickin' jellyfish anenome filterfeeders, get tentacled
-	vore_bump_emote = "lazily wraps its tentacles around"
-	vore_standing_too = 1 // Defaults to trying to give you that big tentacle hug.
-	vore_ignores_undigestable = 0 // they absorb rather than digest, you're going in either way
-	vore_default_mode = DM_HOLD
-	vore_digest_chance = 0			// Chance to switch to digest mode if resisted
-	vore_absorb_chance = 20			// BECOME A PART OF ME.
-	vore_pounce_chance = 5 // Small chance to punish people who abuse their nomming behaviour to try and kite them forever with repeated melee attacks.
-	vore_stomach_name = "internal chamber"
-	vore_stomach_flavor	= "You are squeezed into the tight embrace of the alien creature's warm and cozy insides."
-	vore_icons = SA_ICON_LIVING

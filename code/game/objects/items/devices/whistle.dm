@@ -4,8 +4,10 @@
 	icon = 'icons/obj/device.dmi'
 	icon_state = "voice0"
 	item_state = "flashbang"	//looks exactly like a flash (and nothing like a flashbang)
-	w_class = ITEMSIZE_TINY
+	w_class = WEIGHT_CLASS_TINY
 	slot_flags = SLOT_EARS
+	suit_storage_class = SUIT_STORAGE_CLASS_SOFTWEAR | SUIT_STORAGE_CLASS_HARDWEAR
+	belt_storage_class = BELT_CLASS_SMALL
 
 	var/use_message = "Halt! Security!"
 	var/spamcheck = 0
@@ -13,7 +15,7 @@
 
 /obj/item/hailer/verb/set_message()
 	set name = "Set Hailer Message"
-	set category = "Object"
+	set category = VERB_CATEGORY_OBJECT
 	set desc = "Alter the message shouted by your hailer."
 
 	if(!isnull(insults))
@@ -28,7 +30,10 @@
 
 	to_chat(usr, "You configure the hailer to shout \"[use_message]\".")
 
-/obj/item/hailer/attack_self(mob/living/carbon/user as mob)
+/obj/item/hailer/attack_self(mob/user, datum/event_args/actor/actor)
+	. = ..()
+	if(.)
+		return
 	if (spamcheck)
 		return
 

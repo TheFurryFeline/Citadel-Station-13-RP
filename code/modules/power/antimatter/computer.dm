@@ -8,7 +8,7 @@
 	name = "Antimatter Engine Console"
 	icon = 'icons/obj/stationobjs.dmi'
 	icon_state = "comm_computer"
-	req_access = list(ACCESS_ENGINE)
+	req_access = list(ACCESS_ENGINEERING_MAIN)
 	var/engine_id = 0
 	var/authenticated = 0
 	var/obj/machinery/power/am_engine/engine/connected_E = null
@@ -47,7 +47,7 @@
 			src.state = STATE_DEFAULT
 		if("login")
 			var/mob/M = usr
-			var/obj/item/card/id/I = M.get_active_hand()
+			var/obj/item/card/id/I = M.get_active_held_item()
 			if (I && istype(I))
 				if(src.check_access(I))
 					authenticated = 1
@@ -64,7 +64,7 @@
 /obj/machinery/computer/am_engine/attack_paw(var/mob/user as mob)
 	return src.attack_hand(user)
 
-/obj/machinery/computer/am_engine/attack_hand(var/mob/user as mob)
+/obj/machinery/computer/am_engine/attack_hand(mob/user, datum/event_args/actor/clickchain/e_args)
 	if(..())
 		return
 	user.machine = src

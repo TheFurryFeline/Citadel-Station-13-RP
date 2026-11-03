@@ -5,13 +5,13 @@
 	name = "combat mecha"
 	desc = "An even bigger stompy mech!!"
 
-	movement_cooldown = 10
-	melee_damage_lower = 30
-	melee_damage_upper = 30
+	movement_base_speed = 1.5
+	legacy_melee_damage_lower = 30
+	legacy_melee_damage_upper = 30
 	melee_attack_delay = 1 SECOND
 	attacktext = list("punched", "slammed", "uppercutted", "pummeled")
 
-	armor = list(
+	armor_legacy_mob = list(
 				"melee"		= 30,
 				"bullet"	= 30,
 				"laser"		= 15,
@@ -30,9 +30,9 @@
 		if(L.mob_size <= MOB_MEDIUM)
 			visible_message(SPAN_DANGER("\The [src] sends \the [L] flying with their mechanized fist!"))
 			playsound(src, "punch", 50, 1)
-			L.Weaken(weaken_amount)
+			L.afflict_paralyze(20 * weaken_amount)
 			var/throw_dir = get_dir(src, L)
 			var/throw_dist = L.incapacitated(INCAPACITATION_DISABLED) ? 4 : 1
-			L.throw_at(get_edge_target_turf(L, throw_dir), throw_dist, 1, src)
+			L.throw_at_old(get_edge_target_turf(L, throw_dir), throw_dist, 1, src)
 		else
 			to_chat(L, SPAN_WARNING( "\The [src] punches you with incredible force, but you remain in place."))

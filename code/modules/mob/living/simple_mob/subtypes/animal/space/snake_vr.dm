@@ -23,18 +23,18 @@
 	health = 20
 	randomized = TRUE
 
-	movement_cooldown = 8 // SLOW-ASS MUTHAFUCKA, I hope.
+	movement_base_speed = 10 / 8 // SLOW-ASS MUTHAFUCKA, I hope.
 
 	response_help  = "pets"
 	response_disarm = "shoos"
 	response_harm   = "kicks"
 
-	melee_damage_lower = 2
-	melee_damage_upper = 3
+	legacy_melee_damage_lower = 2
+	legacy_melee_damage_upper = 3
 	attacktext = list("bitten")
 
 	say_list_type = /datum/say_list/snake
-	ai_holder_type = /datum/ai_holder/simple_mob/passive
+	ai_holder_type = /datum/ai_holder/polaris/simple_mob/passive
 
 	bone_amount = 5
 	hide_amount = 1
@@ -54,8 +54,9 @@
 	var/obj/movement_target
 	randomized = FALSE
 
-/mob/living/simple_mob/animal/passive/snake/noodle/Life()
-	..()
+/mob/living/simple_mob/animal/passive/snake/noodle/BiologicalLife(seconds, times_fired)
+	if((. = ..()))
+		return
 
 	//Not replacing with SA FollowTarget mechanics because Ian behaves... very... specifically.
 
@@ -98,7 +99,7 @@
 						visible_emote("stares at the [movement_target] that [movement_target.loc] has with an unknowable reptilian gaze.")
 
 /* old eating code, couldn't figure out how to make the "swallows food" thing so I'm keeping this here incase someone wants legacy"
-/mob/living/simple_mob/animal/passive/snake/noodle/Life() //stolen from Ian in corgi.dm
+/mob/living/simple_mob/animal/passive/snake/noodle/Life(seconds, times_fired) //stolen from Ian in corgi.dm
 	if(!..())
 		return 0
 
@@ -170,9 +171,9 @@
 	desc = "A box containing Noodle's special sugermouse treats."
 	icon = 'icons/mob/snake_vr.dmi'
 	icon_state = "sneksnakbox"
-	storage_slots = 7
+	max_items = 7
 
-/obj/item/storage/box/snakesnackbox/PopulateContents()
+/obj/item/storage/box/snakesnackbox/legacy_spawn_contents()
 	new /obj/item/reagent_containers/food/snacks/snakesnack(src)
 	new /obj/item/reagent_containers/food/snacks/snakesnack(src)
 	new /obj/item/reagent_containers/food/snacks/snakesnack(src)

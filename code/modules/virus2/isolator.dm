@@ -9,7 +9,7 @@
 	var/obj/item/reagent_containers/syringe/sample = null
 
 /obj/machinery/disease2/isolator/update_icon()
-	if (stat & (BROKEN|NOPOWER))
+	if (machine_stat & (BROKEN|NOPOWER))
 		icon_state = "isolator"
 		return
 
@@ -30,10 +30,10 @@
 	if(sample)
 		to_chat(user, "\The [src] is already loaded.")
 		return
+	if(!user.attempt_insert_item_for_installation(S, src))
+		return
 
 	sample = S
-	user.drop_item()
-	S.loc = src
 
 	user.visible_message("[user] adds \a [O] to \the [src]!", "You add \a [O] to \the [src]!")
 	SStgui.update_uis(src)
@@ -41,8 +41,8 @@
 
 	src.attack_hand(user)
 
-/obj/machinery/disease2/isolator/attack_hand(mob/user as mob)
-	if(stat & (NOPOWER|BROKEN))
+/obj/machinery/disease2/isolator/attack_hand(mob/user, datum/event_args/actor/clickchain/e_args)
+	if(machine_stat & (NOPOWER|BROKEN))
 		return
 	ui_interact(user)
 
@@ -52,7 +52,7 @@
 		ui = new(user, src, "PathogenicIsolator", name)
 		ui.open()
 
-/obj/machinery/disease2/isolator/ui_data(mob/user)
+/obj/machinery/disease2/isolator/ui_data(mob/user, datum/tgui/ui)
 	var/list/data = list()
 	data["syringe_inserted"] = !!sample
 	data["isolating"] = isolating
@@ -61,22 +61,21 @@
 
 	var/list/pathogen_pool = list()
 	if(sample)
-		for(var/datum/reagent/blood/B in sample.reagents.reagent_list)
-			var/list/virus = B.data["virus2"]
-			for (var/ID in virus)
-				var/datum/disease2/disease/V = virus[ID]
-				var/datum/data/record/R = null
-				if (ID in virusDB)
-					R = virusDB[ID]
+		var/datum/blood_mixture/mixture = sample.reagents.get_reagent_data(/datum/reagent/blood)
+		var/list/virus = mixture.legacy_virus2
+		for (var/ID in virus)
+			var/datum/disease2/disease/V = virus[ID]
+			var/datum/data/record/R = null
+			if (ID in virusDB)
+				R = virusDB[ID]
 
-				var/mob/living/carbon/human/D = B.data["donor"]
-				pathogen_pool.Add(list(list(\
-					"name" = "[D.get_species()] [B.name]", \
-					"dna" = B.data["blood_DNA"], \
-					"unique_id" = V.uniqueID, \
-					"reference" = "\ref[V]", \
-					"is_in_database" = !!R, \
-					"record" = "\ref[R]")))
+			pathogen_pool.Add(list(list(\
+				"name" = "[ID]", \
+				"dna" = "", \
+				"unique_id" = V.uniqueID, \
+				"reference" = "\ref[V]", \
+				"is_in_database" = !!R, \
+				"record" = "\ref[R]")))
 	data["pathogen_pool"] = pathogen_pool
 
 	var/list/db = list()
@@ -100,7 +99,7 @@
 			SStgui.update_uis(src)
 			update_icon()
 
-/obj/machinery/disease2/isolator/ui_act(action, list/params)
+/obj/machinery/disease2/isolator/ui_act(action, list/params, datum/tgui/ui, datum/ui_state/state, datum/event_args/actor/actor)
 	if(..())
 		return TRUE
 
@@ -126,7 +125,7 @@
 
 		if("isolate")
 			var/datum/disease2/disease/V = locate(params["isolate"])
-			if (V)
+			if (istype(V))
 				virus2 = V
 				isolating = 20
 				update_icon()
@@ -158,11 +157,12 @@
 
 			P.info += "<hr>"
 
-			for(var/datum/reagent/blood/B in sample.reagents.reagent_list)
-				var/mob/living/carbon/human/D = B.data["donor"]
-				P.info += "<large><u>[D.get_species()] [B.name]:</u></large><br>[B.data["blood_DNA"]]<br>"
+			var/datum/blood_mixture/mixture = sample.reagents.get_reagent_data(/datum/reagent/blood)
+			for(var/datum/blood_fragment/blood_data as anything in mixture.unsafe_get_fragment_list_ref())
+				var/mob/living/carbon/human/D = blood_data.legacy_donor
+				P.info += "<large><u>[D.get_true_species_name()] [blood_data.legacy_name]:</u></large><br>[blood_data.legacy_blood_dna]<br>"
 
-				var/list/virus = B.data["virus2"]
+				var/list/virus = mixture.legacy_virus2
 				P.info += "<u>Pathogens:</u> <br>"
 				if (virus.len > 0)
 					for (var/ID in virus)

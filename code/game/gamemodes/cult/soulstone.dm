@@ -8,9 +8,10 @@
 	icon_state = "soulstone"
 	item_state = "electronic"
 	desc = "A fragment of the legendary treasure known simply as the 'Soul Stone'. The shard still flickers with a fraction of the full artefacts power."
-	w_class = ITEMSIZE_SMALL
+	w_class = WEIGHT_CLASS_SMALL
 	slot_flags = SLOT_BELT
 	origin_tech = list(TECH_BLUESPACE = 4, TECH_MATERIAL = 4, TECH_ARCANE = 1)
+	belt_storage_class = BELT_CLASS_SMALL
 	var/imprinted = "empty"
 	var/possible_constructs = list("Juggernaut","Wraith","Artificer","Harvester")
 
@@ -19,27 +20,27 @@
 
 //////////////////////////////Capturing////////////////////////////////////////////////////////
 
-/obj/item/soulstone/attack(mob/living/carbon/human/M as mob, mob/user as mob)
-	if(!istype(M, /mob/living/carbon/human))//If target is not a human.
+/obj/item/soulstone/legacy_mob_melee_hook(mob/target, mob/user, clickchain_flags, list/params, mult, target_zone, intent)
+	if(!istype(target, /mob/living/carbon/human))//If target is not a human.
 		return ..()
-	if(istype(M, /mob/living/carbon/human/dummy))
-		return..()
-	if(jobban_isbanned(M, "cultist"))
+	if(istype(target, /mob/living/carbon/human/dummy))
+		return ..()
+	. = CLICKCHAIN_DO_NOT_PROPAGATE
+	if(jobban_isbanned(target, "cultist"))
 		to_chat(user, "<span class='warning'>This person's soul is too corrupt and cannot be captured!</span>")
-		return..()
-
-	if(M.has_brain_worms()) //Borer stuff - RR
+		return
+	if(target.has_brain_worms()) //Borer stuff - RR
 		to_chat(user, "<span class='warning'>This being is corrupted by an alien intelligence and cannot be soul trapped.</span>")
-		return..()
-
-	add_attack_logs(user,M,"Soulstone'd with [src.name]")
-	transfer_soul("VICTIM", M, user)
-	return
-
+		return
+	add_attack_logs(user,target,"Soulstone'd with [src.name]")
+	transfer_soul("VICTIM", target, user)
 
 ///////////////////Options for using captured souls///////////////////////////////////////
 
-/obj/item/soulstone/attack_self(mob/user)
+/obj/item/soulstone/attack_self(mob/user, datum/event_args/actor/actor)
+	. = ..()
+	if(.)
+		return
 	if (!in_range(src, user))
 		return
 	user.set_machine(src)
@@ -49,7 +50,7 @@
 		dat += {"<A href='byond://?src=\ref[src];choice=Summon'>Summon Shade</A>"}
 		dat += "<br>"
 		dat += {"<a href='byond://?src=\ref[src];choice=Close'> Close</a>"}
-	user << browse(dat, "window=aicard")
+	user << browse(HTML_SKELETON(dat), "window=aicard")
 	onclose(user, "aicard")
 	return
 
@@ -74,8 +75,7 @@
 
 		if ("Summon")
 			for(var/mob/living/simple_mob/construct/shade/A in src)
-				A.status_flags &= ~GODMODE
-				A.canmove = 1
+				A.status_flags &= ~STATUS_GODMODE
 				to_chat(A, "<b>You have been released from your prison, but you are still bound to [U.name]'s will. Help them suceed in their goals at all costs.</b>")
 				A.forceMove(U.loc)
 				A.cancel_camera()
@@ -109,7 +109,7 @@
 	if(src.imprinted != "empty")
 		to_chat(U, "<span class='danger'>Capture failed!</span>: The soul stone has already been imprinted with [src.imprinted]'s mind!")
 		return
-	if ((T.health + T.halloss) > config_legacy.health_threshold_crit && T.stat != DEAD)
+	if ((T.health + T.halloss) > T.getCritHealth() && T.stat != DEAD)
 		to_chat(U, "<span class='danger'>Capture failed!</span>: Kill or maim the victim first!")
 		return
 	if(T.client == null)
@@ -119,8 +119,7 @@
 		to_chat(U, "<span class='danger'>Capture failed!</span>: The soul stone is full! Use or free an existing soul to make room.")
 		return
 
-	for(var/obj/item/W in T)
-		T.drop_from_inventory(W)
+	T.drop_inventory(TRUE, TRUE, TRUE)
 
 	new /obj/effect/decal/remains/human(T.loc) //Spawns a skeleton
 	T.invisibility = 101
@@ -134,13 +133,12 @@
 
 	var/mob/living/simple_mob/construct/shade/S = new /mob/living/simple_mob/construct/shade( T.loc )
 	S.forceMove(src) //put shade in stone
-	S.status_flags |= GODMODE //So they won't die inside the stone somehow
-	S.canmove = 0//Can't move out of the soul stone
+	S.status_flags |= STATUS_GODMODE //So they won't die inside the stone somehow
 	S.name = "Shade of [T.real_name]"
 	S.real_name = "Shade of [T.real_name]"
 	S.icon = T.icon
 	S.icon_state = T.icon_state
-	S.overlays = T.overlays
+	S.overlays = copy_overlays(T)
 	S.color = rgb(254,0,0)
 	S.alpha = 127
 	if (T.client)
@@ -170,8 +168,7 @@
 		return
 
 	T.forceMove(src) //put shade in stone
-	T.status_flags |= GODMODE
-	T.canmove = 0
+	T.status_flags |= STATUS_GODMODE
 	T.health = T.getMaxHealth()
 	src.icon_state = "soulstone2"
 
@@ -187,7 +184,7 @@
 	switch(construct_class)
 		if("Juggernaut")
 			var/mob/living/simple_mob/construct/juggernaut/Z = new /mob/living/simple_mob/construct/juggernaut (get_turf(T.loc))
-			Z.key = A.key
+			A.transfer_client_to(Z)
 			if(iscultist(U))
 				cult.add_antagonist(Z.mind)
 			qdel(T)
@@ -197,7 +194,7 @@
 			qdel(src)
 		if("Wraith")
 			var/mob/living/simple_mob/construct/wraith/Z = new /mob/living/simple_mob/construct/wraith (get_turf(T.loc))
-			Z.key = A.key
+			A.transfer_client_to(Z)
 			if(iscultist(U))
 				cult.add_antagonist(Z.mind)
 			qdel(T)
@@ -207,7 +204,7 @@
 			qdel(src)
 		if("Artificer")
 			var/mob/living/simple_mob/construct/artificer/Z = new /mob/living/simple_mob/construct/artificer (get_turf(T.loc))
-			Z.key = A.key
+			A.transfer_client_to(Z)
 			if(iscultist(U))
 				cult.add_antagonist(Z.mind)
 			qdel(T)
@@ -217,7 +214,7 @@
 			qdel(src)
 		if("Harvester")
 			var/mob/living/simple_mob/construct/harvester/Z = new /mob/living/simple_mob/construct/harvester (get_turf(T.loc))
-			Z.key = A.key
+			A.transfer_client_to(Z)
 			if(iscultist(U))
 				cult.add_antagonist(Z.mind)
 			qdel(T)
@@ -227,7 +224,7 @@
 			qdel(src)
 		if("Behemoth")
 			var/mob/living/simple_mob/construct/juggernaut/behemoth/Z = new /mob/living/simple_mob/construct/juggernaut/behemoth (get_turf(T.loc))
-			Z.key = A.key
+			A.transfer_client_to(Z)
 			if(iscultist(U))
 				cult.add_antagonist(Z.mind)
 			qdel(T)

@@ -1,28 +1,29 @@
 /obj/item/storage/box/mixedglasses
 	name = "glassware box"
 	desc = "A box of assorted glassware"
-	can_hold = list(/obj/item/reagent_containers/food/drinks/glass2)
-	New()
-		..()
-		new /obj/item/reagent_containers/food/drinks/glass2/square(src)
-		new /obj/item/reagent_containers/food/drinks/glass2/rocks(src)
-		new /obj/item/reagent_containers/food/drinks/glass2/shake(src)
-		new /obj/item/reagent_containers/food/drinks/glass2/cocktail(src)
-		new /obj/item/reagent_containers/food/drinks/glass2/shot(src)
-		new /obj/item/reagent_containers/food/drinks/glass2/pint(src)
-		new /obj/item/reagent_containers/food/drinks/glass2/mug(src)
-		new /obj/item/reagent_containers/food/drinks/glass2/wine(src)
-		new /obj/item/reagent_containers/food/drinks/metaglass(src)
+	insertion_whitelist = list(/obj/item/reagent_containers/food/drinks/glass2)
+
+/obj/item/storage/box/mixedglasses/Initialize(mapload, empty)
+	. = ..()
+	new /obj/item/reagent_containers/food/drinks/glass2/square(src)
+	new /obj/item/reagent_containers/food/drinks/glass2/rocks(src)
+	new /obj/item/reagent_containers/food/drinks/glass2/shake(src)
+	new /obj/item/reagent_containers/food/drinks/glass2/cocktail(src)
+	new /obj/item/reagent_containers/food/drinks/glass2/shot(src)
+	new /obj/item/reagent_containers/food/drinks/glass2/pint(src)
+	new /obj/item/reagent_containers/food/drinks/glass2/mug(src)
+	new /obj/item/reagent_containers/food/drinks/glass2/wine(src)
+	new /obj/item/reagent_containers/food/drinks/metaglass(src)
 
 /obj/item/storage/box/glasses
 	name = "box of glasses"
 	var/glass_type = /obj/item/reagent_containers/food/drinks/glass2
-	can_hold = list(/obj/item/reagent_containers/food/drinks/glass2)
-	New()
-		..()
+	insertion_whitelist = list(/obj/item/reagent_containers/food/drinks/glass2)
 
-		for(var/i = 1 to 7)
-			new glass_type(src)
+/obj/item/storage/box/glasses/Initialize(mapload, empty)
+	. = ..()
+	for(var/i = 1 to 7)
+		new glass_type(src)
 
 /obj/item/storage/box/glasses/square
 	name = "box of half-pint glasses"
@@ -59,17 +60,18 @@
 /obj/item/storage/box/glasses/meta
 	name = "box of half-pint metamorphic glasses"
 	glass_type = /obj/item/reagent_containers/food/drinks/metaglass
+	insertion_whitelist = list(/obj/item/reagent_containers/food/drinks/metaglass)
 
 /obj/item/storage/box/glass_extras
 	name = "box of cocktail garnishings"
 	var/extra_type = /obj/item/glass_extra
-	can_hold = list(/obj/item/glass_extra)
-	storage_slots = 14
-	New()
-		..()
+	insertion_whitelist = list(/obj/item/glass_extra)
+	max_items = 14
 
-		for(var/i = 1 to 14)
-			new extra_type(src)
+/obj/item/storage/box/glass_extras/Initialize(mapload, empty)
+	. = ..()
+	for(var/i = 1 to 14)
+		new extra_type(src)
 
 /obj/item/storage/box/glass_extras/straws
 	name = "box of straws"

@@ -39,16 +39,16 @@
 		"precise" = 0
 		)
 
-/obj/item/floor_painter/afterattack(var/atom/A, var/mob/user, proximity, params)
-	if(!proximity)
+/obj/item/floor_painter/afterattack(atom/target, mob/user, clickchain_flags, list/params)
+	if(!(clickchain_flags & CLICKCHAIN_HAS_PROXIMITY))
 		return
 
-	var/turf/simulated/floor/F = A
+	var/turf/simulated/floor/F = target
 	if(!istype(F))
 		to_chat(user, "<span class='warning'>\The [src] can only be used on station flooring.</span>")
 		return
 
-	if(!F.flooring || !F.flooring.can_paint || F.broken || F.burnt)
+	if(!F.flooring || !F.flooring.can_paint_on || F.broken || F.burnt)
 		to_chat(user, "<span class='warning'>\The [src] cannot paint broken or missing tiles.</span>")
 		return
 
@@ -100,7 +100,10 @@
 
 	new painting_decal(F, painting_dir, painting_colour)
 
-/obj/item/floor_painter/attack_self(var/mob/user)
+/obj/item/floor_painter/attack_self(mob/user, datum/event_args/actor/actor)
+	. = ..()
+	if(.)
+		return
 	var/choice = input("Do you wish to change the decal type, paint direction, or paint colour?") as null|anything in list("Decal","Direction", "Colour")
 	if(choice == "Decal")
 		choose_decal()
@@ -109,14 +112,14 @@
 	else if(choice == "Colour")
 		choose_colour()
 
-/obj/item/floor_painter/examine(mob/user)
+/obj/item/floor_painter/examine(mob/user, dist)
 	. = ..()
 	. += "<span class = 'notice'>It is configured to produce the '[decal]' decal with a direction of '[paint_dir]' using [paint_colour] paint.</span>"
 
 /obj/item/floor_painter/verb/choose_colour()
 	set name = "Choose Colour"
 	set desc = "Choose a floor painter colour."
-	set category = "Object"
+	set category = VERB_CATEGORY_OBJECT
 	set src in usr
 
 	if(usr.incapacitated())
@@ -129,7 +132,7 @@
 /obj/item/floor_painter/verb/choose_decal()
 	set name = "Choose Decal"
 	set desc = "Choose a floor painter decal."
-	set category = "Object"
+	set category = VERB_CATEGORY_OBJECT
 	set src in usr
 
 	if(usr.incapacitated())
@@ -143,7 +146,7 @@
 /obj/item/floor_painter/verb/choose_direction()
 	set name = "Choose Direction"
 	set desc = "Choose a floor painter direction."
-	set category = "Object"
+	set category = VERB_CATEGORY_OBJECT
 	set src in usr
 
 	if(usr.incapacitated())

@@ -1,13 +1,15 @@
-#define NEWSFILE "data/news.sav"	//where the memos are saved
-
+///where the memos are saved
+#define NEWSFILE "data/news.sav"
 /client/
 	//var/last_news_hash = null // Stores a hash of the last news window it saw, which gets compared to the current one to see if it is different.
 
 // Returns true if news was updated since last seen.
 /client/proc/check_for_new_server_news()
+	if(!player.block_on_available())
+		return FALSE
 	var/savefile/F = get_server_news()
 	if(F)
-		if(md5(F["body"]) != prefs.lastnews)
+		if(md5(F["body"]) != player.player_misc["lastnews"])
 			return TRUE
 	return FALSE
 

@@ -38,7 +38,7 @@
 				return 1
 		else
 			if(pay_energy(100))
-				var/datum/ai_holder/AI = illusion.ai_holder
+				var/datum/ai_holder/polaris/AI = illusion.ai_holder
 				AI.give_destination(T)
 
 /obj/item/spell/illusion/on_use_cast(mob/user)
@@ -64,11 +64,12 @@
 
 // Makes a tiny overlay of the thing the player has copied, so they can easily tell what they currently have.
 /obj/item/spell/illusion/update_icon()
-	overlays.Cut()
+	cut_overlays()
+	. = ..()
 	if(copied)
 		var/image/temp_image = image(copied)
 		var/matrix/M = matrix()
 		M.Scale(0.5, 0.5)
 		temp_image.transform = M
 //		temp_image.pixel_y = 8
-		src.overlays.Add(temp_image)
+		add_overlay(temp_image)

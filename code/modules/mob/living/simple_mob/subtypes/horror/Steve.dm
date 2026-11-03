@@ -12,7 +12,6 @@
 	icon_living = "Steve"
 	icon_dead = "sg_head"
 	icon_rest = "Steve"
-	faction = "horror"
 	icon = 'icons/mob/horror_show/GHPS.dmi'
 	icon_gib = "generic_gib"
 	catalogue_data = list(/datum/category_item/catalogue/fauna/horror/Steve)
@@ -22,11 +21,11 @@
 	maxHealth = 175
 	health = 175
 
-	melee_damage_lower = 25
-	melee_damage_upper = 35
+	legacy_melee_damage_lower = 25
+	legacy_melee_damage_upper = 35
 	grab_resist = 100
 
-	projectiletype = /obj/item/projectile/bullet/pistol/medium
+	projectiletype = /obj/projectile/bullet/pistol/medium
 	projectilesound = 'sound/weapons/Gunshot_light.ogg'
 
 	needs_reload = TRUE
@@ -41,30 +40,34 @@
 
 
 	say_list_type = /datum/say_list/Steve
-	ai_holder_type = /datum/ai_holder/simple_mob/horror
+	ai_holder_type = /datum/ai_holder/polaris/simple_mob/horror
 
 	exotic_amount = 2
 	hide_amount = 1
+
+/mob/living/simple_mob/horror/Steve/Initialize(mapload)
+	. = ..()
+	AddComponent(/datum/component/horror_aura)
 
 /mob/living/simple_mob/horror/Steve/death()
 	playsound(src, 'sound/h_sounds/holla.ogg', 50, 1)
 	..()
 
-/mob/living/simple_mob/horror/Steve/bullet_act()
-    playsound(src, 'sound/h_sounds/holla.ogg', 50, 1)
-    ..()
+/mob/living/simple_mob/horror/Steve/on_bullet_act(obj/projectile/proj, impact_flags, list/bullet_act_args)
+	. = ..()
+	playsound(src, 'sound/h_sounds/holla.ogg', 50, 1)
 
-/mob/living/simple_mob/horror/Steve/attack_hand()
-    playsound(src, 'sound/h_sounds/holla.ogg', 50, 1)
-    ..()
+/mob/living/simple_mob/horror/Steve/attack_hand(mob/user, datum/event_args/actor/clickchain/e_args)
+	playsound(src, 'sound/h_sounds/holla.ogg', 50, 1)
+	..()
 
-/mob/living/simple_mob/horror/Steve/hitby()
-    playsound(src, 'sound/h_sounds/holla.ogg', 50, 1)
-    ..()
+/mob/living/simple_mob/horror/Steve/throw_impacted(atom/movable/AM, datum/thrownthing/TT)
+	. = ..()
+	playsound(src, 'sound/h_sounds/holla.ogg', 50, 1)
 
 /mob/living/simple_mob/horror/Steve/attackby()
-    playsound(src, 'sound/h_sounds/holla.ogg', 50, 1)
-    ..()
+	playsound(src, 'sound/h_sounds/holla.ogg', 50, 1)
+	..()
 
 /datum/say_list/Steve
 	speak = list("Uuurrgh?","Aauuugghh...", "AAARRRGH!")

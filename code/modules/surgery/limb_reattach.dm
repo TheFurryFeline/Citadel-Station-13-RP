@@ -9,6 +9,7 @@
 	can_infect = 0
 
 /datum/surgery_step/limb/can_use(mob/living/user, mob/living/carbon/human/target, target_zone, obj/item/tool)
+	if(!..()) return FALSE
 	if (!hasorgans(target))
 		return 0
 	var/obj/item/organ/external/affected = target.get_organ(target_zone)
@@ -22,12 +23,16 @@
 ///////////////////////////////////////////////////////////////
 
 /datum/surgery_step/limb/attach
+	step_name = "Attach limb"
+
 	allowed_tools = list(/obj/item/organ/external = 100)
 
 	min_duration = 50
 	max_duration = 70
 
 /datum/surgery_step/limb/attach/can_use(mob/living/user, mob/living/carbon/human/target, target_zone, obj/item/tool)
+	if (!istype(tool, /obj/item/organ/external))
+		return 0
 	var/obj/item/organ/external/E = tool
 	var/obj/item/organ/external/P = target.organs_by_name[E.parent_organ]
 	var/obj/item/organ/external/affected = target.get_organ(target_zone)
@@ -53,25 +58,28 @@
 
 /datum/surgery_step/limb/attach/end_step(mob/living/user, mob/living/carbon/human/target, target_zone, obj/item/tool)
 	var/obj/item/organ/external/E = tool
+	if(!user.attempt_void_item_for_installation(E))
+		return
 	user.visible_message("<span class='notice'>[user] has attached [target]'s [E.name] to the [E.amputation_point].</span>",	\
 	"<span class='notice'>You have attached [target]'s [E.name] to the [E.amputation_point].</span>")
-	user.drop_from_inventory(E)
 	E.replaced(target)
 	target.update_icons_body(FALSE)
-	target.updatehealth()
-	target.UpdateDamageIcon()
+	target.update_health()
+	target.update_damage_overlay()
 
 /datum/surgery_step/limb/attach/fail_step(mob/living/user, mob/living/carbon/human/target, target_zone, obj/item/tool)
 	var/obj/item/organ/external/E = tool
 	user.visible_message("<span class='warning'> [user]'s hand slips, damaging [target]'s [E.amputation_point]!</span>", \
 	"<span class='warning'> Your hand slips, damaging [target]'s [E.amputation_point]!</span>")
-	target.apply_damage(10, BRUTE, null, sharp=1)
+	target.apply_damage(10, DAMAGE_TYPE_BRUTE, null, sharp=1)
 
 ///////////////////////////////////////////////////////////////
 // Limb Connection Surgery
 ///////////////////////////////////////////////////////////////
 
 /datum/surgery_step/limb/connect
+	step_name = "Connect muscles"
+
 	allowed_tools = list(
 	/obj/item/surgical/hemostat = 100,	\
 	/obj/item/stack/cable_coil = 75, 	\
@@ -98,20 +106,22 @@
 	"<span class='notice'>You have connected tendons and muscles in [target]'s [E.amputation_point] with [tool].</span>")
 	E.status &= ~ORGAN_CUT_AWAY
 	target.update_icons_body()
-	target.updatehealth()
-	target.UpdateDamageIcon()
+	target.update_health()
+	target.update_damage_overlay()
 
 /datum/surgery_step/limb/connect/fail_step(mob/living/user, mob/living/carbon/human/target, target_zone, obj/item/tool)
 	var/obj/item/organ/external/E = tool
 	user.visible_message("<span class='warning'> [user]'s hand slips, damaging [target]'s [E.amputation_point]!</span>", \
 	"<span class='warning'> Your hand slips, damaging [target]'s [E.amputation_point]!</span>")
-	target.apply_damage(10, BRUTE, null, sharp=1)
+	target.apply_damage(10, DAMAGE_TYPE_BRUTE, null, sharp=1)
 
 ///////////////////////////////////////////////////////////////
 // Robolimb Attachment Surgery
 ///////////////////////////////////////////////////////////////
 
 /datum/surgery_step/limb/mechanize
+	step_name = "Attach prosthetic"
+
 	allowed_tools = list(/obj/item/robot_parts = 100)
 
 	min_duration = 80
@@ -148,12 +158,12 @@
 				new_limb.sabotaged = 1
 
 	target.update_icons_body(FALSE)
-	target.updatehealth()
-	target.UpdateDamageIcon()
+	target.update_health()
+	target.update_damage_overlay()
 
 	qdel(tool)
 
 /datum/surgery_step/limb/mechanize/fail_step(mob/living/user, mob/living/carbon/human/target, target_zone, obj/item/tool)
 	user.visible_message("<span class='warning'> [user]'s hand slips, damaging [target]'s flesh!</span>", \
 	"<span class='warning'> Your hand slips, damaging [target]'s flesh!</span>")
-	target.apply_damage(10, BRUTE, null, sharp=1)
+	target.apply_damage(10, DAMAGE_TYPE_BRUTE, null, sharp=1)

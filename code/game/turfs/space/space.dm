@@ -3,63 +3,100 @@
 	name = "\proper space"
 	icon_state = "0"
 	plane = SPACE_PLANE
+	turf_spawn_flags = TURF_SPAWN_FLAGS_ALLOW_ALL
+	mz_flags = MZ_ATMOS_BOTH | MZ_OPEN_BOTH
 
-	light_power = 0.25
 	dynamic_lighting = DYNAMIC_LIGHTING_DISABLED
+	permit_ao = FALSE
 
 	initial_gas_mix = GAS_STRING_VACUUM
-	thermal_conductivity = OPEN_HEAT_TRANSFER_COEFFICIENT
-	temperature = 2.7
+	temperature = TCMB
 	can_build_into_floor = TRUE
-	var/edge = 0		// If we're an edge
-	var/forced_dirs = 0	// Force this one to pretend it's an overedge turf
+	z_eventually_space = TRUE
 
+	/// If we're an edge.
+	var/edge = 0
+	/// Force this one to pretend it's an overedge turf.
+	var/forced_dirs = 0
+
+/**
+ * * -- DO NOT MAP THIS IN!!!!! --
+ */
 /turf/space/basic
-	flags = INITIALIZED
+	atom_flags = ATOM_INITIALIZED
 
-/turf/space/basic/New()	//Do not convert to Initialize
-	//This is used to optimize the map loader
-	return
+/turf/space/basic/New()
+	// Do not convert to Initialize
+	// This is used to optimize the map loader
+	SHOULD_CALL_PARENT(FALSE)
 
+	// TODO: put this behind compile flag for aggressive asserts
+	if(global.dmm_preloader_active)
+		// this shouldn't happen, because people aren't supposed to map this in
+		global.dmm_preloader_active = FALSE
+		var/static/warned = FALSE
+		if(!warned)
+			warned = TRUE
+			stack_trace("turf space basic had preloader active, shouldn't happen")
+
+/**
+ * Space Initialize
+ *
+ * Doesn't call parent, see [/atom/proc/Initialize].
+ * When adding new stuff to /atom/Initialize, /turf/Initialize, etc
+ * don't just add it here unless space actually needs it.
+ */
 /turf/space/Initialize(mapload)
-	icon_state = "[((x + y) ^ ~(x * y) + z) % 25]"
+	SHOULD_CALL_PARENT(FALSE)
 
-	// We might be an edge
-	if(y == world.maxy || forced_dirs & NORTH)
-		edge |= NORTH
-	else if(y == 1 || forced_dirs & SOUTH)
-		edge |= SOUTH
+	atom_flags |= ATOM_INITIALIZED
 
-	if(x == 1 || forced_dirs & WEST)
-		edge |= WEST
-	else if(x == world.maxx || forced_dirs & EAST)
-		edge |= EAST
+	if (CONFIG_GET(flag/starlight))
+		update_starlight()
 
+	// todo: audit all this again
+	// tl;dr given we load maps at runtime now, the maploader will do changeturfing, which means
+	// we don't need to manually check all this in initialize
+	return INITIALIZE_HINT_NORMAL
+
+/turf/space/Destroy()
+	// Cleanup cached z_eventually_space values above us.
+	if (above)
+		var/turf/T = src
+		while ((T = T.above()))
+			T.z_eventually_space = FALSE
 	return ..()
 
 /turf/space/is_space()	// Hmmm this Space is made of Space.
-	return 1
+	return TRUE
 
-// Override for space turfs, since they should never hide anything
-/turf/space/levelupdate()
-	for(var/obj/O in src)
-		O.hide(0)
+/turf/space/is_open()
+	return TRUE
+
+/turf/space/is_plating()
+	return FALSE
+
+/turf/space/hides_underfloor_objects()
+	return FALSE
 
 /turf/space/is_solid_structure()
 	return locate(/obj/structure/lattice, src)	// Counts as solid structure if it has a lattice
 
 /turf/space/proc/update_starlight()
-	var/power = CONFIG_GET(number/starlight)
-	if(power)
-		for(var/t in RANGE_TURFS(1,src)) //RANGE_TURFS is in code\__HELPERS\game.dm
-			if(isspaceturf(t))
-				//let's NOT update this that much pls
-				continue
-			set_light(power)
-			return
-		set_light(0)
-	else
-		set_light(0)
+	if(!(CONFIG_GET(flag/starlight)))
+		return
+
+	for (var/turf/T in RANGE_TURFS(1, src))
+		// Fuck if I know how these turfs are located in an area that is not an area.
+		if (!isloc(T.loc) || !TURF_IS_DYNAMICALLY_LIT_UNSAFE(T))
+			continue
+
+		set_ambient_light(COLOR_WHITE)
+		return
+
+	if (TURF_IS_AMBIENT_LIT_UNSAFE(src))
+		clear_ambient_light()
+
 
 /turf/space/attackby(obj/item/C as obj, mob/user as mob)
 
@@ -83,13 +120,13 @@
 			qdel(L)
 			playsound(src, 'sound/weapons/Genhit.ogg', 50, 1)
 			S.use(1)
-			ChangeTurf(/turf/simulated/floor/plating, flags = CHANGETURF_INHERIT_AIR)
+			PlaceOnTop(/turf/simulated/floor/plating, flags = CHANGETURF_INHERIT_AIR)
 			return
 		else
 			to_chat(user, "<span class='warning'>The plating is going to need some support.</span>")
 
 	if(istype(C, /obj/item/stack/tile/roofing))
-		var/turf/T = GetAbove(src)
+		var/turf/T = above()
 		var/obj/item/stack/tile/roofing/R = C
 
 		// Patch holes in the ceiling
@@ -105,7 +142,7 @@
 
 				if(R.use(1))	// Cost of roofing tiles is 1:1 with cost to place lattice and plating
 					T.ReplaceWithLattice()
-					T.ChangeTurf(/turf/simulated/floor, flags = CHANGETURF_INHERIT_AIR)
+					T.PlaceOnTop(/turf/simulated/floor, flags = CHANGETURF_INHERIT_AIR)
 					playsound(src, 'sound/weapons/Genhit.ogg', 50, 1)
 					user.visible_message("<span class='notice'>[user] expands the ceiling.</span>", "<span class='notice'>You expand the ceiling.</span>")
 			else
@@ -115,12 +152,33 @@
 		// If that's changed, then you'll want to swipe the rest of the roofing code from code/game/turfs/simulated/floor_attackby.dm
 	return
 
-/turf/space/Entered(var/atom/movable/A)
+//* Sector API *//
+
+/turf/space/sector_block_high_altitude_observation_to_below()
+	return FALSE
+
+/turf/space/sector_always_visible_from_high_altitude()
+	return TRUE
+
+//// Special variants used in various maps ////
+
+// Bluespace jump turf!
+/turf/space/bluespace
+	name = "bluespace"
+	icon = 'icons/turf/space.dmi'
+	icon_state = "bluespace"
+
+/turf/space/bluespace/Initialize(mapload)
 	. = ..()
+	icon = 'icons/turf/space.dmi'
+	icon_state = "bluespace"
 
-	if(edge)
-		addtimer(CALLBACK(src, .proc/on_atom_edge_touch, A), 0)
+// Desert jump turf!
+/turf/space/sandyscroll
+	name = "sand transit"
+	icon = 'icons/turf/transit_vr.dmi'
+	icon_state = "desert_ns"
 
-/turf/space/proc/on_atom_edge_touch(atom/movable/AM)
-	if(!QDELETED(AM) && (AM.loc == src))
-		AM.touch_map_edge()
+/turf/space/sandyscroll/Initialize(mapload)
+	. = ..()
+	icon_state = "desert_ns"

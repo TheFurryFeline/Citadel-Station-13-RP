@@ -23,19 +23,21 @@
 	maxHealth = 100
 	health = 100
 
-	melee_damage_lower = 8
-	melee_damage_upper = 25
+	legacy_melee_damage_lower = 8
+	legacy_melee_damage_upper = 25
 
 	poison_per_bite = 3
 	poison_type = "chloralhydrate"
 
-	movement_cooldown = 5
+	movement_base_speed = 10 / 5
+
+	exotic_type = /obj/item/reagent_containers/glass/venomgland/spider/chloral
 
 	player_msg = "Upon dying, you will release a swarm of spiderlings or young hunter spiders.<br>\
 	If a spider emerges, you will be placed in control of it."
 
 	var/spiderling_count = 0
-	var/spiderling_type = /obj/effect/spider/spiderling
+	var/spiderling_type = /obj/structure/spider/spiderling
 	var/swarmling_type = /mob/living/simple_mob/animal/giant_spider/hunter
 	var/swarmling_faction = "spiders"
 	var/swarmling_prob = 10 // Odds that a spiderling will be a swarmling instead.
@@ -53,26 +55,34 @@
 			if(prob(swarmling_prob) && src)
 				var/mob/living/simple_mob/animal/giant_spider/swarmling = new swarmling_type(src.loc)
 				var/swarm_health = FLOOR(swarmling.maxHealth * 0.4, 1)
-				var/swarm_dam_lower = FLOOR(melee_damage_lower * 0.4, 1)
-				var/swarm_dam_upper = FLOOR(melee_damage_upper * 0.4, 1)
+				var/swarm_dam_lower = FLOOR(legacy_melee_damage_lower * 0.4, 1)
+				var/swarm_dam_upper = FLOOR(legacy_melee_damage_upper * 0.4, 1)
 				swarmling.name = "spiderling"
 				swarmling.maxHealth = swarm_health
 				swarmling.health = swarm_health
-				swarmling.melee_damage_lower = swarm_dam_lower
-				swarmling.melee_damage_upper = swarm_dam_upper
-				swarmling.faction = swarmling_faction
+				swarmling.legacy_melee_damage_lower = swarm_dam_lower
+				swarmling.legacy_melee_damage_upper = swarm_dam_upper
+				swarmling.set_iff_factions(swarmling_faction)
 				swarmling.adjust_scale(0.75)
 				new_spiders += swarmling
 			else if(src)
-				var/obj/effect/spider/spiderling/child = new spiderling_type(src.loc)
+				var/obj/structure/spider/spiderling/child = new spiderling_type(src.loc)
 				child.skitter()
 			else // We might've gibbed or got deleted.
 				break
 		// Transfer our player to their new body, if RNG provided one.
 		if(new_spiders.len && client)
 			var/mob/living/simple_mob/animal/giant_spider/new_body = pick(new_spiders)
-			new_body.key = src.key
+			transfer_client_to(new_body)
 	return ..()
+
+/obj/item/reagent_containers/glass/venomgland/spider/chloral
+	name = "Sleepy Venom Gland"
+	desc = "A sac full of venom. The smell makes you feel lightheaded."
+
+/obj/item/reagent_containers/glass/venomgland/spider/chloral/Initialize(mapload)
+	. = ..()
+	reagents.add_reagent("chloralhydrate", 15)
 
 // Note that this isn't required for the 'scan all spiders' entry since its essentially a meme.
 /datum/category_item/catalogue/fauna/giant_spider/recursive_carrier_spider

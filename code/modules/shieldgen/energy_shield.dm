@@ -14,8 +14,9 @@
 	var/obj/machinery/power/shield_generator/gen = null // Owning generator
 	var/disabled_for = 0
 	var/diffused_for = 0
-	can_atmos_pass = ATMOS_PASS_YES
+	CanAtmosPass = ATMOS_PASS_NOT_BLOCKED
 	var/enabled_icon_state
+	var/list/pending_overlays
 
 /obj/effect/shield/proc/update_visuals()
 	update_iconstate()
@@ -27,13 +28,18 @@
 	if(!enabled_icon_state)
 		enabled_icon_state = icon_state
 
+	// This logic is attempting to toggle visibility of overlays.
 	if(disabled_for || diffused_for)
 		icon_state = "shield_broken"
-		overlays.Cut() //NOT ssoverlays
+		// Not cutting priority overlays, so only grab the main list.
+		if (our_overlays)
+			pending_overlays = our_overlays.Copy()
+		cut_overlays()
 	else
 		icon_state = enabled_icon_state
-		flags |= OVERLAY_QUEUED //Trick SSoverlays
-		SSoverlays.queue += src
+		if (pending_overlays)
+			set_overlays(pending_overlays)
+			pending_overlays = null
 
 /obj/effect/shield/proc/update_color()
 	if(disabled_for || diffused_for)
@@ -63,7 +69,7 @@
 	return FALSE
 
 /obj/effect/shield/Destroy()
-	if(can_atmos_pass != ATMOS_PASS_YES)
+	if(CanAtmosPass != ATMOS_PASS_NOT_BLOCKED)
 		update_nearby_tiles() //Force ZAS update
 	. = ..()
 	if(gen)
@@ -105,7 +111,7 @@
 /obj/effect/shield/proc/diffuse(var/duration)
 	// The shield is trying to counter diffusers. Cause lasting stress on the shield.
 	if(gen?.check_flag(MODEFLAG_BYPASS) && !disabled_for)
-		take_damage(duration * rand(8, 12), SHIELD_DAMTYPE_EM)
+		take_damage_legacy(duration * rand(8, 12), SHIELD_DAMTYPE_EM)
 		return
 
 	diffused_for = max(duration, 0)
@@ -117,7 +123,7 @@
 	update_explosion_resistance()
 
 /obj/effect/shield/attack_generic(var/source, var/damage, var/emote)
-	take_damage(damage, SHIELD_DAMTYPE_PHYSICAL)
+	take_damage_legacy(damage, SHIELD_DAMTYPE_PHYSICAL)
 	if(gen.check_flag(MODEFLAG_OVERCHARGE) && istype(source, /mob/living/))
 		overcharge_shock(source)
 	..(source, damage, emote)
@@ -147,7 +153,7 @@
 			continue
 		// Note: Range is a non-exact aproximation of the spread effect. If it doesn't look good
 		// we'll need to switch to actually walking along the shields to get exact number of steps away.
-		addtimer(CALLBACK(S, .proc/impact_flash), get_dist(src, S) * 2)
+		addtimer(CALLBACK(S, PROC_REF(impact_flash)), get_dist(src, S) * 2)
 	impact_flash()
 
 // Small visual effect, makes the shield tiles brighten up by becoming more opaque for a moment
@@ -156,16 +162,16 @@
 	animate(src, alpha = initial(alpha), time = 1 SECOND)
 
 // Just for fun
-/obj/effect/shield/attack_hand(var/user)
+/obj/effect/shield/attack_hand(mob/user, datum/event_args/actor/clickchain/e_args)
 	flash_adjacent_segments(3)
 
-/obj/effect/shield/take_damage(var/damage, var/damtype, var/hitby)
+/obj/effect/shield/proc/take_damage_legacy(var/damage, var/damtype, var/hitby)
 	if(!gen)
 		qdel(src)
 		return
 
 	if(!damtype)
-		crash_with("CANARY: shield.take_damage() callled without damtype.")
+		crash_with("CANARY: shield.take_damage_legacy() callled without damtype.")
 
 	if(!damage)
 		return
@@ -208,53 +214,52 @@
 	return 1
 
 /obj/effect/shield/proc/set_can_atmos_pass(var/new_value)
-	if(new_value == can_atmos_pass)
+	if(new_value == CanAtmosPass)
 		return
-	can_atmos_pass = new_value
+	CanAtmosPass = new_value
 	update_nearby_tiles() //Force ZAS update
 
 
 // EMP. It may seem weak but keep in mind that multiple shield segments are likely to be affected.
 /obj/effect/shield/emp_act(var/severity)
 	if(!disabled_for)
-		take_damage(rand(30,60) / severity, SHIELD_DAMTYPE_EM)
+		take_damage_legacy(rand(30,60) / severity, SHIELD_DAMTYPE_EM)
 
 
 // Explosions
-/obj/effect/shield/ex_act(var/severity)
+/obj/effect/shield/legacy_ex_act(var/severity)
 	if(!disabled_for)
-		take_damage(rand(10,15) / severity, SHIELD_DAMTYPE_PHYSICAL)
-
+		take_damage_legacy(rand(10,15) / severity, SHIELD_DAMTYPE_PHYSICAL)
 
 // Fire
 /obj/effect/shield/fire_act(datum/gas_mixture/air, exposed_temperature, exposed_volume)
 	if(!disabled_for)
-		take_damage(rand(5,10), SHIELD_DAMTYPE_HEAT)
-
+		take_damage_legacy(rand(5,10), SHIELD_DAMTYPE_HEAT)
 
 // Projectiles
-/obj/effect/shield/bullet_act(var/obj/item/projectile/proj)
-	if(proj.damage_type == BURN)
-		take_damage(proj.get_structure_damage(), SHIELD_DAMTYPE_HEAT)
-	else if (proj.damage_type == BRUTE)
-		take_damage(proj.get_structure_damage(), SHIELD_DAMTYPE_PHYSICAL)
+/obj/effect/shield/on_bullet_act(obj/projectile/proj, impact_flags, list/bullet_act_args)
+	impact_flags &= ~PROJECTILE_IMPACT_FLAGS_SHOULD_NOT_HIT
+	. = ..()
+	if(proj.damage_type == DAMAGE_TYPE_BURN)
+		take_damage_legacy(proj.get_structure_damage(), SHIELD_DAMTYPE_HEAT)
+	else if (proj.damage_type == DAMAGE_TYPE_BRUTE)
+		take_damage_legacy(proj.get_structure_damage(), SHIELD_DAMTYPE_PHYSICAL)
 	else //TODO - This will never happen because of get_structure_damage() only returning values for BRUTE and BURN damage types
-		take_damage(proj.get_structure_damage(), SHIELD_DAMTYPE_EM)
-
+		take_damage_legacy(proj.get_structure_damage(), SHIELD_DAMTYPE_EM)
 
 // Attacks with hand tools. Blocked by Hyperkinetic flag.
 /obj/effect/shield/attackby(var/obj/item/I as obj, var/mob/user as mob)
-	user.setClickCooldown(DEFAULT_ATTACK_COOLDOWN)
+	user.setClickCooldownLegacy(DEFAULT_ATTACK_COOLDOWN)
 	user.do_attack_animation(src)
 
 	if(gen.check_flag(MODEFLAG_HYPERKINETIC))
 		user.visible_message("<span class='danger'>\The [user] hits \the [src] with \the [I]!</span>")
-		if(I.damtype == BURN)
-			take_damage(I.force, SHIELD_DAMTYPE_HEAT)
-		else if (I.damtype == BRUTE)
-			take_damage(I.force, SHIELD_DAMTYPE_PHYSICAL)
+		if(I.damage_type == DAMAGE_TYPE_BURN)
+			take_damage_legacy(I.damage_force, SHIELD_DAMTYPE_HEAT)
+		else if (I.damage_type == DAMAGE_TYPE_BRUTE)
+			take_damage_legacy(I.damage_force, SHIELD_DAMTYPE_PHYSICAL)
 		else
-			take_damage(I.force, SHIELD_DAMTYPE_EM)
+			take_damage_legacy(I.damage_force, SHIELD_DAMTYPE_EM)
 	else
 		user.visible_message("<span class='danger'>\The [user] tries to attack \the [src] with \the [I], but it passes through!</span>")
 
@@ -274,9 +279,9 @@
 
 /obj/effect/shield/proc/overcharge_shock(var/mob/living/M)
 	M.adjustFireLoss(rand(20, 40))
-	M.Weaken(5)
+	M.afflict_paralyze(20 * 5)
 	to_chat(M, "<span class='danger'>As you come into contact with \the [src] a surge of energy paralyses you!</span>")
-	take_damage(10, SHIELD_DAMTYPE_EM)
+	take_damage_legacy(10, SHIELD_DAMTYPE_EM)
 
 // Called when a flag is toggled. Can be used to add on-toggle behavior, such as visual changes.
 /obj/effect/shield/proc/flags_updated()
@@ -285,7 +290,7 @@
 		return
 
 	// Update airflow - If atmospheric we block air as long as we're enabled (density works for this)
-	set_can_atmos_pass(gen.check_flag(MODEFLAG_ATMOSPHERIC) ? ATMOS_PASS_DENSITY : ATMOS_PASS_YES)
+	set_can_atmos_pass(gen.check_flag(MODEFLAG_ATMOSPHERIC) ? ATMOS_PASS_DENSITY : ATMOS_PASS_NOT_BLOCKED)
 	update_visuals()
 	update_explosion_resistance()
 
@@ -336,7 +341,7 @@
 	return !gen.check_flag(MODEFLAG_HYPERKINETIC)
 
 // Beams
-/obj/item/projectile/beam/can_pass_shield(var/obj/machinery/power/shield_generator/gen)
+/obj/projectile/beam/can_pass_shield(var/obj/machinery/power/shield_generator/gen)
 	return !gen.check_flag(MODEFLAG_PHOTONIC)
 
 
@@ -352,7 +357,7 @@
 /obj/effect/meteor/shield_impact(var/obj/effect/shield/S)
 	if(!S.gen.check_flag(MODEFLAG_HYPERKINETIC))
 		return
-	S.take_damage(get_shield_damage(), SHIELD_DAMTYPE_PHYSICAL, src)
+	S.take_damage_legacy(get_shield_damage(), SHIELD_DAMTYPE_PHYSICAL, src)
 	visible_message("<span class='danger'>\The [src] breaks into dust!</span>")
 	make_debris()
 	qdel(src)

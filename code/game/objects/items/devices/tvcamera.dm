@@ -4,7 +4,7 @@
 	icon = 'icons/obj/device.dmi'
 	icon_state = "camcorder"
 	item_state = "camcorder"
-	w_class = ITEMSIZE_LARGE
+	w_class = WEIGHT_CLASS_BULKY
 	slot_flags = SLOT_BELT
 	var/channel = "Tether News Feed"
 	var/obj/machinery/camera/network/thunder/camera
@@ -34,16 +34,19 @@
 	camera.status = FALSE
 	radio = new(src)
 	radio.listening = FALSE
-	radio.set_frequency(ENT_FREQ)
+	radio.set_frequency(FREQ_ENTERTAINMENT)
 	radio.icon = src.icon
 	radio.icon_state = src.icon_state
 	update_icon()
 
-/obj/item/tvcamera/hear_talk(mob/living/M, msg, var/verb="says", datum/language/speaking=null)
+/obj/item/tvcamera/hear_talk(mob/living/M, msg, var/verb="says", datum/prototype/language/speaking=null)
 	radio.hear_talk(M,msg,verb,speaking)
 	..()
 
-/obj/item/tvcamera/attack_self(mob/user)
+/obj/item/tvcamera/attack_self(mob/user, datum/event_args/actor/actor)
+	. = ..()
+	if(.)
+		return
 	add_fingerprint(user)
 	user.set_machine(src)
 	var/dat = list()
@@ -88,8 +91,4 @@
 	else
 		icon_state = "camcorder"
 		item_state = "camcorder"
-	var/mob/living/carbon/human/H = loc
-	if(istype(H))
-		H.update_inv_r_hand()
-		H.update_inv_l_hand()
-		H.update_inv_belt()
+	update_worn_icon()

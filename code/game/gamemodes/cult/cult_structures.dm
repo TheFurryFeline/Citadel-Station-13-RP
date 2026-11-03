@@ -24,7 +24,6 @@
 	var/isbroken = 0
 	light_range = 5
 	light_color = "#3e0000"
-	var/obj/item/wepon = null
 
 	var/shatter_message = "The pylon shatters!"
 	var/impact_sound = 'sound/effects/Glasshit.ogg'
@@ -37,20 +36,26 @@
 	. = ..()
 	START_PROCESSING(SSobj, src)
 
-/obj/structure/cult/pylon/attack_hand(mob/M as mob)
-	attackpylon(M, 5)
+/obj/structure/cult/pylon/Destroy()
+	STOP_PROCESSING(SSobj, src)
+	return ..()
+
+/obj/structure/cult/pylon/attack_hand(mob/user, datum/event_args/actor/clickchain/e_args)
+	attackpylon(user, 5)
 
 /obj/structure/cult/pylon/attack_generic(var/mob/user, var/damage)
 	attackpylon(user, damage)
 
 /obj/structure/cult/pylon/attackby(obj/item/W as obj, mob/user as mob)
-	attackpylon(user, W.force)
+	attackpylon(user, W.damage_force)
 
-/obj/structure/cult/pylon/take_damage(var/damage)
+/obj/structure/cult/pylon/inflict_atom_damage(damage, damage_type, damage_tier, damage_flag, damage_mode, hit_zone, attack_type, datum/attack_source)
 	pylonhit(damage)
+	return damage
 
-/obj/structure/cult/pylon/bullet_act(var/obj/item/projectile/Proj)
-	pylonhit(Proj.get_structure_damage())
+/obj/structure/cult/pylon/on_bullet_act(obj/projectile/proj, impact_flags, list/bullet_act_args)
+	. = ..()
+	pylonhit(proj.get_structure_damage())
 
 /obj/structure/cult/pylon/proc/pylonhit(var/damage)
 	if(!isbroken)
@@ -127,9 +132,9 @@
 	desc = "You're pretty sure that abyss is staring back."
 	icon = 'icons/obj/cult.dmi'
 	icon_state = "hole"
-	density = 1
-	unacidable = 1
-	anchored = 1.0
+	density = TRUE
+	integrity_flags = INTEGRITY_INDESTRUCTIBLE | INTEGRITY_ACIDPROOF | INTEGRITY_FIREPROOF | INTEGRITY_LAVAPROOF
+	anchored = TRUE
 	var/spawnable = null
 
 /obj/effect/gateway/active
@@ -155,7 +160,7 @@
 
 /obj/effect/gateway/active/Initialize(mapload)
 	. = ..()
-	addtimer(CALLBACK(src, .proc/spawn_things), rand(30, 60) SECONDS)
+	addtimer(CALLBACK(src, PROC_REF(spawn_things)), rand(30, 60) SECONDS)
 
 /obj/effect/gateway/active/proc/spawn_things()
 	var/t = pick(spawnable)

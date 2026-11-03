@@ -21,7 +21,7 @@
 	name = "savik"
 	tt_desc = "S Pistris tellus" //landshark
 	catalogue_data = list(/datum/category_item/catalogue/fauna/savik)
-	faction = "savik"
+	iff_factions = MOB_IFF_FACTION_BIND_TO_MAP
 
 	icon_state = "savik"
 	icon_living = "savik"
@@ -32,10 +32,10 @@
 	health = 125
 	randomized = TRUE
 
-	movement_cooldown = 0.5 SECONDS
+	movement_base_speed = 10 / 0.5 SECONDS
 
-	melee_damage_lower = 15
-	melee_damage_upper = 35
+	legacy_melee_damage_lower = 15
+	legacy_melee_damage_upper = 35
 	attack_armor_pen = 15
 	attack_sharp = TRUE
 	attack_edge = TRUE
@@ -46,7 +46,7 @@
 	a short period of time, however it will tire you and you will be much weaker for awhile after it expires."
 
 	say_list_type = /datum/say_list/savik
-	ai_holder_type = /datum/ai_holder/simple_mob/savik
+	ai_holder_type = /datum/ai_holder/polaris/simple_mob/savik
 
 /datum/say_list/savik
 	speak = list("Hruuugh!","Hrunnph")
@@ -54,11 +54,11 @@
 	emote_hear = list("snuffles")
 
 /mob/living/simple_mob/animal/sif/savik/handle_special()
-	if((get_AI_stance() in list(STANCE_APPROACH, STANCE_FIGHT)) && !is_AI_busy() && isturf(loc))
+	if((get_polaris_AI_stance() in list(STANCE_APPROACH, STANCE_FIGHT)) && !is_AI_busy() && isturf(loc))
 		if(health <= (maxHealth * 0.5)) // At half health, and fighting someone currently.
 			berserk()
 
-/datum/ai_holder/simple_mob/savik
+/datum/ai_holder/polaris/simple_mob/savik
 	mauling = TRUE
 
 // So players can use it too.

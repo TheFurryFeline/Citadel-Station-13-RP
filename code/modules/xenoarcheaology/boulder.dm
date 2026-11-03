@@ -18,8 +18,6 @@
 
 /obj/structure/boulder/attackby(var/obj/item/I, var/mob/user)
 	if(istype(I, /obj/item/core_sampler))
-		src.geological_data.artifact_distance = rand(-100,100) / 100
-		src.geological_data.artifact_id = artifact_find.artifact_id
 
 		var/obj/item/core_sampler/C = I
 		C.sample_item(src, user)
@@ -87,16 +85,17 @@
 	. = ..()
 	if(istype(AM,/mob/living/carbon/human))
 		var/mob/living/carbon/human/H = AM
-		var/obj/item/pickaxe/P = H.get_inactive_hand()
+		var/obj/item/pickaxe/P = H.get_inactive_held_item()
 		if(istype(P))
 			src.attackby(P, H)
 
 	else if(istype(AM,/mob/living/silicon/robot))
 		var/mob/living/silicon/robot/R = AM
-		if(istype(R.module_active,/obj/item/pickaxe))
-			attackby(R.module_active,R)
+		var/obj/item/pickaxe/maybe_pickaxe = R.get_held_item_of_type(/obj/item/pickaxe)
+		if(maybe_pickaxe)
+			maybe_pickaxe.melee_interaction_chain(src, R)
 
-	else if(istype(AM,/obj/mecha))
-		var/obj/mecha/M = AM
-		if(istype(M.selected,/obj/item/mecha_parts/mecha_equipment/tool/drill))
+	else if(istype(AM,/obj/vehicle/sealed/mecha))
+		var/obj/vehicle/sealed/mecha/M = AM
+		if(istype(M.selected,/obj/item/vehicle_module/tool/drill))
 			M.selected.action(src)

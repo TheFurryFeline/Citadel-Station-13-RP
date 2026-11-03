@@ -19,7 +19,7 @@
 	tt_desc = "S Choeros hirtus" //diyaab and shantak are technically reletives!
 	catalogue_data = list(/datum/category_item/catalogue/fauna/diyaab)
 
-	faction = "diyaab"
+	iff_factions = MOB_IFF_FACTION_BIND_TO_MAP
 
 	icon_state = "diyaab"
 	icon_living = "diyaab"
@@ -30,16 +30,16 @@
 	health = 25
 	randomized = TRUE
 
-	movement_cooldown = 0
+	movement_base_speed = 5
 
-	melee_damage_lower = 2
-	melee_damage_upper = 6
+	legacy_melee_damage_lower = 2
+	legacy_melee_damage_upper = 6
 	base_attack_cooldown = 1 SECOND
 	attack_sharp = 1 //Bleeds, but it shouldn't rip off a limb?
 	attacktext = list("gouged")
 
 	say_list_type = /datum/say_list/diyaab
-	ai_holder_type = /datum/ai_holder/simple_mob/retaliate/cooperative
+	ai_holder_type = /datum/ai_holder/polaris/simple_mob/retaliate/cooperative
 
 /datum/say_list/diyaab
 	speak = list("Awrr?", "Aowrl!", "Worrl.")

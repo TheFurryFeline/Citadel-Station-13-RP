@@ -6,8 +6,8 @@ var/list/blob_cores = list()
 	icon = 'icons/mob/blob.dmi'
 	icon_state = "blank_blob"
 	desc = "A huge, pulsating yellow mass."
-	density = TRUE //bandaid fix for PolarisSS13/6173
-	max_integrity = 150
+	density = TRUE
+	integrity_max = 150
 	point_return = -1
 	health_regen = 0 //we regen in Life() instead of when pulsed
 	var/datum/blob_type/desired_blob_type = null // If this is set, the core always creates an overmind possessing this blob type.
@@ -17,6 +17,111 @@ var/list/blob_cores = list()
 	var/resource_delay = 0
 	var/point_rate = 2
 	var/ai_controlled = TRUE
+
+/obj/structure/blob/core/Initialize(mapload, client/new_overmind, new_rate = 2, placed = FALSE)
+	. = ..()
+	blob_cores += src
+	START_PROCESSING(SSobj, src)
+	update_icon() //so it atleast appears
+	if(!placed && !overmind)
+		INVOKE_ASYNC(src, PROC_REF(create_overmind), new_overmind)
+	if(overmind)
+		update_icon()
+	point_rate = new_rate
+
+/obj/structure/blob/core/Destroy()
+	blob_cores -= src
+	QDEL_NULL(overmind)
+	STOP_PROCESSING(SSobj, src)
+	return ..()
+
+/obj/structure/blob/core/update_icon()
+	cut_overlays()
+	. = ..()
+	var/list/overlays_to_add = list()
+	color = null
+	var/mutable_appearance/blob_overlay = mutable_appearance('icons/mob/blob.dmi', "blob")
+	if(overmind)
+		blob_overlay.color = overmind.blob_type.color
+		name = "[overmind.blob_type.name] [base_name]"
+	overlays_to_add += blob_overlay
+	overlays_to_add += mutable_appearance('icons/mob/blob.dmi', "blob_core_overlay")
+
+	add_overlay(overlays_to_add)
+
+/obj/structure/blob/core/process(delta_time)
+	set waitfor = FALSE
+	if(QDELETED(src))
+		return
+	if(!overmind)
+		spawn(0)
+			create_overmind()
+	else
+		if(resource_delay <= world.time)
+			resource_delay = world.time + 1 SECOND
+			overmind.add_points(point_rate)
+	integrity = min(integrity_max, integrity + core_regen)
+//	if(overmind)
+//		overmind.update_health_hud()
+	pulse_area(overmind, 15, BLOB_CORE_PULSE_RANGE, BLOB_CORE_EXPAND_RANGE)
+	for(var/obj/structure/blob/normal/B in range(1, src))
+		if(prob(5))
+			B.change_to(/obj/structure/blob/shield/core, overmind)
+
+/obj/structure/blob/core/proc/create_overmind(client/new_overmind, override_delay)
+	if(overmind_get_delay > world.time && !override_delay)
+		return
+	if(!ai_controlled) // Do we want a bona fide player blob?
+		overmind_get_delay = world.time + 15 SECONDS //if this fails, we'll try again in 15 seconds
+
+		if(overmind)
+			qdel(overmind)
+
+
+		var/client/C = null
+		if(!new_overmind)
+			var/datum/ghost_query/Q = new /datum/ghost_query/blob()
+			var/list/winner = Q.query()
+			if(winner.len)
+				var/mob/observer/dead/D = winner[1]
+				C = D.client
+
+		else
+			C = new_overmind
+
+		if(C)
+			if(!desired_blob_type && !isnull(difficulty_threshold))
+				desired_blob_type = get_random_blob_type()
+			var/mob/observer/blob/B = new(loc, TRUE, 60, desired_blob_type)
+			C.transfer_to(B)
+			B.blob_core = src
+			src.overmind = B
+			update_icon()
+			if(B.mind && !B.mind.special_role)
+				B.mind.special_role = "Blob Overmind"
+			return TRUE
+		return FALSE
+
+	else // An AI opponent.
+		if(!desired_blob_type && !isnull(difficulty_threshold))
+			desired_blob_type = get_random_blob_type()
+		var/mob/observer/blob/B = new(loc, TRUE, 60, desired_blob_type)
+		overmind = B
+		B.blob_core = src
+		B.ai_controlled = TRUE
+		update_icon()
+		return TRUE
+
+/obj/structure/blob/core/proc/get_random_blob_type()
+	if(!difficulty_threshold)
+		return
+	var/list/valid_types = list()
+	for(var/thing in subtypesof(/datum/blob_type))
+		var/datum/blob_type/BT = thing
+		if(initial(BT.difficulty) > difficulty_threshold)
+			continue
+		valid_types += BT
+	return pick(valid_types)
 
 // Spawn this if you want a ghost to be able to play as the blob.
 /obj/structure/blob/core/player
@@ -80,107 +185,3 @@ var/list/blob_cores = list()
 
 /obj/structure/blob/core/classic
 	desired_blob_type = /datum/blob_type/classic
-
-/obj/structure/blob/core/Initialize(mapload, client/new_overmind, new_rate = 2, placed = FALSE)
-	. = ..()
-	blob_cores += src
-	START_PROCESSING(SSobj, src)
-	update_icon() //so it atleast appears
-	if(!placed && !overmind)
-		create_overmind(new_overmind)
-	if(overmind)
-		update_icon()
-	point_rate = new_rate
-
-/obj/structure/blob/core/Destroy()
-	blob_cores -= src
-	if(overmind)
-		overmind.blob_core = null
-		qdel(overmind)
-	overmind = null
-	STOP_PROCESSING(SSobj, src)
-	return ..()
-
-/obj/structure/blob/core/update_icon()
-	overlays.Cut()
-	color = null
-	var/mutable_appearance/blob_overlay = mutable_appearance('icons/mob/blob.dmi', "blob")
-	if(overmind)
-		blob_overlay.color = overmind.blob_type.color
-		name = "[overmind.blob_type.name] [base_name]"
-	overlays += blob_overlay
-	overlays += mutable_appearance('icons/mob/blob.dmi', "blob_core_overlay")
-
-/obj/structure/blob/core/process(delta_time)
-	set waitfor = FALSE
-	if(QDELETED(src))
-		return
-	if(!overmind)
-		spawn(0)
-			create_overmind()
-	else
-		if(resource_delay <= world.time)
-			resource_delay = world.time + 1 SECOND
-			overmind.add_points(point_rate)
-	integrity = min(max_integrity, integrity + core_regen)
-//	if(overmind)
-//		overmind.update_health_hud()
-	pulse_area(overmind, 15, BLOB_CORE_PULSE_RANGE, BLOB_CORE_EXPAND_RANGE)
-	for(var/obj/structure/blob/normal/B in range(1, src))
-		if(prob(5))
-			B.change_to(/obj/structure/blob/shield/core, overmind)
-
-/obj/structure/blob/core/proc/create_overmind(client/new_overmind, override_delay)
-	if(overmind_get_delay > world.time && !override_delay)
-		return
-	if(!ai_controlled) // Do we want a bona fide player blob?
-		overmind_get_delay = world.time + 15 SECONDS //if this fails, we'll try again in 15 seconds
-
-		if(overmind)
-			qdel(overmind)
-
-
-		var/client/C = null
-		if(!new_overmind)
-			var/datum/ghost_query/Q = new /datum/ghost_query/blob()
-			var/list/winner = Q.query()
-			if(winner.len)
-				var/mob/observer/dead/D = winner[1]
-				C = D.client
-
-		else
-			C = new_overmind
-
-		if(C)
-			if(!desired_blob_type && !isnull(difficulty_threshold))
-				desired_blob_type = get_random_blob_type()
-			var/mob/observer/blob/B = new(loc, TRUE, 60, desired_blob_type)
-			B.key = C.key
-			B.blob_core = src
-			src.overmind = B
-			update_icon()
-			if(B.mind && !B.mind.special_role)
-				B.mind.special_role = "Blob Overmind"
-			return TRUE
-		return FALSE
-
-	else // An AI opponent.
-		if(!desired_blob_type && !isnull(difficulty_threshold))
-			desired_blob_type = get_random_blob_type()
-		var/mob/observer/blob/B = new(loc, TRUE, 60, desired_blob_type)
-		overmind = B
-		B.blob_core = src
-		B.ai_controlled = TRUE
-		update_icon()
-		return TRUE
-
-/obj/structure/blob/core/proc/get_random_blob_type()
-	if(!difficulty_threshold)
-		return
-	var/list/valid_types = list()
-	for(var/thing in subtypesof(/datum/blob_type))
-		var/datum/blob_type/BT = thing
-		if(initial(BT.difficulty) > difficulty_threshold)
-			continue
-		valid_types += BT
-	return pick(valid_types)

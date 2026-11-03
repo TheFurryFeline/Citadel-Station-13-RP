@@ -2,6 +2,9 @@
 // Similar to smoke, but spreads out more
 // metal foams leave behind a foamed metal wall
 
+/**
+ * * reagents are handled in a special manner as it's a shared ref.
+ */
 /obj/effect/foam
 	name = "foam"
 	icon = 'icons/effects/effects.dmi'
@@ -15,26 +18,31 @@
 	var/amount = 3
 	var/expand = 1
 	var/metal = 0
-	var/dries = 1 //VOREStation Add
-	var/slips = 0 //VOREStation Add
+	var/dries = 1
+	var/slips = 0
 
-/obj/effect/foam/Initialize(var/mapload, var/ismetal = 0)
+	var/datum/reagent_holder/carried_reagents_shared_ref
+
+/obj/effect/foam/Initialize(mapload, ismetal = FALSE)
 	. = ..()
-	//icon_state = "[ismetal? "m" : ""]foam" //VOREStation Removal
 	metal = ismetal
 	playsound(src, 'sound/effects/bubbles2.ogg', 80, 1, -3)
-	if(dries) //VOREStation Add
-		addtimer(CALLBACK(src, .proc/post_spread), 3 + metal * 3)
-		addtimer(CALLBACK(src, .proc/pre_harden), 12 SECONDS)
-		addtimer(CALLBACK(src, .proc/harden), 15 SECONDS)
+	if(dries)
+		addtimer(CALLBACK(src, PROC_REF(post_spread)), 3 + metal * 3)
+		addtimer(CALLBACK(src, PROC_REF(pre_harden)), 12 SECONDS)
+		addtimer(CALLBACK(src, PROC_REF(harden)), 15 SECONDS)
+
+/obj/effect/foam/Destroy()
+	if(carried_reagents_shared_ref)
+		carried_reagents_shared_ref = null
+	return ..()
 
 /obj/effect/foam/proc/post_spread()
 	process()
 	checkReagents()
 
 /obj/effect/foam/proc/pre_harden()
-	return //VOREStation Edit
-
+	return
 /obj/effect/foam/proc/harden()
 	if(metal)
 		var/obj/structure/foamedmetal/M = new(src.loc)
@@ -44,11 +52,9 @@
 	QDEL_IN(src, 5)
 
 /obj/effect/foam/proc/checkReagents() // transfer any reagents to the floor
-	if(!metal && reagents)
+	if(!metal && carried_reagents_shared_ref)
 		var/turf/T = get_turf(src)
-		reagents.touch_turf(T)
-		for(var/obj/O in T)
-			reagents.touch_obj(O)
+		carried_reagents_shared_ref.perform_uniform_contact(T, 1)
 
 /obj/effect/foam/process()
 	if(--amount < 0)
@@ -68,11 +74,7 @@
 
 		F = new(T, metal)
 		F.amount = amount
-		if(!metal)
-			F.create_reagents(10)
-			if(reagents)
-				for(var/datum/reagent/R in reagents.reagent_list)
-					F.reagents.add_reagent(R.id, 1, safety = 1) //added safety check since reagents in the foam have already had a chance to react
+		F.carried_reagents_shared_ref = carried_reagents_shared_ref
 
 /obj/effect/foam/fire_act(datum/gas_mixture/air, exposed_temperature, exposed_volume) // foam disolves when heated, except metal foams
 	if(!metal && prob(max(0, exposed_temperature - 475)))
@@ -87,30 +89,35 @@
 		return
 	if(metal)
 		return
-	if(slips && istype(AM, /mob/living)) //VOREStation Add
+	if(slips && istype(AM, /mob/living) && !AM.is_avoiding_ground())
 		var/mob/living/M = AM
-		M.slip("the foam", 6)
+		M.slip_act(SLIP_CLASS_FOAM, src, 5, 7.5)
 
 /datum/effect_system/foam_spread
-	var/amount = 5				// the size of the foam spread.
-	var/list/carried_reagents	// the IDs of reagents present when the foam was mixed
-	var/metal = 0				// 0 = foam, 1 = metalfoam, 2 = ironfoam
+	/// The size of the foam spread.
+	var/amount = 5
+	/// reagent holder for carried reagents
+	var/datum/reagent_holder/carried_reagents
+	/// 0 = foam, 1 = metalfoam, 2 = ironfoam.
+	var/metal = 0
 
-/datum/effect_system/foam_spread/set_up(amt=5, loca, var/datum/reagents/carry = null, var/metalfoam = 0)
+/datum/effect_system/foam_spread/set_up(amt=5, loca, var/datum/reagent_holder/carry = null, var/metalfoam = 0)
 	amount = round(sqrt(amt / 3), 1)
 	if(istype(loca, /turf/))
 		location = loca
 	else
 		location = get_turf(loca)
 
-	carried_reagents = list()
 	metal = metalfoam
 
 	// bit of a hack here. Foam carries along any reagent also present in the glass it is mixed with (defaults to water if none is present). Rather than actually transfer the reagents, this makes a list of the reagent ids and spawns 1 unit of that reagent when the foam disolves.
 
-	if(carry && !metal)
-		for(var/datum/reagent/R in carry.reagent_list)
-			carried_reagents += R.id
+	if(!metal)
+		if(carry)
+			carried_reagents = carry.clone()
+		else
+			carried_reagents = new
+			carried_reagents.add_reagent(/datum/reagent/water::id, 10)
 
 /datum/effect_system/foam_spread/start()
 	spawn(0)
@@ -123,33 +130,33 @@
 		F.amount = amount
 
 		if(!metal) // don't carry other chemicals if a metal foam
-			F.create_reagents(10)
-
-			if(carried_reagents)
-				for(var/id in carried_reagents)
-					F.reagents.add_reagent(id, 1, safety = 1) //makes a safety call because all reagents should have already reacted anyway
-			else
-				F.reagents.add_reagent("water", 1, safety = 1)
+			// directly reference the reagents
+			F.carried_reagents_shared_ref = carried_reagents
 
 // wall formed by metal foams, dense and opaque, but easy to break
 
 /obj/structure/foamedmetal
 	icon = 'icons/effects/effects.dmi'
 	icon_state = "metalfoam"
-	density = 1
-	opacity = 1 // changed in New()
-	anchored = 1
+	density = TRUE
+	opacity = TRUE
+	anchored = TRUE
+	rad_insulation = RAD_INSULATION_MEDIUM
+	rad_stickiness = 0.5
 	name = "foamed metal"
 	desc = "A lightweight foamed metal wall."
-	can_atmos_pass = ATMOS_PASS_NO
+	CanAtmosPass = ATMOS_PASS_DENSITY
+	integrity = 20
+	integrity_max = 20
+	armor_type = /datum/armor/none
 	var/metal = 1 // 1 = aluminum, 2 = iron
 
-/obj/structure/foamedmetal/New()
-	..()
+/obj/structure/foamedmetal/Initialize(mapload)
+	. = ..()
 	update_nearby_tiles(1)
 
 /obj/structure/foamedmetal/Destroy()
-	density = 0
+	density = FALSE
 	update_nearby_tiles(1)
 	return ..()
 
@@ -158,35 +165,3 @@
 		icon_state = "metalfoam"
 	else
 		icon_state = "ironfoam"
-
-/obj/structure/foamedmetal/ex_act(severity)
-	qdel(src)
-
-/obj/structure/foamedmetal/bullet_act(var/obj/item/projectile/P)
-	if(istype(P, /obj/item/projectile/test))
-		return
-	else if(metal == 1 || prob(50))
-		qdel(src)
-
-/obj/structure/foamedmetal/attack_hand(var/mob/user)
-	if ((HULK in user.mutations) || (prob(75 - metal * 25)))
-		user.visible_message("<span class='warning'>[user] smashes through the foamed metal.</span>", "<span class='notice'>You smash through the metal foam wall.</span>")
-		qdel(src)
-	else
-		to_chat(user, "<span class='notice'>You hit the metal foam but bounce off it.</span>")
-	return
-
-/obj/structure/foamedmetal/attackby(var/obj/item/I, var/mob/user)
-	if(istype(I, /obj/item/grab))
-		var/obj/item/grab/G = I
-		G.affecting.forceMove(loc)
-		visible_message("<span class='warning'>[G.assailant] smashes [G.affecting] through the foamed metal wall.</span>")
-		qdel(I)
-		qdel(src)
-		return
-
-	if(prob(I.force * 20 - metal * 25))
-		user.visible_message("<span class='warning'>[user] smashes through the foamed metal.</span>", "<span class='notice'>You smash through the foamed metal with \the [I].</span>")
-		qdel(src)
-	else
-		to_chat(user, "<span class='notice'>You hit the metal foam to no effect.</span>")

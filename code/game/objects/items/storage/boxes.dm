@@ -24,14 +24,31 @@
 	desc = "It's just an ordinary box."
 	icon_state = "box"
 	item_state = "syringe_kit"
-	var/foldable = /obj/item/stack/material/cardboard	// BubbleWrap - if set, can be folded (when empty) into a sheet of cardboard
-	max_w_class = ITEMSIZE_SMALL
-	max_storage_space = INVENTORY_BOX_SPACE
+	max_single_weight_class = WEIGHT_CLASS_SMALL
+	max_combined_volume = STORAGE_VOLUME_BOX
+	weight_volume = ITEM_VOLUME_BOX
 	drop_sound = 'sound/items/drop/cardboardbox.ogg'
 	pickup_sound = 'sound/items/pickup/cardboardbox.ogg'
+	worth_intrinsic = 25
+
+	var/foldable = /obj/item/stack/material/cardboard	// BubbleWrap - if set, can be folded (when empty) into a sheet of cardboard
+
+	/// dynamic state support
+	var/dynamic_state = TRUE
+	/// dynamic state overlay, if any
+	var/dynamic_overlay
+	/// dynamic state x shift, for off-center sprites like cases
+	var/dynamic_x_shift
+	/// dynamic state y shift, for off-center sprites like cases
+	var/dynamic_y_shift
+
+// todo: implement dynamic state, like how /tg/ boxes work
 
 // BubbleWrap - A box can be folded up to make card
-/obj/item/storage/box/attack_self(mob/user as mob)
+/obj/item/storage/box/attack_self(mob/user, datum/event_args/actor/actor)
+	. = ..()
+	if(.)
+		return
 	if(..()) return
 
 	//try to fold it.
@@ -40,34 +57,25 @@
 
 	if ( !ispath(foldable) )
 		return
-	var/found = 0
-	// Close any open UI windows first
-	for(var/mob/M in range(1))
-		if (M.s_active == src)
-			close(M)
-		if ( M == user )
-			found = 1
-	if ( !found )	// User is too far away
-		return
 	// Now make the cardboard
 	to_chat(user, "<span class='notice'>You fold [src] flat.</span>")
 	new foldable(get_turf(src))
 	qdel(src)
 
-/obj/item/storage/box/survival
+/obj/item/storage/box/legacy_survival
 	name = "emergency supply box"
 	desc = "A survival box issued to crew members for use in emergency situations."
 	starts_with = list(
 		/obj/item/clothing/mask/breath
 	)
 
-/obj/item/storage/box/survival/synth
+/obj/item/storage/box/legacy_survival/synth
 	name = "synthetic supply box"
 	desc = "A survival box issued to synthetic crew members for use in emergency situations."
 	starts_with = list(
 	)
 
-/obj/item/storage/box/survival/comp
+/obj/item/storage/box/legacy_survival/comp
 	name = "emergency supply box"
 	desc = "A comprehensive survival box issued to crew members for use in emergency situations. Contains additional supplies."
 	icon_state = "survival"
@@ -75,7 +83,7 @@
 		/obj/item/reagent_containers/hypospray/autoinjector,
 		/obj/item/stack/medical/bruise_pack,
 		/obj/item/flashlight/glowstick,
-		/obj/item/reagent_containers/food/snacks/candy/proteinbar,
+		/obj/item/reagent_containers/food/snacks/wrapped/proteinbar,
 		/obj/item/clothing/mask/breath
 	)
 
@@ -101,7 +109,7 @@
 	name = "box of syringe gun cartridges"
 	desc = "A box full of compressed gas cartridges."
 	icon_state = "syringe"
-	starts_with = list(/obj/item/syringe_cartridge = 7)
+	starts_with = list(/obj/item/ammo_casing/syringe = 7)
 
 /obj/item/storage/box/beakers
 	name = "box of beakers"
@@ -116,11 +124,13 @@
 		/obj/item/dnainjector/m2h = 3
 	)
 
+// todo: all this should be special ammo magazines or something i hate abusing box-code lmao
+
 /obj/item/storage/box/blanks
 	name = "box of blank shells"
 	desc = "It has a picture of a gun and several warning symbols on the front."
 	icon_state = "blankshot_box"
-	item_state_slots = list(slot_r_hand_str = "syringe_kit", slot_l_hand_str = "syringe_kit")
+	item_state_slots = list(SLOT_ID_RIGHT_HAND = "syringe_kit", SLOT_ID_LEFT_HAND = "syringe_kit")
 	starts_with = list(/obj/item/ammo_casing/a12g/blank = 8)
 	drop_sound = 'sound/items/drop/ammobox.ogg'
 	pickup_sound = 'sound/items/pickup/ammobox.ogg'
@@ -132,15 +142,15 @@
 	name = "box of beanbag shells"
 	desc = "It has a picture of a gun and several warning symbols on the front.<br>WARNING: Live ammunition. Misuse may result in serious injury or death."
 	icon_state = "beanshot_box"
-	item_state_slots = list(slot_r_hand_str = "syringe_kit", slot_l_hand_str = "syringe_kit")
+	item_state_slots = list(SLOT_ID_RIGHT_HAND = "syringe_kit", SLOT_ID_LEFT_HAND = "syringe_kit")
 	drop_sound = 'sound/items/drop/ammobox.ogg'
 	pickup_sound = 'sound/items/pickup/ammobox.ogg'
 
-/obj/item/storage/box/beanbags/PopulateContents()
+/obj/item/storage/box/beanbags/legacy_spawn_contents()
 	for(var/i in 1 to 8)
 		new /obj/item/ammo_casing/a12g/beanbag(src)
 
-/obj/item/storage/box/beanbags/large/PopulateContents()
+/obj/item/storage/box/beanbags/large/legacy_spawn_contents()
 	for(var/i in 1 to 16)
 		new /obj/item/ammo_casing/a12g/beanbag(src)
 
@@ -148,7 +158,7 @@
 	name = "box of shotgun slugs"
 	desc = "It has a picture of a gun and several warning symbols on the front.<br>WARNING: Live ammunition. Misuse may result in serious injury or death."
 	icon_state = "lethalshellshot_box"
-	item_state_slots = list(slot_r_hand_str = "syringe_kit", slot_l_hand_str = "syringe_kit")
+	item_state_slots = list(SLOT_ID_RIGHT_HAND = "syringe_kit", SLOT_ID_LEFT_HAND = "syringe_kit")
 	starts_with = list(/obj/item/ammo_casing/a12g = 8)
 	drop_sound = 'sound/items/drop/ammobox.ogg'
 	pickup_sound = 'sound/items/pickup/ammobox.ogg'
@@ -160,7 +170,7 @@
 	name = "box of shotgun shells"
 	desc = "It has a picture of a gun and several warning symbols on the front.<br>WARNING: Live ammunition. Misuse may result in serious injury or death."
 	icon_state = "lethalslug_box"
-	item_state_slots = list(slot_r_hand_str = "syringe_kit", slot_l_hand_str = "syringe_kit")
+	item_state_slots = list(SLOT_ID_RIGHT_HAND = "syringe_kit", SLOT_ID_LEFT_HAND = "syringe_kit")
 	starts_with = list(/obj/item/ammo_casing/a12g/pellet = 8)
 	drop_sound = 'sound/items/drop/ammobox.ogg'
 	pickup_sound = 'sound/items/pickup/ammobox.ogg'
@@ -172,7 +182,7 @@
 	name = "box of illumination shells"
 	desc = "It has a picture of a gun and several warning symbols on the front.<br>WARNING: Live ammunition. Misuse may result in serious injury or death."
 	icon_state = "illumshot_box"
-	item_state_slots = list(slot_r_hand_str = "syringe_kit", slot_l_hand_str = "syringe_kit")
+	item_state_slots = list(SLOT_ID_RIGHT_HAND = "syringe_kit", SLOT_ID_LEFT_HAND = "syringe_kit")
 	drop_sound = 'sound/items/drop/ammobox.ogg'
 	pickup_sound = 'sound/items/pickup/ammobox.ogg'
 
@@ -185,7 +195,7 @@
 	name = "box of stun shells"
 	desc = "It has a picture of a gun and several warning symbols on the front.<br>WARNING: Live ammunition. Misuse may result in serious injury or death."
 	icon_state = "stunshot_box"
-	item_state_slots = list(slot_r_hand_str = "syringe_kit", slot_l_hand_str = "syringe_kit")
+	item_state_slots = list(SLOT_ID_RIGHT_HAND = "syringe_kit", SLOT_ID_LEFT_HAND = "syringe_kit")
 	starts_with = list(/obj/item/ammo_casing/a12g/stunshell = 8)
 	drop_sound = 'sound/items/drop/ammobox.ogg'
 	pickup_sound = 'sound/items/pickup/ammobox.ogg'
@@ -197,7 +207,7 @@
 	name = "box of practice shells"
 	desc = "It has a picture of a gun and several warning symbols on the front.<br>WARNING: Live ammunition. Misuse may result in serious injury or death."
 	icon_state = "blankshot_box"
-	item_state_slots = list(slot_r_hand_str = "syringe_kit", slot_l_hand_str = "syringe_kit")
+	item_state_slots = list(SLOT_ID_RIGHT_HAND = "syringe_kit", SLOT_ID_LEFT_HAND = "syringe_kit")
 	starts_with = list(/obj/item/ammo_casing/a12g/practice = 8)
 	drop_sound = 'sound/items/drop/ammobox.ogg'
 	pickup_sound = 'sound/items/pickup/ammobox.ogg'
@@ -209,7 +219,7 @@
 	name = "box of emp shells"
 	desc = "It has a picture of a gun and several warning symbols on the front."
 	icon_state = "empshot_box"
-	item_state_slots = list(slot_r_hand_str = "syringe_kit", slot_l_hand_str = "syringe_kit")
+	item_state_slots = list(SLOT_ID_RIGHT_HAND = "syringe_kit", SLOT_ID_LEFT_HAND = "syringe_kit")
 	starts_with = list(/obj/item/ammo_casing/a12g/techshell/emp = 8)
 	drop_sound = 'sound/items/drop/ammobox.ogg'
 	pickup_sound = 'sound/items/pickup/ammobox.ogg'
@@ -218,9 +228,9 @@
 	starts_with = list(/obj/item/ammo_casing/a12g/techshell/emp = 16)
 
 /obj/item/storage/box/sniperammo
-	name = "box of 14.5mm shells"
+	name = "box of 12.7mm shells"
 	desc = "It has a picture of a gun and several warning symbols on the front.<br>WARNING: Live ammunition. Misuse may result in serious injury or death."
-	starts_with = list(/obj/item/ammo_casing/a145 = 7)
+	starts_with = list(/obj/item/ammo_casing/a12_7mm = 7)
 	drop_sound = 'sound/items/drop/ammobox.ogg'
 	pickup_sound = 'sound/items/pickup/ammobox.ogg'
 
@@ -228,7 +238,7 @@
 	name = "box of flashbangs (WARNING)"
 	desc = "<B>WARNING: These devices are extremely dangerous and can cause blindness or deafness in repeated use.</B>"
 	icon_state = "flashbang"
-	starts_with = list(/obj/item/grenade/flashbang = 7)
+	starts_with = list(/obj/item/grenade/simple/flashbang = 7)
 	drop_sound = 'sound/items/drop/ammobox.ogg'
 	pickup_sound = 'sound/items/pickup/ammobox.ogg'
 
@@ -236,7 +246,7 @@
 	name = "box of emp grenades"
 	desc = "A box containing 5 military grade EMP grenades.<br> WARNING: Do not use near unshielded electronics or biomechanical augmentations, death or permanent paralysis may occur."
 	icon_state = "emp"
-	starts_with = list(/obj/item/grenade/empgrenade = 7)
+	starts_with = list(/obj/item/grenade/simple/emp = 7)
 	drop_sound = 'sound/items/drop/ammobox.ogg'
 	pickup_sound = 'sound/items/pickup/ammobox.ogg'
 
@@ -244,7 +254,7 @@
 	name = "box of low yield emp grenades"
 	desc = "A box containing 5 low yield EMP grenades.<br> WARNING: Do not use near unshielded electronics or biomechanical augmentations, death or permanent paralysis may occur."
 	icon_state = "emp"
-	starts_with = list(/obj/item/grenade/empgrenade/low_yield = 7)
+	starts_with = list(/obj/item/grenade/simple/emp/low_yield = 7)
 	drop_sound = 'sound/items/drop/ammobox.ogg'
 	pickup_sound = 'sound/items/pickup/ammobox.ogg'
 
@@ -252,7 +262,7 @@
 	name = "box of smoke bombs"
 	desc = "A box containing 7 smoke bombs."
 	icon_state = "flashbang"
-	starts_with = list(/obj/item/grenade/smokebomb = 7)
+	starts_with = list(/obj/item/grenade/simple/smoke = 7)
 	drop_sound = 'sound/items/drop/ammobox.ogg'
 	pickup_sound = 'sound/items/pickup/ammobox.ogg'
 
@@ -260,7 +270,7 @@
 	name = "box of anti-photon grenades"
 	desc = "A box containing 7 experimental photon disruption grenades."
 	icon_state = "flashbang"
-	starts_with = list(/obj/item/grenade/anti_photon = 7)
+	starts_with = list(/obj/item/grenade/simple/antiphoton = 7)
 	drop_sound = 'sound/items/drop/ammobox.ogg'
 	pickup_sound = 'sound/items/pickup/ammobox.ogg'
 
@@ -268,7 +278,7 @@
 	name = "box of fragmentation grenades (WARNING)"
 	desc = "A box containing 7 military grade fragmentation grenades.<br> WARNING: These devices are extremely dangerous and can cause limb loss or death in repeated use."
 	icon_state = "frag"
-	starts_with = list(/obj/item/grenade/explosive = 7)
+	starts_with = list(/obj/item/grenade/simple/explosive = 7)
 	drop_sound = 'sound/items/drop/ammobox.ogg'
 	pickup_sound = 'sound/items/pickup/ammobox.ogg'
 
@@ -276,7 +286,7 @@
 	name = "box of fragmentation grenades (WARNING)"
 	desc = "A box containing 4 military grade fragmentation grenades.<br> WARNING: These devices are extremely dangerous and can cause limb loss or death in repeated use."
 	icon_state = "frag"
-	starts_with = list(/obj/item/grenade/explosive = 4)
+	starts_with = list(/obj/item/grenade/simple/explosive = 4)
 	drop_sound = 'sound/items/drop/ammobox.ogg'
 	pickup_sound = 'sound/items/pickup/ammobox.ogg'
 
@@ -284,13 +294,13 @@
 	name = "box of metal foam grenades."
 	desc = "A box containing 7 metal foam grenades."
 	icon_state = "flashbang"
-	starts_with = list(/obj/item/grenade/chem_grenade/metalfoam = 7)
+	starts_with = list(/obj/item/grenade/simple/chemical/premade/metalfoam = 7)
 
 /obj/item/storage/box/teargas
 	name = "box of teargas grenades"
 	desc = "A box containing 7 teargas grenades."
 	icon_state = "flashbang"
-	starts_with = list(/obj/item/grenade/chem_grenade/teargas = 7)
+	starts_with = list(/obj/item/grenade/simple/chemical/premade/teargas = 7)
 
 /obj/item/storage/box/flare
 	name = "box of flares"
@@ -337,7 +347,7 @@
 	name = "death alarm kit"
 	desc = "Box of stuff used to implant death alarms."
 	icon_state = "implant"
-	item_state_slots = list(slot_r_hand_str = "syringe_kit", slot_l_hand_str = "syringe_kit")
+	item_state_slots = list(SLOT_ID_RIGHT_HAND = "syringe_kit", SLOT_ID_LEFT_HAND = "syringe_kit")
 	starts_with = list(
 		/obj/item/implantcase/death_alarm = 7,
 		/obj/item/implanter
@@ -370,7 +380,7 @@
 	desc = "Drymate brand monkey cubes. Just add water!"
 	icon = 'icons/obj/food.dmi'
 	icon_state = "monkeycubebox"
-	can_hold = list(/obj/item/reagent_containers/food/snacks/monkeycube)
+	insertion_whitelist = list(/obj/item/reagent_containers/food/snacks/monkeycube)
 	starts_with = list(/obj/item/reagent_containers/food/snacks/monkeycube/wrapped = 4)
 
 /obj/item/storage/box/monkeycubes/farwacubes
@@ -423,7 +433,7 @@
 	desc = "Eight wrappers of fun! Ages 8 and up. Not suitable for children."
 	icon = 'icons/obj/toy.dmi'
 	icon_state = "spbox"
-	can_hold = list(/obj/item/toy/snappop)
+	insertion_whitelist = list(/obj/item/toy/snappop)
 	starts_with = list(/obj/item/toy/snappop = 8)
 
 /obj/item/storage/box/matches
@@ -431,21 +441,25 @@
 	desc = "A small box of 'Space-Proof' premium matches."
 	icon = 'icons/obj/cigarettes.dmi'
 	icon_state = "matchbox"
-	w_class = ITEMSIZE_TINY
+	suit_storage_class = SUIT_STORAGE_CLASS_SOFTWEAR
+	w_class = WEIGHT_CLASS_TINY
 	slot_flags = SLOT_BELT
-	can_hold = list(/obj/item/flame/match)
+	insertion_whitelist = list(/obj/item/flame/match)
 	starts_with = list(/obj/item/flame/match = 10)
 	drop_sound = 'sound/items/drop/matchbox.ogg'
 	pickup_sound =  'sound/items/pickup/matchbox.ogg'
 
-/obj/item/storage/box/matches/attackby(obj/item/flame/match/W as obj, mob/user as mob)
-	if(istype(W) && !W.lit && !W.burnt)
-		W.lit = 1
-		W.damtype = "burn"
-		W.icon_state = "match_lit"
-		START_PROCESSING(SSobj, W)
-	W.update_icon()
-	return
+/obj/item/storage/box/matches/using_item_on(obj/item/using, datum/event_args/actor/clickchain/clickchain, clickchain_flags)
+	if(istype(using, /obj/item/flame/match))
+		var/obj/item/flame/match/W = using
+		if(istype(W) && !W.lit && !W.burnt)
+			W.lit = 1
+			W.damage_type = "burn"
+			W.icon_state = "match_lit"
+			START_PROCESSING(SSobj, W)
+		W.update_icon()
+		return CLICKCHAIN_DID_SOMETHING | CLICKCHAIN_DO_NOT_PROPAGATE
+	return ..()
 
 /obj/item/storage/box/autoinjectors
 	name = "box of injectors"
@@ -458,11 +472,11 @@
 	icon = 'icons/obj/storage.dmi'
 	icon_state = "light"
 	desc = "This box is shaped on the inside so that only light tubes and bulbs fit."
-	item_state_slots = list(slot_r_hand_str = "syringe_kit", slot_l_hand_str = "syringe_kit")
-	storage_slots = 24
-	can_hold = list(/obj/item/light/tube, /obj/item/light/bulb)
-	max_storage_space = ITEMSIZE_COST_SMALL * 24 //holds 24 items of w_class 2
-	use_to_pickup = 1 // for picking up broken bulbs, not that most people will try
+	item_state_slots = list(SLOT_ID_RIGHT_HAND = "syringe_kit", SLOT_ID_LEFT_HAND = "syringe_kit")
+	max_items = 24
+	insertion_whitelist = list(/obj/item/light/tube, /obj/item/light/bulb)
+	max_combined_volume = WEIGHT_VOLUME_SMALL * 24 //holds 24 items of w_class 2
+	allow_mass_gather = TRUE // for picking up broken bulbs, not that most people will try
 
 /obj/item/storage/box/lights/bulbs
 	starts_with = list(/obj/item/light/bulb = 24)
@@ -477,8 +491,14 @@
 	icon_state = "lightmixed"
 	starts_with = list(
 		/obj/item/light/tube = 16,
-		/obj/item/light/bulb = 8
-		)
+		/obj/item/light/bulb = 8,
+	)
+
+/obj/item/storage/box/lights/fairy
+	name = "box of replacement fairy bulbs"
+	icon_state = "lightfairy"
+	insertion_whitelist = list(/obj/item/light/bulb/fairy)
+	starts_with = list(/obj/item/light/bulb/fairy = 24)
 
 //Colored Lights
 /obj/item/storage/box/lights/bulbs_colored
@@ -490,20 +510,20 @@
 		/obj/item/light/bulb/yellow = 4,
 		/obj/item/light/bulb/green = 4,
 		/obj/item/light/bulb/blue = 4,
-		/obj/item/light/bulb/purple = 4
-		)
+		/obj/item/light/bulb/purple = 4,
+	)
 
 /obj/item/storage/box/lights/bulbs_neon
 	name = "box of neon bulbs"
 	icon_state = "light_color"
-	storage_slots = 30
+	max_items = 30
 	starts_with = list(
 		/obj/item/light/bulb/neon_pink = 6,
 		/obj/item/light/bulb/neon_blue = 6,
 		/obj/item/light/bulb/neon_green = 6,
 		/obj/item/light/bulb/neon_yellow = 6,
-		/obj/item/light/bulb/neon_white = 6
-		)
+		/obj/item/light/bulb/neon_white = 6,
+	)
 
 /obj/item/storage/box/lights/tubes_colored
 	name = "box of colored tubes"
@@ -514,20 +534,20 @@
 		/obj/item/light/tube/yellow = 4,
 		/obj/item/light/tube/green = 4,
 		/obj/item/light/tube/blue = 4,
-		/obj/item/light/tube/purple = 4
-		)
+		/obj/item/light/tube/purple = 4,
+	)
 
 /obj/item/storage/box/lights/tubes_neon
 	name = "box of neon tubes"
 	icon_state = "lighttube_color"
-	storage_slots = 30
+	max_items = 30
 	starts_with = list(
 		/obj/item/light/tube/neon_pink = 6,
 		/obj/item/light/tube/neon_blue = 6,
 		/obj/item/light/tube/neon_green = 6,
 		/obj/item/light/tube/neon_yellow = 6,
-		/obj/item/light/tube/neon_white = 6
-		)
+		/obj/item/light/tube/neon_white = 6,
+	)
 
 /obj/item/storage/box/lights/mixed_colored
 	name = "box of colored lights"
@@ -544,13 +564,13 @@
 		/obj/item/light/bulb/yellow = 2,
 		/obj/item/light/bulb/green = 2,
 		/obj/item/light/bulb/blue = 2,
-		/obj/item/light/bulb/purple = 2
-		)
+		/obj/item/light/bulb/purple = 2,
+	)
 
 /obj/item/storage/box/lights/mixed_neon
 	name = "box of neon lights"
 	icon_state = "lightmixed_color"
-	storage_slots = 30
+	max_items = 30
 	starts_with = list(
 		/obj/item/light/tube/neon_pink = 3,
 		/obj/item/light/tube/neon_blue = 3,
@@ -561,35 +581,32 @@
 		/obj/item/light/bulb/neon_blue = 3,
 		/obj/item/light/bulb/neon_green = 3,
 		/obj/item/light/bulb/neon_yellow = 3,
-		/obj/item/light/bulb/neon_white = 3
-		)
+		/obj/item/light/bulb/neon_white = 3,
+	)
 
 /obj/item/storage/box/freezer
 	name = "portable freezer"
 	desc = "This nifty shock-resistant device will keep your 'groceries' nice and non-spoiled."
 	icon = 'icons/obj/storage.dmi'
 	icon_state = "portafreezer"
-	item_state_slots = list(slot_r_hand_str = "medicalpack", slot_l_hand_str = "medicalpack")
+	item_state_slots = list(SLOT_ID_RIGHT_HAND = "medicalpack", SLOT_ID_LEFT_HAND = "medicalpack")
 	foldable = null
-	max_w_class = ITEMSIZE_NORMAL
-	can_hold = list(/obj/item/organ)
-	max_storage_space = ITEMSIZE_COST_NORMAL * 5 // Formally 21.  Odd numbers are bad.
-	use_to_pickup = 1 // for picking up broken bulbs, not that most people will try
+	max_single_weight_class = WEIGHT_CLASS_NORMAL
+	insertion_whitelist = list(/obj/item/organ)
+	max_combined_volume = WEIGHT_VOLUME_NORMAL * 5 // Formally 21.  Odd numbers are bad.
+	allow_mass_gather = TRUE // for picking up broken bulbs, not that most people will try
+	worth_intrinsic = 150
 
 /obj/item/storage/box/freezer/Entered(var/atom/movable/AM)
 	if(istype(AM, /obj/item/organ))
 		var/obj/item/organ/O = AM
-		O.preserved = 1
-		for(var/obj/item/organ/organ in O)
-			organ.preserved = 1
+		O.preserve(PORTABLE_FREEZER_TRAIT)
 	..()
 
 /obj/item/storage/box/freezer/Exited(var/atom/movable/AM)
 	if(istype(AM, /obj/item/organ))
 		var/obj/item/organ/O = AM
-		O.preserved = 0
-		for(var/obj/item/organ/organ in O)
-			organ.preserved = 0
+		O.unpreserve(PORTABLE_FREEZER_TRAIT)
 	..()
 
 /obj/item/storage/box/ambrosia
@@ -613,27 +630,27 @@
 	icon_state = "firingpins"
 	starts_with = list(/obj/item/firing_pin = 8)
 
-/obj/item/storage/box/survival
+/obj/item/storage/box/legacy_survival
 	starts_with = list(
 		/obj/item/tool/prybar/red,
 		/obj/item/clothing/glasses/goggles,
 		/obj/item/clothing/mask/breath
 	)
 
-/obj/item/storage/box/survival/synth
+/obj/item/storage/box/legacy_survival/synth
 	starts_with = list(
 		/obj/item/tool/prybar/red,
 		/obj/item/clothing/glasses/goggles
 	)
 
-/obj/item/storage/box/survival/comp
+/obj/item/storage/box/legacy_survival/comp
 	starts_with = list(
 		/obj/item/tool/prybar/red,
 		/obj/item/clothing/glasses/goggles,
 		/obj/item/reagent_containers/hypospray/autoinjector,
 		/obj/item/stack/medical/bruise_pack,
 		/obj/item/flashlight/glowstick,
-		/obj/item/reagent_containers/food/snacks/candy/proteinbar,
+		/obj/item/reagent_containers/food/snacks/wrapped/proteinbar,
 		/obj/item/clothing/mask/breath
 	)
 
@@ -656,7 +673,7 @@
 	desc = "A box full of service keys, for the HoP to give out as necessary."
 	starts_with = list(/obj/item/encryptionkey/headset_service = 7)
 
-/obj/item/storage/box/survival/space
+/obj/item/storage/box/legacy_survival/space
 	name = "boxed emergency suit and helmet"
 	icon_state = "survivaleng"
 	starts_with = list(
@@ -673,23 +690,67 @@
 	name = "foil raincoat pouch"
 	icon_state = "rainponcho"
 	foldable = null
-	storage_slots = 1
-	can_hold = list(/obj/item/clothing/suit/storage/hooded/rainponcho)
+	max_items = 1
+	insertion_whitelist = list(/obj/item/clothing/suit/storage/hooded/rainponcho)
 	starts_with = list(/obj/item/clothing/suit/storage/hooded/rainponcho)
 
-//Foam Darts
-/obj/item/storage/box/foamdart
-	name = "box of foam darts"
-	desc = "It has a picture of some foam darts on it."
-	icon = 'icons/obj/ammo.dmi'
-	icon_state = "foambox"
-	item_state_slots = list(slot_r_hand_str = "syringe_kit", slot_l_hand_str = "syringe_kit")
-	starts_with = list(/obj/item/ammo_casing/foam = 20)
-	drop_sound = 'sound/items/drop/ammobox.ogg'
-	pickup_sound = 'sound/items/pickup/ammobox.ogg'
+// Seasonal vending machine boxes
 
-/obj/item/storage/box/foamdart/riot
-	name = "box of riot darts"
-	desc = "It has a picture of some angry looking foam darts on it."
-	icon_state = "foambox_riot"
-	starts_with = list(/obj/item/ammo_casing/foam/riot = 20)
+/obj/item/storage/box/gingerbreadcookie
+	name = "Centauri Gingerbread Cookies"
+	icon = 'icons/obj/food.dmi'
+	icon_state = "gingerbreadbox"
+	desc = "Just like mom used to make. Assuming your mom was a trans-stellar food corporation, that is."
+
+	var/startswith = 8
+	max_combined_volume = WEIGHT_VOLUME_SMALL * 8
+	insertion_whitelist = list(
+		/obj/item/reagent_containers/food/snacks/gingerbreadcookie,
+		/obj/item/reagent_containers/food/snacks/gingerbreadcookie/cane,
+		/obj/item/reagent_containers/food/snacks/gingerbreadcookie/star,
+		/obj/item/reagent_containers/food/snacks/gingerbreadcookie/tree
+	)
+	starts_with = list(
+		/obj/item/reagent_containers/food/snacks/gingerbreadcookie,
+		/obj/item/reagent_containers/food/snacks/gingerbreadcookie/cane,
+		/obj/item/reagent_containers/food/snacks/gingerbreadcookie/tree,
+		/obj/item/reagent_containers/food/snacks/gingerbreadcookie/star,
+		/obj/item/reagent_containers/food/snacks/gingerbreadcookie,
+		/obj/item/reagent_containers/food/snacks/gingerbreadcookie/cane,
+		/obj/item/reagent_containers/food/snacks/gingerbreadcookie/tree,
+		/obj/item/reagent_containers/food/snacks/gingerbreadcookie/star
+	)
+
+/obj/item/storage/box/stroopwafel
+	name = "Van Thyssen's Stroopwafels"
+	icon = 'icons/obj/food.dmi'
+	icon_state = "stroopwafelbox"
+	desc = "A hexagonal box of imported holiday treats. Best served with coffee."
+	var/startswith = 7
+	max_combined_volume = WEIGHT_VOLUME_SMALL * 7
+	insertion_whitelist = list(
+		/obj/item/reagent_containers/food/snacks/stroopwafel
+	)
+	starts_with = list(
+		/obj/item/reagent_containers/food/snacks/stroopwafel = 7
+	)
+
+/obj/item/storage/box/holidaycake
+	name = "Christmas Syndi-Cake"
+	desc = "A rare seasonal Syndicake product. The packaging advertises it as having TACTICAL HOLIDAY FLAVOR. It's long past it's expiration date."
+	icon = 'icons/obj/food.dmi'
+	icon_state = "holidaycakebox"
+	w_class = WEIGHT_CLASS_NORMAL
+	max_single_weight_class = WEIGHT_CLASS_NORMAL
+	starts_with = list(/obj/item/reagent_containers/food/snacks/sliceable/holidaycake)
+
+/obj/item/storage/box/hami
+	name = "H.A.M.I. Kit"
+	desc = "A 'hearts and minds' initiative kit. Contains everything needed to bring a trusted scorian into the facility safely."
+	starts_with = list(
+		/obj/item/card/id/external/id_tribal,
+		/obj/item/clothing/mask/breath,
+		/obj/item/tank/emergency/carbon_dioxide,
+		/obj/item/reagent_containers/hypospray/autoinjector/vaccine,
+		/obj/item/reagent_containers/hypospray/autoinjector/vaccine
+	)

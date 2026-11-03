@@ -1,13 +1,13 @@
 /obj/effect/projectile
+	SET_APPEARANCE_FLAGS(PIXEL_SCALE)
 	name = "pew"
 	icon = 'icons/obj/projectiles.dmi'
 	icon_state = "nothing"
 	layer = ABOVE_MOB_LAYER
 	anchored = TRUE
-	mouse_opacity = 0
-	appearance_flags = 0
+	mouse_opacity = MOUSE_OPACITY_TRANSPARENT
 
-/obj/effect/projectile/singularity_pull()
+/obj/effect/projectile/singularity_pull(atom/singularity, current_size)
 	return
 
 /obj/effect/projectile/singularity_act()

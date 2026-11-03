@@ -5,6 +5,8 @@
 
 /proc/_animate(atom/A, set_vars, time = 10, loop = 1, easing = LINEAR_EASING, flags = null)
 	var/mutable_appearance/MA = new()
+	// mutable appearance is not FLOAT_PLANE by default
+	MA.plane = FLOAT_PLANE
 	for(var/v in set_vars)
 		MA.vars[v] = set_vars[v]
 	animate(A, appearance = MA, time, loop, easing, flags)
@@ -53,6 +55,12 @@
 
 /proc/_ispath(path, type)
 	return ispath(path, type)
+
+/proc/_json_encode(list/L)
+	return json_encode(L)
+
+/proc/_json_decode(json)
+	return json_decode(json)
 
 /proc/_length(E)
 	return length(E)
@@ -147,14 +155,19 @@
 /proc/_roll(dice)
 	return roll(dice)
 
-/proc/_round(A, B = 1)
-	return round(A, B)
-
 /proc/_sin(X)
 	return sin(X)
 
+/proc/_list2params(L)
+	return list2params(L)
+
 /proc/_list_construct(...)
 	. = args.Copy()
+
+/proc/_list_construct_assoc(...)
+	. = list()
+	for(var/i in 1 to (args.len - 1) step 2)
+		.[args[i]] = args[i+1]
 
 /proc/_list_add(list/L, ...)
 	if (args.len < 2)
@@ -225,8 +238,6 @@
 
 /proc/_has_trait(datum/thing,trait)
 	return HAS_TRAIT(thing,trait)
-/proc/_instantiate_at(thing, location)
-	new thing(location)
 
 /// Locating turfs
 /proc/_turf_in_offset(s = usr, x = 0, y = 0, z = 0)
@@ -247,6 +258,18 @@
 		. += T
 	return pick(.)
 
+/proc/_filter(...)
+	return filter(arglist(args))
+
+/proc/_generator(...)
+	return generator(arglist(args))
+
+/proc/_url_encode(str)
+	return url_encode(str)
+
+/proc/_url_decode(str)
+	return url_encode(str)
+
 /proc/__nan()
 	var/list/L = json_decode("{\"value\":NaN}")
 	return L["value"]
@@ -257,8 +280,8 @@
 /atom/proc/_contents()
 	return contents.Copy()
 
-/client/proc/admin_winset(control, params)
-	winset(src, control, params)
+/proc/_typesof(what)
+	return typesof(what)
 
-/client/proc/admin_winget(control, params)
-	return winget(src, control, params)
+/proc/_subtypesof(what)
+	return subtypesof(what)

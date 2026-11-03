@@ -14,15 +14,14 @@
 
 /obj/item/eftpos/Initialize(mapload)
 	. = ..()
-	machine_id = "[station_name()] EFTPOS #[num_financial_terminals++]"
+	machine_id = "[station_name()] EFTPOS #[GLOB.num_financial_terminals++]"
 	access_code = rand(1111,111111)
 	//by default, connect to the station account
 	//the user of the EFTPOS device can change the target account though, and no-one will be the wiser (except whoever's being charged)
-	linked_account = station_account
+	linked_account = GLOB.station_account
 	return INITIALIZE_HINT_LATELOAD
 
 /obj/item/eftpos/LateInitialize()
-	. = ..()
 	print_reference()
 
 	//create a short manual as well
@@ -31,7 +30,7 @@
 	/*
 	R.info += "<b>When first setting up your EFTPOS device:</b>"
 	R.info += "1. Memorise your EFTPOS command code (provided with all EFTPOS devices).<br>"
-	R.info += "2. Confirm that your EFTPOS device is connected to your local accounts database. For additional assistance with this step, contact NanoTrasen IT Support<br>"
+	R.info += "2. Confirm that your EFTPOS device is connected to your local accounts database. For additional assistance with this step, contact Nanotrasen IT Support<br>"
 	R.info += "3. Confirm that your EFTPOS device has been linked to the account that you wish to recieve funds for all transactions processed on this device.<br>"
 	R.info += "<b>When starting a new transaction with your EFTPOS device:</b>"
 	R.info += "1. Ensure the device is UNLOCKED so that new data may be entered.<br>"
@@ -61,7 +60,7 @@
 	R.offset_y += 0
 	R.ico += "paper_stamp-cent"
 	R.stamped += /obj/item/stamp
-	R.overlays += stampoverlay
+	R.add_overlay(stampoverlay)
 	R.stamps += "<HR><i>This paper has been stamped by the EFTPOS device.</i>"
 
 /obj/item/eftpos/proc/print_reference()
@@ -77,14 +76,17 @@
 	if(!R.stamped)
 		R.stamped = new
 	R.stamped += /obj/item/stamp
-	R.overlays += stampoverlay
+	R.add_overlay(stampoverlay)
 	R.stamps += "<HR><i>This paper has been stamped by the EFTPOS device.</i>"
 	var/obj/item/smallDelivery/D = new(R.loc)
 	R.loc = D
 	D.wrapped = R
 	D.name = "small parcel - 'EFTPOS access code'"
 
-/obj/item/eftpos/attack_self(mob/user as mob)
+/obj/item/eftpos/attack_self(mob/user, datum/event_args/actor/actor)
+	. = ..()
+	if(.)
+		return
 	if(get_dist(src,user) <= 1)
 		var/dat = "<b>[eftpos_name]</b><br>"
 		dat += "<i>This terminal is</i> [machine_id]. <i>Report this code when contacting IT Support</i><br>"
@@ -108,7 +110,7 @@
 			dat += "<a href='?src=\ref[src];choice=change_code'>Change access code</a><br>"
 			dat += "<a href='?src=\ref[src];choice=change_id'>Change EFTPOS ID</a><br>"
 			dat += "Scan card to reset access code <a href='?src=\ref[src];choice=reset'>\[------\]</a>"
-		user << browse(dat,"window=eftpos")
+		user << browse(HTML_SKELETON(dat),"window=eftpos")
 	else
 		user << browse(null,"window=eftpos")
 
@@ -141,7 +143,7 @@
 						T.purpose = (transaction_purpose ? transaction_purpose : "None supplied.")
 						T.amount = transaction_amount
 						T.source_terminal = machine_id
-						T.date = current_date_string
+						T.date = GLOB.current_date_string
 						T.time = stationtime2text()
 						linked_account.transaction_log.Add(T)
 					else
@@ -210,17 +212,17 @@
 					to_chat(usr, "[icon2html(thing = src, target = usr)]<span class='warning'>No account connected to send transactions to.</span>")
 			if("scan_card")
 				if(linked_account)
-					var/obj/item/I = usr.get_active_hand()
+					var/obj/item/I = usr.get_active_held_item()
 					if (istype(I, /obj/item/card))
 						scan_card(I)
 				else
 					to_chat(usr, "[icon2html(thing = src, target = usr)]<span class='warning'>Unable to link accounts.</span>")
 			if("reset")
 				//reset the access code - requires HoP/captain access
-				var/obj/item/I = usr.get_active_hand()
+				var/obj/item/I = usr.get_active_held_item()
 				if (istype(I, /obj/item/card))
 					var/obj/item/card/id/C = I
-					if((access_cent_captain in C.access) || (access_hop in C.access) || (access_captain in C.access))
+					if((ACCESS_CENTCOM_ADMIRAL in C.access) || (ACCESS_COMMAND_HOP in C.access) || (ACCESS_COMMAND_CAPTAIN in C.access))
 						access_code = 0
 						to_chat(usr, "[icon2html(thing = src, target = usr)]<span class='info'>Access code reset to 0.</span>")
 				else if (istype(I, /obj/item/card/emag))
@@ -265,7 +267,7 @@
 								else
 									T.amount = "[transaction_amount]"
 								T.source_terminal = machine_id
-								T.date = current_date_string
+								T.date = GLOB.current_date_string
 								T.time = stationtime2text()
 								D.transaction_log.Add(T)
 								//
@@ -274,7 +276,7 @@
 								T.purpose = transaction_purpose
 								T.amount = "[transaction_amount]"
 								T.source_terminal = machine_id
-								T.date = current_date_string
+								T.date = GLOB.current_date_string
 								T.time = stationtime2text()
 								linked_account.transaction_log.Add(T)
 							else

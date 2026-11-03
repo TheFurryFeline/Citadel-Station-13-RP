@@ -1,4 +1,9 @@
-/mob/living/silicon/ai/Life()
+/mob/living/silicon/ai/Life(seconds, times_fired)
+	if((. = ..()))
+		return
+
+	// i'm not converting thhis life proc, christ ~silicons
+
 	if (src.stat == DEAD)
 		return
 	else //I'm not removing that shitton of tabs, unneeded as they are. -- Urist
@@ -10,7 +15,7 @@
 			reset_perspective()
 			disconnect_shell("Disconnecting from remote shell due to local system failure.")
 
-		src.updatehealth()
+		src.update_health()
 
 		if (!hardware_integrity() || !backup_capacitor())
 			death()
@@ -30,7 +35,6 @@
 			aiRestorePowerRoutine = 0 // Necessary if AI activated it's APU AFTER losing primary power.
 			adjustOxyLoss(-1)
 
-		handle_stunned()	// Handle EMP-stun
 		lying = 0			// Handle lying down
 
 		malf_process()
@@ -106,7 +110,7 @@
 						var/PRP
 						for (PRP=1, PRP<=4, PRP++)
 							for (var/obj/machinery/power/apc/APC in current_area)
-								if (!(APC.stat & BROKEN))
+								if (!(APC.machine_stat & BROKEN))
 									theAPC = APC
 									break
 							if (!theAPC)
@@ -156,14 +160,10 @@
 	var/area/A = get_area(src)
 	return ((!A.power_equip) && A.requires_power == 1 || istype(T, /turf/space)) && !istype(src.loc,/obj/item)
 
-/mob/living/silicon/ai/updatehealth()
-	if(status_flags & GODMODE)
+/mob/living/silicon/ai/update_health()
+	if(status_flags & STATUS_GODMODE)
 		health = 100
 		set_stat(CONSCIOUS)
 		setOxyLoss(0)
 	else
 		health = 100 - getFireLoss() - getBruteLoss() // Oxyloss is not part of health as it represents AIs backup power. AI is immune against ToxLoss as it is machine.
-
-/mob/living/silicon/ai/rejuvenate()
-	..()
-	add_ai_verbs(src)

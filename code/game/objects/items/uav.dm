@@ -45,7 +45,7 @@
 	var/no_masters_time = 0
 
 /obj/item/uav/loaded
-	cell_type = /obj/item/cell/high
+	cell_type = /obj/item/cell/basic/tier_3/large
 
 /obj/item/uav/Initialize(mapload)
 	. = ..()
@@ -64,7 +64,7 @@
 	STOP_PROCESSING(SSobj, src)
 	return ..()
 
-/obj/item/uav/attack_hand(var/mob/user)
+/obj/item/uav/attack_hand(mob/user, datum/event_args/actor/clickchain/e_args)
 	//Has to be on the ground to work with it properly
 	if(!isturf(loc))
 		return ..()
@@ -110,12 +110,12 @@
 	else if(I.is_screwdriver() && cell)
 		if(do_after(user, 3 SECONDS, src))
 			to_chat(user, SPAN_NOTICE("You remove [cell] into [nickname]."))
-			playsound(src, I.usesound, 50, 1)
+			playsound(src, I.tool_sound, 50, 1)
 			power_down()
 			cell.forceMove(get_turf(src))
 			cell = null
 
-	else if(istype(I, /obj/item/cell) && !cell)
+	else if(istype(I, /obj/item/cell/medium) && !cell)
 		if(do_after(user, 3 SECONDS, src))
 			to_chat(user, SPAN_NOTICE("You insert [I] into [nickname]."))
 			playsound(src, 'sound/items/deconstruct.ogg', 50, 1)
@@ -208,14 +208,14 @@
 	switch(state)
 		if(UAV_OFF) //Packing
 			state = UAV_PACKED
-			w_class = ITEMSIZE_LARGE
+			set_weight_class(WEIGHT_CLASS_BULKY)
 			slowdown = 1
 			density = FALSE
 			update_icon()
 			return TRUE
 		if(UAV_PACKED) //Unpacking
 			state = UAV_OFF
-			w_class = ITEMSIZE_HUGE
+			set_weight_class(WEIGHT_CLASS_HUGE)
 			slowdown = 3
 			density = TRUE
 			update_icon()
@@ -250,7 +250,7 @@
 	visible_message(SPAN_NOTICE("[nickname] gracefully settles onto the ground."))
 
 //////////////// Helpers
-/obj/item/uav/get_cell()
+/obj/item/uav/get_cell(inducer)
 	return cell
 
 /obj/item/uav/relaymove(var/mob/user, direction, signal = 1)
@@ -262,7 +262,7 @@
 	return FALSE
 
 /obj/item/uav/proc/get_status_string()
-	return "[nickname] - [get_x(src)],[get_y(src)],[get_z(src)] - I:[health]/[initial(health)] - C:[cell ? "[cell.charge]/[cell.maxcharge]" : "Not Installed"]"
+	return "[nickname] - [get_x(src)],[get_y(src)],[get_z(src)] - I:[health]/[initial(health)] - C:[cell ? "[cell.charge]/[cell.max_charge]" : "Not Installed"]"
 
 /obj/item/uav/proc/add_master(var/mob/living/M)
 	LAZYDISTINCTADD(masters, WEAKREF(M))
@@ -304,7 +304,7 @@
 		var/rendered = "<i><span class='game say'>UAV received: <span class='name'>[name_used]</span> [message]</span></i>"
 		master.show_message(rendered, 2)
 
-/obj/item/radio/hear_talk(mob/M as mob, msg, var/verb = "says", var/datum/language/speaking = null)
+/obj/item/radio/hear_talk(mob/M as mob, msg, var/verb = "says", var/datum/prototype/language/speaking = null)
 	if (broadcasting)
 		if(get_dist(src, M) <= canhear_range)
 			talk_into(M, msg,null,verb,speaking)
@@ -323,7 +323,7 @@
 		var/rendered = "<i><span class='game say'>UAV received, <span class='message'>[msg]</span></span></i>"
 		master.show_message(rendered, type)
 
-/obj/item/uav/take_damage(var/damage)
+/obj/item/uav/take_damage_legacy(var/damage)
 	health -= damage
 	CheckHealth()
 	return
@@ -336,7 +336,7 @@
 	CheckHealth()
 	return
 
-/obj/item/uav/ex_act(severity)
+/obj/item/uav/legacy_ex_act(severity)
 	switch(severity)
 		if(1.0)
 			die()

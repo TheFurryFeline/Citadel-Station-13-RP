@@ -35,51 +35,51 @@ Gunshots/explosions/opening doors/less rare audio (done)
 			if(16 to 25)
 				//Strange items
 				//to_chat(src, "Traitor Items")
-				if(!halitem)
-					halitem = new
-					var/list/slots_free = list(ui_lhand,ui_rhand)
-					if(l_hand) slots_free -= ui_lhand
-					if(r_hand) slots_free -= ui_rhand
-					if(istype(src,/mob/living/carbon/human))
-						var/mob/living/carbon/human/H = src
-						if(!H.belt) slots_free += ui_belt
-						if(!H.l_store) slots_free += ui_storage1
-						if(!H.r_store) slots_free += ui_storage2
-					if(slots_free.len)
-						halitem.screen_loc = pick(slots_free)
-						halitem.hud_layerise()
-						switch(rand(1,6))
-							if(1) //revolver
-								halitem.icon = 'icons/obj/gun/ballistic.dmi'
-								halitem.icon_state = "revolver"
-								halitem.name = "Revolver"
-							if(2) //c4
-								halitem.icon = 'icons/obj/assemblies.dmi'
-								halitem.icon_state = "plastic-explosive0"
-								halitem.name = "Mysterious Package"
-								if(prob(25))
-									halitem.icon_state = "c4small_1"
-							if(3) //sword
-								halitem.icon = 'icons/obj/weapons.dmi'
-								halitem.icon_state = "sword1"
-								halitem.name = "Sword"
-							if(4) //stun baton
-								halitem.icon = 'icons/obj/weapons.dmi'
-								halitem.icon_state = "stunbaton"
-								halitem.name = "Stun Baton"
-							if(5) //emag
-								halitem.icon = 'icons/obj/card.dmi'
-								halitem.icon_state = "emag"
-								halitem.name = "Cryptographic Sequencer"
-							if(6) //flashbang
-								halitem.icon = 'icons/obj/grenade.dmi'
-								halitem.icon_state = "flashbang1"
-								halitem.name = "Flashbang"
-						if(client) client.screen += halitem
-						spawn(rand(100,250))
-							if(client)
-								client.screen -= halitem
-							halitem = null
+				// if(!halitem)
+				// 	halitem = new
+				// 	var/list/slots_free = list()
+				// 	for(var/i in get_empty_hand_indices())
+				// 		slots_free += SCREEN_LOC_INV_HAND(i)
+				// 	if(istype(src,/mob/living/carbon/human))
+				// 		var/mob/living/carbon/human/H = src
+				// 		if(!H.belt) slots_free += ui_belt
+				// 		if(!H.l_store) slots_free += ui_storage1
+				// 		if(!H.r_store) slots_free += ui_storage2
+				// 	if(slots_free.len)
+				// 		halitem.screen_loc = pick(slots_free)
+				// 		halitem.hud_layerise()
+				// 		switch(rand(1,6))
+				// 			if(1) //revolver
+				// 				halitem.icon = 'icons/obj/gun/ballistic.dmi'
+				// 				halitem.icon_state = "revolver"
+				// 				halitem.name = "Revolver"
+				// 			if(2) //c4
+				// 				halitem.icon = 'icons/obj/assemblies.dmi'
+				// 				halitem.icon_state = "plastic-explosive0"
+				// 				halitem.name = "Mysterious Package"
+				// 				if(prob(25))
+				// 					halitem.icon_state = "c4small_1"
+				// 			if(3) //sword
+				// 				halitem.icon = 'icons/obj/weapons.dmi'
+				// 				halitem.icon_state = "sword1"
+				// 				halitem.name = "Sword"
+				// 			if(4) //stun baton
+				// 				halitem.icon = 'icons/obj/weapons.dmi'
+				// 				halitem.icon_state = "stunbaton"
+				// 				halitem.name = "Stun Baton"
+				// 			if(5) //emag
+				// 				halitem.icon = 'icons/obj/card.dmi'
+				// 				halitem.icon_state = "emag"
+				// 				halitem.name = "Cryptographic Sequencer"
+				// 			if(6) //flashbang
+				// 				halitem.icon = 'icons/obj/grenade.dmi'
+				// 				halitem.icon_state = "flashbang1"
+				// 				halitem.name = "Flashbang"
+				// 		if(client) client.screen += halitem
+				// 		spawn(rand(100,250))
+				// 			if(client)
+				// 				client.screen -= halitem
+				// 			halitem = null
 			if(26 to 40)
 				//Flashes of danger
 				//to_chat(src, "Danger Flash")
@@ -114,9 +114,9 @@ Gunshots/explosions/opening doors/less rare audio (done)
 				switch(rand(1,12))
 					if(1) SEND_SOUND(src, sound('sound/machines/airlock.ogg'))
 					if(2)
-						if(prob(50))SEND_SOUND(src, sound('sound/effects/Explosion1.ogg'))
-						else SEND_SOUND(src, sound('sound/effects/Explosion2.ogg'))
-					if(3) SEND_SOUND(src, sound('sound/effects/explosionfar.ogg'))
+						if(prob(50))SEND_SOUND(src, sound('sound/soundbytes/effects/explosion/explosion1.ogg'))
+						else SEND_SOUND(src, sound('sound/soundbytes/effects/explosion/explosion2.ogg'))
+					if(3) SEND_SOUND(src, sound('sound/soundbytes/effects/explosion/explosionfar.ogg'))
 					if(4) SEND_SOUND(src, sound('sound/effects/Glassbr1.ogg'))
 					if(5) SEND_SOUND(src, sound('sound/effects/Glassbr2.ogg'))
 					if(6) SEND_SOUND(src, sound('sound/effects/Glassbr3.ogg'))
@@ -168,12 +168,12 @@ Gunshots/explosions/opening doors/less rare audio (done)
 			if(71 to 72)
 				//Fake death
 //				src.sleeping_willingly = 1
-				SetSleeping(20)
+				set_sleeping(20 * 20)
 				hal_crit = 1
 				hal_screwyhud = 1
 				spawn(rand(50,100))
 //					src.sleeping_willingly = 0
-					SetSleeping(0)
+					set_sleeping(0)
 					hal_crit = 0
 					hal_screwyhud = 0
 	handling_hal = 0
@@ -225,6 +225,7 @@ proc/check_panel(mob/M)
 	density = 0
 	anchored = 1
 	opacity = 0
+	var/health = 100
 	var/mob/living/carbon/human/my_target = null
 	var/weapon_name = null
 	var/obj/item/weap = null
@@ -239,7 +240,16 @@ proc/check_panel(mob/M)
 	var/collapse
 	var/image/down
 
-	var/health = 100
+/obj/effect/fake_attacker/Initialize(mapload)
+	. = ..()
+	QDEL_IN(src, 30 SECONDS)
+	step_away(src,my_target,2)
+	INVOKE_ASYNC(src, PROC_REF(attack_loop))
+
+/obj/effect/fake_attacker/Destroy()
+	if(my_target)
+		my_target.hallucinations -= src
+	return ..()
 
 /obj/effect/fake_attacker/attackby(var/obj/item/P as obj, mob/user as mob)
 	step_away(src,my_target,2)
@@ -247,7 +257,7 @@ proc/check_panel(mob/M)
 		to_chat(M, "<font color='red'><B>[my_target] flails around wildly.</B></font>")
 	my_target.show_message("<font color='red'><B>[src] has been attacked by [my_target] </B></font>", 1) //Lazy.
 
-	src.health -= P.force
+	src.health -= P.damage_force
 
 /obj/effect/fake_attacker/Crossed(var/mob/M, somenumber)
 	. = ..()
@@ -256,17 +266,6 @@ proc/check_panel(mob/M)
 		if(prob(30))
 			for(var/mob/O in oviewers(world.view , my_target))
 				to_chat(O, "<font color='red'><B>[my_target] stumbles around.</B></font>")
-
-/obj/effect/fake_attacker/Initialize(mapload)
-	. = ..()
-	QDEL_IN(src, 30 SECONDS)
-	step_away(src,my_target,2)
-	INVOKE_ASYNC(src, .proc/attack_loop)
-
-/obj/effect/fake_attacker/Destroy()
-	if(my_target)
-		my_target.hallucinations -= src
-	return ..()
 
 /obj/effect/fake_attacker/proc/updateimage()
 
@@ -287,6 +286,8 @@ proc/check_panel(mob/M)
 /obj/effect/fake_attacker/proc/attack_loop()
 	while(1)
 		sleep(rand(5,10))
+		if(QDELETED(src))
+			return
 		if(src.health < 0)
 			collapse()
 			continue
@@ -326,23 +327,6 @@ proc/check_panel(mob/M)
 	SEND_IMAGE(target, I)
 	spawn(300)
 		qdel(O)
-	return
-
-GLOBAL_LIST_INIT(non_fakeattack_weapons, list(/obj/item/gun/projectile, /obj/item/ammo_magazine/s357,\
-	/obj/item/gun/energy/crossbow, /obj/item/melee/energy/sword,\
-	/obj/item/storage/box/syndicate, /obj/item/storage/box/emps,\
-	/obj/item/cartridge/syndicate, /obj/item/clothing/under/chameleon,\
-	/obj/item/clothing/shoes/syndigaloshes, /obj/item/card/id/syndicate,\
-	/obj/item/clothing/mask/gas/voice, /obj/item/clothing/glasses/thermal,\
-	/obj/item/chameleon, /obj/item/card/emag,\
-	/obj/item/storage/toolbox/syndicate, /obj/item/aiModule,\
-	/obj/item/radio/headset/syndicate,	/obj/item/plastique,\
-	/obj/item/powersink, /obj/item/storage/box/syndie_kit,\
-	/obj/item/toy/syndicateballoon, /obj/item/gun/energy/captain,\
-	/obj/item/hand_tele, /obj/item/rcd, /obj/item/tank/jetpack,\
-	/obj/item/clothing/under/rank/captain, /obj/item/aicard,\
-	/obj/item/clothing/shoes/magboots, /obj/item/blueprints, /obj/item/disk/nuclear,\
-	/obj/item/clothing/suit/space/void, /obj/item/tank))
 
 /proc/fake_attack(var/mob/living/target)
 	var/list/possible_clones = new/list()
@@ -364,14 +348,8 @@ GLOBAL_LIST_INIT(non_fakeattack_weapons, list(/obj/item/gun/projectile, /obj/ite
 
 	//var/obj/effect/fake_attacker/F = new/obj/effect/fake_attacker(outside_range(target))
 	var/obj/effect/fake_attacker/F = new/obj/effect/fake_attacker(target.loc)
-	if(clone.l_hand)
-		if(!(locate(clone.l_hand) in GLOB.non_fakeattack_weapons))
-			clone_weapon = clone.l_hand.name
-			F.weap = clone.l_hand
-	else if (clone.r_hand)
-		if(!(locate(clone.r_hand) in GLOB.non_fakeattack_weapons))
-			clone_weapon = clone.r_hand.name
-			F.weap = clone.r_hand
+	// meta-able but whatever we can redo later.
+	F.weap = clone.get_active_held_item() || clone.get_inactive_held_item()
 
 	F.name = clone.name
 	F.my_target = target

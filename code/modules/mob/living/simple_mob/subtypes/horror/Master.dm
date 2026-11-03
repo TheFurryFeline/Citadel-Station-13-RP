@@ -12,7 +12,6 @@
 	icon_living = "Helix"
 	icon_dead = "m_dead"
 	icon_rest = "Helix"
-	faction = "horror"
 	icon = 'icons/mob/horror_show/master.dmi'
 	icon_gib = "generic_gib"
 	anchored = 1
@@ -23,8 +22,8 @@
 	maxHealth = 400
 	health = 400
 
-	melee_damage_lower = 5
-	melee_damage_upper = 8
+	legacy_melee_damage_lower = 5
+	legacy_melee_damage_upper = 8
 	grab_resist = 100
 
 	response_help = "pets the"
@@ -41,22 +40,26 @@
 	hide_amount = 2
 	exotic_amount = 2
 
+/mob/living/simple_mob/horror/Master/Initialize(mapload)
+	. = ..()
+	AddComponent(/datum/component/horror_aura/strong)
+
 /mob/living/simple_mob/horror/Master/death()
 	playsound(src, 'sound/h_sounds/imbeciles.ogg', 50, 1)
 	..()
 
-/mob/living/simple_mob/horror/Master/bullet_act()
-    playsound(src, 'sound/h_sounds/holla.ogg', 50, 1)
-    ..()
+/mob/living/simple_mob/horror/Master/on_bullet_act(obj/projectile/proj, impact_flags, list/bullet_act_args)
+	. = ..()
+	playsound(src, 'sound/h_sounds/holla.ogg', 50, 1)
 
-/mob/living/simple_mob/horror/Master/attack_hand()
-    playsound(src, 'sound/h_sounds/holla.ogg', 50, 1)
-    ..()
+/mob/living/simple_mob/horror/Master/attack_hand(mob/user, datum/event_args/actor/clickchain/e_args)
+	playsound(src, 'sound/h_sounds/holla.ogg', 50, 1)
+	..()
 
-/mob/living/simple_mob/horror/Master/hitby()
-    playsound(src, 'sound/h_sounds/holla.ogg', 50, 1)
-    ..()
+/mob/living/simple_mob/horror/Master/throw_impacted(atom/movable/AM, datum/thrownthing/TT)
+	. = ..()
+	playsound(src, 'sound/h_sounds/holla.ogg', 50, 1)
 
 /mob/living/simple_mob/horror/Master/attackby()
-    playsound(src, 'sound/h_sounds/holla.ogg', 50, 1)
-    ..()
+	playsound(src, 'sound/h_sounds/holla.ogg', 50, 1)
+	..()

@@ -4,16 +4,19 @@
 
 #define FIELD(N, V, E) list(field = N, value = V, edit = E)
 
-/obj/machinery/computer/skills//TODO:SANITY
-	name = "employment records console"
-	desc = "Used to view, edit and maintain employment records."
-	icon_state = "laptop"
-	icon_keyboard = "laptop_key"
-	icon_screen = "medlaptop"
-	light_color = "#00b000"
-	req_one_access = list(access_heads)
-	circuit = /obj/item/circuitboard/skills
-	density = 0
+/obj/machinery/computer/skills//TODO:SANITY //TODO2: Change name to PCU and update mapdata to include replacement computers
+	name = "\improper Employment Records PCU"
+	desc = "A personal computer unit that's used to view, edit and maintain employment records."
+	icon_screen = "pcu_generic"
+	icon_state = "pcu"
+	icon_keyboard = "pcu_key"
+	light_color = "#5284e7"
+	req_one_access = list(ACCESS_COMMAND_BRIDGE)
+	circuit = /obj/item/circuitboard/skills/pcu
+	density = FALSE
+	depth_level = 0
+	depth_projected = FALSE
+	climb_allowed = FALSE
 	var/obj/item/card/id/scan = null
 	var/authenticated = null
 	var/rank = null
@@ -22,7 +25,7 @@
 	var/a_id = null
 	var/list/temp = null
 	var/printing = null
-	var/can_change_id = 0
+	var/can_change_id = FALSE
 	// The below are used to make modal generation more convenient
 	var/static/list/field_edit_questions
 	var/static/list/field_edit_choices
@@ -49,8 +52,9 @@
 	return ..()
 
 /obj/machinery/computer/skills/attackby(obj/item/O as obj, var/mob/user)
-	if(istype(O, /obj/item/card/id) && !scan && user.unEquip(O))
-		O.loc = src
+	if(istype(O, /obj/item/card/id) && !scan)
+		if(!user.attempt_insert_item_for_installation(O, src))
+			return
 		scan = O
 		to_chat(user, "You insert [O].")
 		ui_interact(user)
@@ -61,10 +65,10 @@
 	return attack_hand(user)
 
 //Someone needs to break down the dat += into chunks instead of long ass lines.
-/obj/machinery/computer/skills/attack_hand(mob/user as mob)
+/obj/machinery/computer/skills/attack_hand(mob/user, datum/event_args/actor/clickchain/e_args)
 	if(..())
 		return
-	if (GLOB.using_map && !(src.z in GLOB.using_map.contact_levels))
+	if ((LEGACY_MAP_DATUM) && !(src.z in (LEGACY_MAP_DATUM).contact_levels))
 		to_chat(user, "<span class='danger'>Unable to establish a connection:</span> You're too far away from the station!")
 		return
 	ui_interact(user)
@@ -76,7 +80,7 @@
 		ui.open()
 		ui.set_autoupdate(FALSE)
 
-/obj/machinery/computer/skills/ui_data(mob/user)
+/obj/machinery/computer/skills/ui_data(mob/user, datum/tgui/ui)
 	var/data[0]
 
 	data["temp"] = temp
@@ -130,7 +134,7 @@
 	data["modal"] = ui_modal_data(src)
 	return data
 
-/obj/machinery/computer/skills/ui_act(action, params)
+/obj/machinery/computer/skills/ui_act(action, list/params, datum/tgui/ui, datum/ui_state/state, datum/event_args/actor/actor)
 	if(..())
 		return TRUE
 
@@ -147,14 +151,14 @@
 		if("scan")
 			if(scan)
 				scan.forceMove(loc)
-				if(ishuman(usr) && !usr.get_active_hand())
+				if(ishuman(usr) && !usr.get_active_held_item())
 					usr.put_in_hands(scan)
 				scan = null
 			else
-				var/obj/item/I = usr.get_active_hand()
+				var/obj/item/I = usr.get_active_held_item()
 				if(istype(I, /obj/item/card/id))
-					usr.drop_item()
-					I.forceMove(src)
+					if(!usr.attempt_insert_item_for_installation(I, src))
+						return
 					scan = I
 		if("cleartemp")
 			temp = null
@@ -186,7 +190,7 @@
 			if("logout")
 				if(scan)
 					scan.forceMove(loc)
-					if(ishuman(usr) && !usr.get_active_hand())
+					if(ishuman(usr) && !usr.get_active_held_item())
 						usr.put_in_hands(scan)
 					scan = null
 				authenticated = null
@@ -238,7 +242,7 @@
 					printing = TRUE
 					// playsound(loc, 'sound/goonstation/machines/printer_dotmatrix.ogg', 50, TRUE)
 					SStgui.update_uis(src)
-					addtimer(CALLBACK(src, .proc/print_finish), 5 SECONDS)
+					addtimer(CALLBACK(src, PROC_REF(print_finish)), 5 SECONDS)
 			else
 				return FALSE
 
@@ -337,7 +341,7 @@
 		SStgui.update_uis(src)
 
 /obj/machinery/computer/skills/emp_act(severity)
-	if(stat & (BROKEN|NOPOWER))
+	if(machine_stat & (BROKEN|NOPOWER))
 		..(severity)
 		return
 
@@ -345,7 +349,7 @@
 		if(prob(10/severity))
 			switch(rand(1,6))
 				if(1)
-					R.fields["name"] = "[pick(pick(first_names_male), pick(first_names_female))] [pick(last_names)]"
+					R.fields["name"] = "[pick(pick(GLOB.first_names_male), pick(GLOB.first_names_female))] [pick(GLOB.last_names)]"
 				if(2)
 					R.fields["sex"]	= pick("Male", "Female")
 				if(3)

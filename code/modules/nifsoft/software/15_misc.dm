@@ -2,7 +2,7 @@
 	name = "APC Connector"
 	desc = "A small attachment that allows synthmorphs to recharge themselves from APCs."
 	list_pos = NIF_APCCHARGE
-	cost = 625
+	cost = 50
 	wear = 2
 	applies_to = NIF_SYNTHETIC
 	tick_flags = NIF_ACTIVETICK
@@ -28,12 +28,14 @@
 	if((. = ..()))
 		apc = null
 
-/datum/nifsoft/apc_recharge/life()
+/datum/nifsoft/apc_recharge/on_life(seconds, times_fired)
 	if((. = ..()))
 		var/mob/living/carbon/human/H = nif.human
-		if(apc && (get_dist(H,apc) <= 1) && H.nutrition < 440) // 440 vs 450, life() happens before we get here so it'll never be EXACTLY 450
-			H.nutrition = min(H.nutrition+10, 450)
-			apc.drain_power(7000/450*10) //This is from the large rechargers. No idea what the math is.
+		if((apc?.cell?.percent() > 1) && (get_dist(H,apc) <= 1) && H.nutrition < (H.species.max_nutrition - 1)) // 440 vs 450, life() happens before we get here so it'll never be EXACTLY 450
+			var/needed = clamp(H.species.max_nutrition - H.nutrition, 0, 10)
+			var/in_kj = SYNTHETIC_NUTRITION_KJ_PER_UNIT * needed
+			var/got = apc.drain_energy(src, in_kj)
+			H.adjust_nutrition(got / SYNTHETIC_NUTRITION_KJ_PER_UNIT)
 			return TRUE
 		else
 			nif.notify("APC charging has ended.")
@@ -46,7 +48,7 @@
 	name = "Pressure Seals"
 	desc = "Creates pressure seals around important synthetic components to protect them from vacuum. Almost impossible on organics."
 	list_pos = NIF_PRESSURE
-	cost = 875
+	cost = 250
 	a_drain = 0.5
 	wear = 3
 	applies_to = NIF_SYNTHETIC
@@ -56,7 +58,7 @@
 	name = "Heat Sinks"
 	desc = "Advanced heat sinks for internal heat storage of heat on a synth until able to vent it in atmosphere."
 	list_pos = NIF_HEATSINK
-	cost = 725
+	cost = 250
 	a_drain = 0.25
 	wear = 3
 	var/used = 0
@@ -75,7 +77,7 @@
 /datum/nifsoft/heatsinks/stat_text()
 	return "[active ? "Active" : "Disabled"] (Stored Heat: [FLOOR((used/20), 1)]%)"
 
-/datum/nifsoft/heatsinks/life()
+/datum/nifsoft/heatsinks/on_life()
 	if((. = ..()))
 		//Not being used, all clean.
 		if(!active && !used)
@@ -94,7 +96,7 @@
 	name = "Compliance Module"
 	desc = "A system that allows one to apply 'laws' to sapient life. Extremely illegal, of course."
 	list_pos = NIF_COMPLIANCE
-	cost = 8200
+	cost = 1000
 	wear = 4
 	illegal = TRUE
 	vended = FALSE
@@ -130,7 +132,7 @@
 	name = "Mass Alteration"
 	desc = "A system that allows one to change their size, through drastic mass rearrangement. Causes significant wear when installed."
 	list_pos = NIF_SIZECHANGE
-	cost = 375
+	cost = 175 // this doesn't get nerfed that much because size shifters are annoying sorry
 	wear = 6
 
 /datum/nifsoft/sizechange/activate()
@@ -164,20 +166,16 @@
 	name = "World Bender"
 	desc = "Alters your perception of various objects in the world. Only has one setting for now: displaying all your crewmates as farm animals."
 	list_pos = NIF_WORLDBEND
-	cost = 100
+	cost = 50
 	a_drain = 0.01
 
 /datum/nifsoft/worldbend/activate()
 	if((. = ..()))
 		if((. = ..()))
 			var/mob/living/carbon/human/H = nif.human
-			var/datum/atom_hud/world_bender/animals/A = GLOB.huds[WORLD_BENDER_HUD_ANIMALS]
-			if(A && H)
-				A.add_hud_to(H)
+			H.self_perspective.add_atom_hud(/datum/atom_hud/world_bender, ATOM_HUD_SOURCE_NIF)
 
 /datum/nifsoft/worldbend/deactivate(var/force = FALSE)
 	if((. = ..()))
 		var/mob/living/carbon/human/H = nif.human
-		var/datum/atom_hud/world_bender/animals/A = GLOB.huds[WORLD_BENDER_HUD_ANIMALS]
-		if(A && H)
-			A.remove_hud_from(H)
+		H.self_perspective.remove_atom_hud(/datum/atom_hud/world_bender, ATOM_HUD_SOURCE_NIF)

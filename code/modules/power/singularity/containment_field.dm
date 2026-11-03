@@ -5,12 +5,11 @@
 	desc = "An energy field."
 	icon = 'icons/obj/singularity.dmi'
 	icon_state = "Contain_F"
-	anchored = 1
-	density = 0
-	unacidable = 1
+	anchored = TRUE
+	density = FALSE
+	integrity_flags = INTEGRITY_ACIDPROOF | INTEGRITY_FIREPROOF | INTEGRITY_LAVAPROOF | INTEGRITY_INDESTRUCTIBLE
 	use_power = USE_POWER_OFF
 	light_range = 4
-	flags = PROXMOVE
 	var/obj/machinery/field_generator/FG1 = null
 	var/obj/machinery/field_generator/FG2 = null
 	var/hasShocked = 0 //Used to add a delay between shocks. In some cases this used to crash servers by spawning hundreds of sparks every second.
@@ -22,27 +21,25 @@
 		FG2.cleanup()
 	. = ..()
 
-/obj/machinery/containment_field/attack_hand(mob/user as mob)
+/obj/machinery/containment_field/attack_hand(mob/user, datum/event_args/actor/clickchain/e_args)
 	if(get_dist(src, user) > 1)
 		return 0
 	else
 		shock(user)
 		return 1
 
+/obj/machinery/containment_field/CanAllowThrough(atom/movable/mover, turf/target)
+	if(isliving(mover))
+		return FALSE
+	return ..()
 
-/obj/machinery/containment_field/ex_act(severity)
+/obj/machinery/containment_field/Bumped(atom/movable/bumped_atom)
+	. = ..()
+	if(isliving(bumped_atom))
+		shock(bumped_atom)
+
+/obj/machinery/containment_field/legacy_ex_act(severity)
 	return 0
-
-/obj/machinery/containment_field/HasProximity(atom/movable/AM as mob|obj)
-	if(istype(AM,/mob/living/silicon) && prob(40))
-		shock(AM)
-		return 1
-	if(istype(AM,/mob/living/carbon) && prob(50))
-		shock(AM)
-		return 1
-	return 0
-
-
 
 /obj/machinery/containment_field/shock(mob/living/user as mob)
 	if(hasShocked)
@@ -53,10 +50,10 @@
 	if(isliving(user))
 		hasShocked = 1
 		var/shock_damage = min(rand(30,40),rand(30,40))
-		user.electrocute_act(shock_damage, src, 1, BP_TORSO)
+		user.electrocute(0, shock_damage, 0, NONE, BP_TORSO, src)
 
 		var/atom/target = get_edge_target_turf(user, get_dir(src, get_step_away(user, src)))
-		user.throw_at(target, 200, 4)
+		user.throw_at_old(target, 200, 4)
 
 		sleep(20)
 

@@ -6,12 +6,13 @@ var/list/blobs = list()
 	desc = "A thick wall of writhing tendrils."
 	light_range = 2
 	density = FALSE // This is false because blob mob AI's walk_to() proc appears to never attempt to move onto dense objects even if allowed by CanPass().
+	pass_flags_self = ATOM_PASS_BLOB
 	opacity = FALSE
 	anchored = TRUE
 	layer = MOB_LAYER + 0.1
-	var/integrity = 0
+	integrity = 0
 	var/point_return = 0 //How many points the blob gets back when it removes a blob of that type. If less than 0, blob cannot be removed.
-	var/max_integrity = 30
+	integrity_max = 30
 	var/health_regen = 2 //how much health this blob regens when pulsed
 	var/pulse_timestamp = 0 //we got pulsed when?
 	var/heal_timestamp = 0 //we got healed when?
@@ -24,9 +25,13 @@ var/list/blobs = list()
 		overmind = new_overmind
 	update_icon()
 	if(!integrity)
-		integrity = max_integrity
+		integrity = integrity_max
 	setDir(pick(GLOB.cardinal))
 	blobs += src
+	return INITIALIZE_HINT_LATELOAD
+
+// since this WILL cause qdels (on other atoms) to be invoked
+/obj/structure/blob/LateInitialize()
 	consume_tile()
 
 /obj/structure/blob/Destroy()
@@ -36,6 +41,7 @@ var/list/blobs = list()
 	return ..()
 
 /obj/structure/blob/update_icon() //Updates color based on overmind color if we have an overmind.
+	. = ..()
 	if(overmind)
 		name = "[overmind.blob_type.name] [base_name]" // This is in update_icon() because inert blobs can turn into other blobs with magic if another blob core claims it with pulsing.
 		color = overmind.blob_type.color
@@ -47,20 +53,22 @@ var/list/blobs = list()
 
 // Blob tiles are not actually dense so we need Special Code(tm).
 /obj/structure/blob/CanAllowThrough(atom/movable/mover, turf/target)
-	. = ..()
-	if(istype(mover) && mover.checkpass(PASSBLOB))
+	// density is false, can't trust parent procs
+	if(check_standard_flag_pass(mover))
 		return TRUE
 	else if(istype(mover, /mob/living))
 		var/mob/living/L = mover
-		if(L.faction == "blob")
+		if(L.has_iff_faction(MOB_IFF_FACTION_BLOB))
 			return TRUE
-	else if(istype(mover, /obj/item/projectile))
-		var/obj/item/projectile/P = mover
-		if(istype(P.firer) && P.firer.faction == "blob")
-			return TRUE
+	else if(istype(mover, /obj/projectile))
+		var/obj/projectile/P = mover
+		if(isliving(P.firer))
+			var/mob/living/L = P.firer
+			if(L.has_iff_faction(MOB_IFF_FACTION_BLOB))
+				return TRUE
 	return FALSE
 
-/obj/structure/blob/examine(mob/user)
+/obj/structure/blob/examine(mob/user, dist)
 	. = ..()
 	if(!overmind)
 		. += "It seems inert." // Dead blob.
@@ -80,7 +88,7 @@ var/list/blobs = list()
 	if(pulse_timestamp <= world.time)
 		consume_tile()
 		if(heal_timestamp <= world.time)
-			adjust_integrity(health_regen)
+			adjust_integrity_blob(health_regen)
 			heal_timestamp = world.time + 2 SECONDS
 		update_icon()
 		pulse_timestamp = world.time + 1 SECOND
@@ -187,7 +195,7 @@ var/list/blobs = list()
 /obj/structure/blob/proc/consume_tile()
 	for(var/atom/A in loc)
 		A.blob_act(src)
-	if(loc && loc.density)
+	if(loc?.density)
 		loc.blob_act(src) //don't ask how a wall got on top of the core, just eat it
 
 /obj/structure/blob/proc/blob_glow_animation()
@@ -219,12 +227,12 @@ var/list/blobs = list()
 	return B
 
 /obj/structure/blob/attackby(var/obj/item/W, var/mob/user)
-	user.setClickCooldown(DEFAULT_ATTACK_COOLDOWN)
+	user.setClickCooldownLegacy(DEFAULT_ATTACK_COOLDOWN)
 	playsound(loc, 'sound/effects/attackblob.ogg', 50, 1)
 	visible_message("<span class='danger'>\The [src] has been attacked with \the [W][(user ? " by [user]." : ".")]</span>")
-	var/damage = W.force
-	switch(W.damtype)
-		if(BURN)
+	var/damage = W.damage_force
+	switch(W.damage_type)
+		if(DAMAGE_TYPE_BURN)
 			if(overmind)
 				damage *= overmind.blob_type.burn_multiplier
 			else
@@ -234,7 +242,7 @@ var/list/blobs = list()
 				playsound(src.loc, 'sound/items/welder.ogg', 100, 1)
 			else
 				playsound(src, 'sound/weapons/tap.ogg', 50, 1)
-		if(BRUTE)
+		if(DAMAGE_TYPE_BRUTE)
 			if(overmind)
 				damage *= overmind.blob_type.brute_multiplier
 			else
@@ -245,42 +253,41 @@ var/list/blobs = list()
 			else
 				playsound(src, 'sound/weapons/tap.ogg', 50, 1)
 	if(overmind)
-		damage = overmind.blob_type.on_received_damage(src, damage, W.damtype, user)
-	adjust_integrity(-damage)
+		damage = overmind.blob_type.on_received_damage(src, damage, W.damage_type, user)
+	adjust_integrity_blob(-damage)
 	return
 
-/obj/structure/blob/bullet_act(var/obj/item/projectile/P)
-	if(!P)
-		return
+/obj/structure/blob/on_bullet_act(obj/projectile/proj, impact_flags, list/bullet_act_args)
+	. = ..()
 
-	if(istype(P.firer) && P.firer.faction == "blob")
-		return
+	if(isliving(proj.firer))
+		var/mob/living/L = proj.firer
+		if(L.has_iff_faction(MOB_IFF_FACTION_BLOB))
+			return TRUE
 
-	var/damage = P.get_structure_damage() // So tasers don't hurt the blob.
+	var/damage = proj.get_structure_damage() // So tasers don't hurt the blob.
 	if(!damage)
 		return
 
-	switch(P.damage_type)
-		if(BRUTE)
+	switch(proj.damage_type)
+		if(DAMAGE_TYPE_BRUTE)
 			if(overmind)
 				damage *= overmind.blob_type.brute_multiplier
-		if(BURN)
+		if(DAMAGE_TYPE_BURN)
 			if(overmind)
 				damage *= overmind.blob_type.burn_multiplier
 
 	if(overmind)
-		damage = overmind.blob_type.on_received_damage(src, damage, P.damage_type, P.firer)
+		damage = overmind.blob_type.on_received_damage(src, damage, proj.damage_type, proj.firer)
 
-	adjust_integrity(-damage)
-
-	return ..()
+	adjust_integrity_blob(-damage)
 
 /obj/structure/blob/water_act(amount)
 	if(overmind)
 		overmind.blob_type.on_water(src, amount)
 
-/obj/structure/blob/proc/adjust_integrity(amount)
-	integrity = between(0, integrity + amount, max_integrity)
+/obj/structure/blob/proc/adjust_integrity_blob(amount)
+	integrity = clamp( integrity + amount, 0,  integrity_max)
 	if(integrity == 0)
 		playsound(loc, 'sound/effects/splat.ogg', 50, 1)
 		if(overmind)
@@ -303,4 +310,4 @@ var/list/blobs = list()
 	qdel(src)
 
 /turf/simulated/wall/blob_act()
-	take_damage(100)
+	inflict_atom_damage(100, damage_flag = ARMOR_MELEE, attack_type = ATTACK_TYPE_MELEE)

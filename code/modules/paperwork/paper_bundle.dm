@@ -4,8 +4,8 @@
 	icon = 'icons/obj/bureaucracy.dmi'
 	icon_state = "paper"
 	item_state = "paper"
-	throwforce = 0
-	w_class = ITEMSIZE_SMALL
+	throw_force = 0
+	w_class = WEIGHT_CLASS_SMALL
 	throw_range = 2
 	throw_speed = 1
 	plane = MOB_PLANE
@@ -37,14 +37,13 @@
 
 	// merging bundles
 	else if(istype(W, /obj/item/paper_bundle))
-		user.drop_from_inventory(W)
+		if(!user.attempt_consume_item_for_construction(W))
+			return
 		for(var/obj/O in W)
-			O.loc = src
+			O.forceMove(src)
 			O.add_fingerprint(usr)
 			pages.Add(O)
-
 		to_chat(user, "<span class='notice'>You add \the [W.name] to [(src.name == "paper bundle") ? "the paper bundle" : src.name].</span>")
-		qdel(W)
 	else
 		if(istype(W, /obj/item/duct_tape_roll))
 			return 0
@@ -56,16 +55,14 @@
 	update_icon()
 	attack_self(usr) //Update the browsed page.
 	add_fingerprint(usr)
-	return
 
 /obj/item/paper_bundle/proc/insert_sheet_at(mob/user, var/index, obj/item/sheet)
+	if(!user.attempt_insert_item_for_installation(sheet, src))
+		return
 	if(istype(sheet, /obj/item/paper))
 		to_chat(user, "<span class='notice'>You add [(sheet.name == "paper") ? "the paper" : sheet.name] to [(src.name == "paper bundle") ? "the paper bundle" : src.name].</span>")
 	else if(istype(sheet, /obj/item/photo))
 		to_chat(user, "<span class='notice'>You add [(sheet.name == "photo") ? "the photo" : sheet.name] to [(src.name == "paper bundle") ? "the paper bundle" : src.name].</span>")
-
-	user.drop_from_inventory(sheet)
-	sheet.loc = src
 
 	pages.Insert(index, sheet)
 
@@ -78,25 +75,25 @@
 	if(P.lit && !user.restrained())
 		if(istype(P, /obj/item/flame/lighter/zippo))
 			class = "rose>"
-		var/datum/gender/TU = gender_datums[user.get_visible_gender()]
+		var/datum/gender/TU = GLOB.gender_datums[user.get_visible_gender()]
 		user.visible_message("<span class='[class]'>[user] holds \the [P] up to \the [src], it looks like [TU.he] [TU.is] trying to burn it!</span>", \
 		"<span class='[class]'>You hold \the [P] up to \the [src], burning it slowly.</span>")
 
 		spawn(20)
-			if(get_dist(src, user) < 2 && user.get_active_hand() == P && P.lit)
+			if(get_dist(src, user) < 2 && user.get_active_held_item() == P && P.lit)
 				user.visible_message("<span class='[class]'>[user] burns right through \the [src], turning it to ash. It flutters through the air before settling on the floor in a heap.</span>", \
 				"<span class='[class]'>You burn right through \the [src], turning it to ash. It flutters through the air before settling on the floor in a heap.</span>")
 
-				if(user.get_inactive_hand() == src)
-					user.drop_from_inventory(src)
+				if(user.get_inactive_held_item() == src)
+					user.drop_inactive_held_item()
 
-				new /obj/effect/decal/cleanable/ash(src.loc)
+				new /obj/effect/debris/cleanable/ash(src.loc)
 				qdel(src)
 
 			else
 				to_chat(user, "<font color='red'>You must hold \the [P] steady to burn \the [src].</font>")
 
-/obj/item/paper_bundle/examine(mob/user)
+/obj/item/paper_bundle/examine(mob/user, dist)
 	. = ..()
 	if(Adjacent(user))
 		src.show_content(user)
@@ -133,14 +130,13 @@
 		user << browse(dat, "window=[name]")
 	else if(istype(pages[page], /obj/item/photo))
 		var/obj/item/photo/P = W
-		user << browse_rsc(P.img, "tmp_photo.png")
-		user << browse(dat + "<html><head><title>[P.name]</title></head>" \
-		+ "<body style='overflow:hidden'>" \
-		+ "<div> <img src='tmp_photo.png' width = '180'" \
-		+ "[P.scribble ? "<div> Written on the back:<br><i>[P.scribble]</i>" : null]"\
-		+ "</body></html>", "window=[name]")
+		dat += P.html(user)
+		user << browse(dat, "window=[name]")
 
-/obj/item/paper_bundle/attack_self(mob/user as mob)
+/obj/item/paper_bundle/attack_self(mob/user, datum/event_args/actor/actor)
+	. = ..()
+	if(.)
+		return
 	src.show_content(user)
 	add_fingerprint(usr)
 	update_icon()
@@ -150,7 +146,7 @@
 	..()
 	if((src in usr.contents) || (istype(src.loc, /obj/item/folder) && (src.loc in usr.contents)))
 		usr.set_machine(src)
-		var/obj/item/in_hand = usr.get_active_hand()
+		var/obj/item/in_hand = usr.get_active_held_item()
 		if(href_list["next_page"])
 			if(in_hand && (istype(in_hand, /obj/item/paper) || istype(in_hand, /obj/item/photo)))
 				insert_sheet_at(usr, page+1, in_hand)
@@ -165,17 +161,16 @@
 				playsound(src.loc, "pageturn", 50, 1)
 		if(href_list["remove"])
 			var/obj/item/W = pages[page]
-			usr.put_in_hands(W)
+			usr.grab_item_from_interacted_with(W, src)
 			pages.Remove(pages[page])
 
 			to_chat(usr, "<span class='notice'>You remove the [W.name] from the bundle.</span>")
 
 			if(pages.len <= 1)
-				var/obj/item/paper/P = src[1]
-				usr.drop_from_inventory(src)
-				usr.put_in_hands(P)
+				var/obj/item/paper/P = pages[1]
+				usr.temporarily_remove_from_inventory(src, INV_OP_FORCE | INV_OP_SHOULD_NOT_INTERCEPT | INV_OP_SILENT)
+				usr.put_in_hands_or_drop(P)
 				qdel(src)
-
 				return
 
 			if(page > pages.len)
@@ -190,35 +185,32 @@
 
 /obj/item/paper_bundle/verb/rename()
 	set name = "Rename bundle"
-	set category = "Object"
+	set category = VERB_CATEGORY_OBJECT
 	set src in usr
 
 	var/n_name = sanitizeSafe(input(usr, "What would you like to label the bundle?", "Bundle Labelling", null)  as text, MAX_NAME_LEN)
 	if((loc == usr || loc.loc && loc.loc == usr) && usr.stat == 0)
-		name = "[(n_name ? text("[n_name]") : "paper")]"
+		name = "[(n_name ? "[n_name]" : "paper")]"
 	add_fingerprint(usr)
 	return
 
 
 /obj/item/paper_bundle/verb/remove_all()
 	set name = "Loose bundle"
-	set category = "Object"
+	set category = VERB_CATEGORY_OBJECT
 	set src in usr
 
 	to_chat(usr, "<span class='notice'>You loosen the bundle.</span>")
 	for(var/obj/O in src)
-		O.loc = usr.loc
-		O.layer = initial(O.layer)
+		O.forceMove(usr.loc)
+		O.reset_plane_and_layer()
 		O.add_fingerprint(usr)
-	usr.drop_from_inventory(src)
 	qdel(src)
-	return
-
 
 /obj/item/paper_bundle/update_icon()
 	var/obj/item/paper/P = pages[1]
 	icon_state = P.icon_state
-	overlays = P.overlays
+	copy_overlays(P)
 	underlays = 0
 	var/i = 0
 	var/photo
@@ -234,14 +226,21 @@
 			i++
 		else if(istype(O, /obj/item/photo))
 			var/obj/item/photo/Ph = O
-			img = Ph.tiny
+			INVOKE_ASYNC(src, PROC_REF(add_photo_overlay), Ph)
 			photo = 1
-			overlays += img
 	if(i>1)
 		desc =  "[i] papers clipped to each other."
 	else
 		desc = "A single sheet of paper."
 	if(photo)
 		desc += "\nThere is a photo attached to it."
-	overlays += image('icons/obj/bureaucracy.dmi', "clip")
+	add_overlay(image('icons/obj/bureaucracy.dmi', "clip"))
 	return
+
+// photo overlay fetches can take time because photos are lazy-loaded
+// thus, this is behind a waitfor in update_icon to not block icon updates while the fetch is going on.
+/obj/item/paper_bundle/proc/add_photo_overlay(obj/item/photo/photo)
+	var/mutable_appearance/photo_overlay = mutable_appearance(photo.paperwork_overlay_6x7())
+	photo_overlay.pixel_x = 10
+	photo_overlay.pixel_y = 16
+	add_overlay(photo_overlay)

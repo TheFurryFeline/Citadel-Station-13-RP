@@ -12,7 +12,7 @@
 	icon_dead = "faithless_dead"
 	catalogue_data = list(/datum/category_item/catalogue/fauna/horror)
 
-	faction = "faithless"
+	iff_factions = MOB_IFF_FACTION_MUTANT
 
 	mob_class = MOB_CLASS_DEMONIC
 
@@ -25,15 +25,15 @@
 
 	harm_intent_damage = 10
 
-	melee_damage_lower = 10
-	melee_damage_upper = 18
+	legacy_melee_damage_lower = 10
+	legacy_melee_damage_upper = 18
 	attack_armor_pen = 5	//It's a horror from beyond, I ain't gotta explain 5 AP
 	taser_kill = 0 //See Above
 
 	attacktext = list("gripped")
 	attack_sound = 'sound/hallucinations/growl1.ogg'
 
-	ai_holder_type = /datum/ai_holder/simple_mob/melee
+	ai_holder_type = /datum/ai_holder/polaris/simple_mob/melee
 
 
 	taser_kill = FALSE
@@ -48,6 +48,11 @@
 	max_n2 = 0
 	minbodytemp = 0
 
+/mob/living/simple_mob/faithless/Initialize(mapload)
+	. = ..()
+	AddComponent(/datum/component/horror_aura/weak)
+
+
 /mob/living/simple_mob/faithless/Process_Spacemove(var/check_drift = 0)
 	return 1
 
@@ -55,7 +60,7 @@
 	if(isliving(A))
 		var/mob/living/L = A
 		if(prob(12))
-			L.Weaken(3)
+			L.afflict_paralyze(20 * 3)
 			L.visible_message("<span class='danger'>\the [src] knocks down \the [L]!</span>")
 
 // Strong Variant
@@ -64,12 +69,12 @@
 	health = 100
 
 	harm_intent_damage = 5
-	melee_damage_lower = 13
-	melee_damage_upper = 28
+	legacy_melee_damage_lower = 13
+	legacy_melee_damage_upper = 28
 
 // Cult Variant
 /mob/living/simple_mob/faithless/cult
-	faction = "cult"
+	iff_factions = MOB_IFF_FACTION_SANGUINE_CULT
 	supernatural = TRUE
 
 /mob/living/simple_mob/faithless/cult/cultify()
@@ -81,5 +86,5 @@
 	health = 100
 
 	harm_intent_damage = 5
-	melee_damage_lower = 13
-	melee_damage_upper = 28
+	legacy_melee_damage_lower = 13
+	legacy_melee_damage_upper = 28

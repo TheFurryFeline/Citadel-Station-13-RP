@@ -9,9 +9,11 @@ GLOBAL_LIST_EMPTY(PDAs)
 	icon = 'icons/obj/pda.dmi'
 	icon_state = "pda"
 	item_state = "electronic"
-	w_class = ITEMSIZE_SMALL
+	w_class = WEIGHT_CLASS_SMALL
 	slot_flags = SLOT_ID | SLOT_BELT
-	sprite_sheets = list(SPECIES_TESHARI = 'icons/mob/species/teshari/id.dmi')
+	rad_flags = RAD_BLOCK_CONTENTS
+	item_flags = ITEM_NO_BLUDGEON
+	belt_storage_class = BELT_CLASS_SMALL
 
 	//Main variables
 	var/pdachoice = 1
@@ -64,7 +66,7 @@ GLOBAL_LIST_EMPTY(PDAs)
 
 	var/obj/item/paicard/pai = null	// A slot for a personal AI device
 
-/obj/item/pda/examine(mob/user)
+/obj/item/pda/examine(mob/user, dist)
 	. = ..()
 	. += "The time [stationtime2text()] is displayed in the corner of the screen."
 
@@ -149,6 +151,10 @@ GLOBAL_LIST_EMPTY(PDAs)
 	default_cartridge = /obj/item/cartridge/hos
 	icon_state = "pda-hos"
 
+/obj/item/pda/heads/blueshield
+	default_cartridge = /obj/item/cartridge/security
+	icon_state = "pda-hop"
+
 /obj/item/pda/heads/ce
 	default_cartridge = /obj/item/cartridge/ce
 	icon_state = "pda-ce"
@@ -188,8 +194,6 @@ GLOBAL_LIST_EMPTY(PDAs)
 /obj/item/pda/syndicate
 	default_cartridge = /obj/item/cartridge/syndicate
 	icon_state = "pda-syn"
-//	name = "Military PDA" // Vorestation Edit
-//	owner = "John Doe"
 	hidden = 1
 
 /obj/item/pda/chaplain
@@ -270,7 +274,7 @@ GLOBAL_LIST_EMPTY(PDAs)
 		to_chat(usr, "You can't send PDA messages because you are dead!")
 		return
 	var/list/plist = available_pdas()
-	sortTim(plist, cmp = /proc/cmp_text_asc)
+	tim_sort(plist, cmp = GLOBAL_PROC_REF(cmp_text_asc))
 	if (plist)
 		var/c = input(usr, "Please select a PDA") as null|anything in plist
 		if (!c) // if the user hasn't selected a PDA file we can't send a message
@@ -319,7 +323,10 @@ GLOBAL_LIST_EMPTY(PDAs)
 	return 1
 
 
-/obj/item/pda/ai/attack_self(mob/user as mob)
+/obj/item/pda/ai/attack_self(mob/user, datum/event_args/actor/actor)
+	. = ..()
+	if(.)
+		return
 	if ((honkamt > 0) && (prob(60)))//For clown virus.
 		honkamt--
 		playsound(loc, 'sound/items/bikehorn.ogg', 30, 1)
@@ -430,7 +437,7 @@ GLOBAL_LIST_EMPTY(PDAs)
 /obj/item/pda/Initialize(mapload)
 	. = ..()
 	GLOB.PDAs += src
-	sortTim(GLOB.PDAs, cmp = /proc/cmp_name_asc)
+	tim_sort(GLOB.PDAs, cmp = GLOBAL_PROC_REF(cmp_name_asc))
 	if(default_cartridge)
 		cartridge = new default_cartridge(src)
 	new /obj/item/pen(src)
@@ -448,19 +455,20 @@ GLOBAL_LIST_EMPTY(PDAs)
 				icon = 'icons/obj/pda_wrist.dmi'
 				item_state = icon_state
 				item_icons = list(
-					slot_belt_str = 'icons/mob/pda_wrist.dmi',
-					slot_wear_id_str = 'icons/mob/pda_wrist.dmi',
-					slot_gloves_str = 'icons/mob/pda_wrist.dmi'
+					SLOT_ID_BELT = 'icons/mob/clothing/pda_wrist.dmi',
+					SLOT_ID_WORN_ID = 'icons/mob/clothing/pda_wrist.dmi',
+					SLOT_ID_GLOVES = 'icons/mob/clothing/pda_wrist.dmi'
 				)
 				desc = "A portable microcomputer by Thinktronic Systems, LTD. This model is a wrist-bound version."
 				slot_flags = SLOT_ID | SLOT_BELT | SLOT_GLOVES
+				LAZYINITLIST(sprite_sheets)
 				sprite_sheets = list(
-				SPECIES_TESHARI = 'icons/mob/species/teshari/pda_wrist.dmi',
-				SPECIES_VR_TESHARI = 'icons/mob/species/teshari/pda_wrist.dmi',
+				SPECIES_TESHARI = 'icons/mob/clothing/species/teshari/pda_wrist.dmi',
+				SPECIES_VR_TESHARI = 'icons/mob/clothing/species/teshari/pda_wrist.dmi',
 				)
 			else
 				icon = 'icons/obj/pda_old.dmi'
-				log_debug("Invalid switch for PDA, defaulting to old PDA icons. [pdachoice] chosen.")
+				log_debug(SPAN_DEBUG("Invalid switch for PDA, defaulting to old PDA icons. [pdachoice] chosen."))
 
 
 /obj/item/pda/proc/can_use()
@@ -469,7 +477,7 @@ GLOBAL_LIST_EMPTY(PDAs)
 		return 0
 
 	var/mob/M = loc
-	if(M.stat || M.restrained() || M.paralysis || M.stunned || M.weakened)
+	if(!CHECK_MOBILITY(M, MOBILITY_CAN_USE))
 		return 0
 	if((src in M.contents) || ( istype(loc, /turf) && in_range(src, M) ))
 		return 1
@@ -485,7 +493,7 @@ GLOBAL_LIST_EMPTY(PDAs)
 /obj/item/pda/GetID()
 	return id
 
-/obj/item/pda/MouseDrop(obj/over_object as obj, src_location, over_location)
+/obj/item/pda/OnMouseDropLegacy(obj/over_object as obj, src_location, over_location)
 	var/mob/M = usr
 	if((!istype(over_object, /atom/movable/screen)) && can_use())
 		return attack_self(M)
@@ -522,7 +530,7 @@ GLOBAL_LIST_EMPTY(PDAs)
 
 
 	data["idInserted"] = (id ? 1 : 0)
-	data["idLink"] = (id ? text("[id.registered_name], [id.assignment]") : "--------")
+	data["idLink"] = (id ? "[id.registered_name], [id.assignment]" : "--------")
 
 	data["cart_loaded"] = cartridge ? 1:0
 	if(cartridge)
@@ -667,7 +675,10 @@ GLOBAL_LIST_EMPTY(PDAs)
 	ui.set_auto_update(auto_update)
 
 //NOTE: graphic resources are loaded on client login
-/obj/item/pda/attack_self(mob/user as mob)
+/obj/item/pda/attack_self(mob/user, datum/event_args/actor/actor)
+	. = ..()
+	if(.)
+		return
 
 	user.set_machine(src)
 
@@ -893,7 +904,7 @@ GLOBAL_LIST_EMPTY(PDAs)
 
 		if("Toggle Door")
 			if(cartridge && cartridge.access_remote_door)
-				for(var/obj/machinery/door/blast/M in machines)
+				for(var/obj/machinery/door/blast/M in GLOB.machines)
 					if(M.id == cartridge.remote_door_id)
 						if(M.density)
 							M.open()
@@ -960,7 +971,7 @@ GLOBAL_LIST_EMPTY(PDAs)
 						if("2")		// Eject pAI device
 							var/turf/T = get_turf_or_move(src.loc)
 							if(T)
-								pai.loc = T
+								pai.forceMove(T)
 								pai = null
 
 		else
@@ -987,9 +998,9 @@ GLOBAL_LIST_EMPTY(PDAs)
 /obj/item/pda/update_icon()
 	..()
 
-	overlays.Cut()
+	cut_overlays()
 	if(new_message || new_news)
-		overlays += image(icon, "pda-r")
+		add_overlay(image(icon, "pda-r"))
 
 /obj/item/pda/proc/detonate_act(var/obj/item/pda/P)
 	//TODO: sometimes these attacks show up on the message server
@@ -1008,7 +1019,7 @@ GLOBAL_LIST_EMPTY(PDAs)
 	if(i>=10 && i<= 20) //The PDA burns a hole in the holder.
 		j=1
 		if(M && isliving(M))
-			M.apply_damage( rand(30,60) , BURN)
+			M.apply_damage( rand(30,60) , DAMAGE_TYPE_BURN)
 		message += "You feel a searing heat! Your [P] is burning!"
 	if(i>=20 && i<=25) //EMP
 		empulse(P.loc, 1, 2, 4, 6, 1)
@@ -1059,10 +1070,10 @@ GLOBAL_LIST_EMPTY(PDAs)
 	if (id)
 		if (ismob(loc))
 			var/mob/M = loc
-			M.put_in_hands(id)
+			M.put_in_hands_or_drop(id)
 			to_chat(usr, "<span class='notice'>You remove the ID from the [name].</span>")
 		else
-			id.loc = get_turf(src)
+			id.forceMove(drop_location())
 		id = null
 
 /obj/item/pda/proc/remove_pen()
@@ -1070,11 +1081,11 @@ GLOBAL_LIST_EMPTY(PDAs)
 	if(O)
 		if(istype(loc, /mob))
 			var/mob/M = loc
-			if(M.get_active_hand() == null)
+			if(M.get_active_held_item() == null)
 				M.put_in_hands(O)
 				to_chat(usr, "<span class='notice'>You remove \the [O] from \the [src].</span>")
 				return
-		O.loc = get_turf(src)
+		O.forceMove(get_turf(src))
 	else
 		to_chat(usr, "<span class='notice'>This PDA does not have a pen in it.</span>")
 
@@ -1117,8 +1128,8 @@ GLOBAL_LIST_EMPTY(PDAs)
 
 		tnote.Add(list(list("sent" = 1, "owner" = "[P.owner]", "job" = "[P.ownjob]", "message" = "[t]", "target" = "\ref[P]")))
 		P.tnote.Add(list(list("sent" = 0, "owner" = "[owner]", "job" = "[ownjob]", "message" = "[t]", "target" = "\ref[src]")))
-		for(var/mob/M in player_list)
-			if(M.stat == DEAD && M.client && (M.is_preference_enabled(/datum/client_preference/ghost_ears))) // src.client is so that ghosts don't have to listen to mice
+		for(var/mob/M in GLOB.player_list)
+			if(M.stat == DEAD && M.client && (M.get_preference_toggle(/datum/game_preference_toggle/observer/ghost_ears))) // src.client is so that ghosts don't have to listen to mice
 				if(istype(M, /mob/new_player))
 					continue
 				if(M.forbid_seeing_deadchat)
@@ -1151,7 +1162,7 @@ GLOBAL_LIST_EMPTY(PDAs)
 	if (!beep_silent)
 		playsound(loc, 'sound/machines/twobeep.ogg', 50, 1)
 		for (var/mob/O in hearers(2, loc))
-			O.show_message(text("[icon2html(thing = src, target = world)] *[message_tone]*"))
+			O.show_message("[icon2html(thing = src, target = world)] *[message_tone]*")
 	//Search for holder of the PDA.
 	var/mob/living/L = null
 	if(loc && isliving(loc))
@@ -1200,7 +1211,7 @@ GLOBAL_LIST_EMPTY(PDAs)
 	new_message = 1
 
 /obj/item/pda/verb/verb_reset_pda()
-	set category = "Object"
+	set category = VERB_CATEGORY_OBJECT
 	set name = "Reset PDA"
 	set src in usr
 
@@ -1215,7 +1226,7 @@ GLOBAL_LIST_EMPTY(PDAs)
 		to_chat(usr, "<span class='notice'>You cannot do this while restrained.</span>")
 
 /obj/item/pda/verb/verb_remove_id()
-	set category = "Object"
+	set category = VERB_CATEGORY_OBJECT
 	set name = "Remove id"
 	set src in usr
 
@@ -1232,7 +1243,7 @@ GLOBAL_LIST_EMPTY(PDAs)
 
 
 /obj/item/pda/verb/verb_remove_pen()
-	set category = "Object"
+	set category = VERB_CATEGORY_OBJECT
 	set name = "Remove pen"
 	set src in usr
 
@@ -1245,7 +1256,7 @@ GLOBAL_LIST_EMPTY(PDAs)
 		to_chat(usr, "<span class='notice'>You cannot do this while restrained.</span>")
 
 /obj/item/pda/verb/verb_remove_cartridge()
-	set category = "Object"
+	set category = VERB_CATEGORY_OBJECT
 	set name = "Remove cartridge"
 	set src in usr
 
@@ -1277,18 +1288,21 @@ GLOBAL_LIST_EMPTY(PDAs)
 			remove_id()
 			return 1
 		else
-			var/obj/item/I = user.get_active_hand()
-			if (istype(I, /obj/item/card/id) && user.unEquip(I))
-				I.loc = src
+			var/obj/item/I = user.get_active_held_item()
+			if (istype(I, /obj/item/card/id))
+				if(!user.attempt_insert_item_for_installation(I, src))
+					return
 				id = I
 			return 1
 	else
-		var/obj/item/card/I = user.get_active_hand()
-		if (istype(I, /obj/item/card/id) && I:registered_name && user.unEquip(I))
+		var/obj/item/card/I = user.get_active_held_item()
+		if (istype(I, /obj/item/card/id) && I:registered_name)
 			var/obj/old_id = id
-			I.loc = src
+			if(!user.attempt_insert_item_for_installation(I, src))
+				return
 			id = I
-			user.put_in_hands(old_id)
+			if(old_id && !user.put_in_hands(old_id))
+				return
 			return 1
 	return 0
 
@@ -1296,9 +1310,9 @@ GLOBAL_LIST_EMPTY(PDAs)
 /obj/item/pda/attackby(obj/item/C as obj, mob/user as mob)
 	..()
 	if(istype(C, /obj/item/cartridge) && !cartridge)
+		if(!user.attempt_insert_item_for_installation(C, src))
+			return
 		cartridge = C
-		user.drop_item()
-		cartridge.loc = src
 		to_chat(usr, "<span class='notice'>You insert [cartridge] into [src].</span>")
 		SSnanoui.update_uis(src) // update all UIs attached to src
 		if(cartridge.radio)
@@ -1323,9 +1337,9 @@ GLOBAL_LIST_EMPTY(PDAs)
 					updateSelfDialog()//Update self dialog on success.
 			return	//Return in case of failed check or when successful.
 		updateSelfDialog()//For the non-input related code.
-	else if(istype(C, /obj/item/paicard) && !src.pai)
-		user.drop_item()
-		C.loc = src
+	else if(istype(C, /obj/item/paicard) && !pai)
+		if(!user.attempt_insert_item_for_installation(C, src))
+			return
 		pai = C
 		to_chat(user, "<span class='notice'>You slot \the [C] into \the [src].</span>")
 		SSnanoui.update_uis(src) // update all UIs attached to src
@@ -1334,47 +1348,46 @@ GLOBAL_LIST_EMPTY(PDAs)
 		if(O)
 			to_chat(user, "<span class='notice'>There is already a pen in \the [src].</span>")
 		else
-			user.drop_item()
-			C.loc = src
+			if(!user.attempt_insert_item_for_installation(C, src))
+				return
 			to_chat(user, "<span class='notice'>You slot \the [C] into \the [src].</span>")
-	return
 
-/obj/item/pda/attack(mob/living/C as mob, mob/living/user as mob)
+/obj/item/pda/legacy_mob_melee_hook(mob/target, mob/user, clickchain_flags, list/params, mult, target_zone, intent)
+	var/mob/living/carbon/C = target
 	if (istype(C, /mob/living/carbon))
 		switch(scanmode)
 			if(1)
 
 				for (var/mob/O in viewers(C, null))
-					O.show_message("<span class='warning'>\The [user] has analyzed [C]'s vitals!</span>", 1)
-
-				user.show_message("<span class='notice'>Analyzing Results for [C]:</span>")
-				user.show_message("<span class='notice'>    Overall Status: [C.stat > 1 ? "dead" : "[C.health - C.halloss]% healthy"]</span>", 1)
-				user.show_message(text("<span class='notice'>    Damage Specifics:</span> <span class='[]'>[]</span>-<span class='[]'>[]</span>-<span class='[]'>[]</span>-<span class='[]'>[]</span>",
-						(C.getOxyLoss() > 50) ? "warning" : "", C.getOxyLoss(),
-						(C.getToxLoss() > 50) ? "warning" : "", C.getToxLoss(),
-						(C.getFireLoss() > 50) ? "warning" : "", C.getFireLoss(),
-						(C.getBruteLoss() > 50) ? "warning" : "", C.getBruteLoss()
-						), 1)
-				user.show_message("<span class='notice'>    Key: Suffocation/Toxin/Burns/Brute</span>", 1)
-				user.show_message("<span class='notice'>    Body Temperature: [C.bodytemperature-T0C]&deg;C ([C.bodytemperature*1.8-459.67]&deg;F)</span>", 1)
-				if(C.tod && (C.stat == DEAD || (C.status_flags & FAKEDEATH)))
-					user.show_message("<span class='notice'>    Time of Death: [C.tod]</span>")
+					O.show_message(SPAN_WARNING("\The [user] has analyzed [C]'s vitals!"), SAYCODE_TYPE_VISIBLE)
+				user.show_message(SPAN_NOTICE("Analyzing Results for [C]:"))
+				user.show_message(SPAN_NOTICE("[FOURSPACES]Overall Status: [C.stat > 1 ? "dead" : "[C.health - C.halloss]% healthy"]"), SAYCODE_TYPE_VISIBLE)
+				user.show_message(
+					"<span class='notice'>[FOURSPACES]Damage Specifics:</span> <span class='[(C.getOxyLoss() > 50) ? "warning" : ""]'>[C.getOxyLoss()]</span>-<span class='[(C.getToxLoss() > 50) ? "warning" : ""]'>[C.getToxLoss()]</span>-<span class='[(C.getFireLoss() > 50) ? "warning" : ""]'>[C.getFireLoss()]</span>-<span class='[(C.getBruteLoss() > 50) ? "warning" : ""]'>[C.getBruteLoss()]</span>",
+					SAYCODE_TYPE_VISIBLE
+				)
+				user.show_message(SPAN_NOTICE("[FOURSPACES]Key: Suffocation/Toxin/Burns/Brute"), 1)
+				user.show_message(SPAN_NOTICE("[FOURSPACES]Body Temperature: [C.bodytemperature-T0C]&deg;C ([C.bodytemperature*1.8-459.67]&deg;F)"), SAYCODE_TYPE_VISIBLE)
+				if(C.tod && (C.stat == DEAD || (C.status_flags & STATUS_FAKEDEATH)))
+					user.show_message(SPAN_NOTICE("[FOURSPACES]Time of Death: [C.tod]"))
 				if(istype(C, /mob/living/carbon/human))
 					var/mob/living/carbon/human/H = C
 					var/list/damaged = H.get_damaged_organs(1,1)
-					user.show_message("<span class='notice'>Localized Damage, Brute/Burn:</span>",1)
+					user.show_message(SPAN_NOTICE("Localized Damage, Brute/Burn:"), SAYCODE_TYPE_VISIBLE)
 					if(length(damaged)>0)
 						for(var/obj/item/organ/external/org in damaged)
-							user.show_message(text("<span class='notice'>     []: <span class='[]'>[]</span>-<span class='[]'>[]</span></span>",
-									capitalize(org.name), (org.brute_dam > 0) ? "warning" : "notice", org.brute_dam, (org.burn_dam > 0) ? "warning" : "notice", org.burn_dam),1)
+							user.show_message(
+								SPAN_NOTICE("[FOURSPACES][capitalize(org.name)]: <span class='[(org.brute_dam > 0) ? "warning" : "notice"]'>[org.brute_dam]</span>-<span class='[(org.burn_dam > 0) ? "warning" : "notice"]'>[org.burn_dam]</span>"),
+								SAYCODE_TYPE_VISIBLE
+							)
 					else
-						user.show_message("<span class='notice'>    Limbs are OK.</span>",1)
+						user.show_message(SPAN_NOTICE("[FOURSPACES]Limbs are OK."), SAYCODE_TYPE_VISIBLE)
 
 			if(2)
 				if (!istype(C.dna, /datum/dna))
 					to_chat(user, "<span class='notice'>No fingerprints found on [C]</span>")
 				else
-					to_chat(user, text("<span class='notice'>\The [C]'s Fingerprints: [md5(C.dna.uni_identity)]</span>"))
+					to_chat(user, SPAN_NOTICE("\The [C]'s Fingerprints: [md5(C.dna.uni_identity)]"))
 				if ( !(C:blood_DNA) )
 					to_chat(user, "<span class='notice'>No blood found on [C]</span>")
 					if(C:blood_DNA)
@@ -1393,32 +1406,33 @@ GLOBAL_LIST_EMPTY(PDAs)
 				else
 					to_chat(user, "<span class='notice'>No radiation detected.</span>")
 
-/obj/item/pda/afterattack(atom/A as mob|obj|turf|area, mob/user as mob, proximity)
-	if(!proximity) return
+/obj/item/pda/afterattack(atom/target, mob/user, clickchain_flags, list/params)
+	if(!(clickchain_flags & CLICKCHAIN_HAS_PROXIMITY))
+		return
 	switch(scanmode)
 
 		if(3)
-			if(!isobj(A))
+			if(!isobj(target))
 				return
-			if(!isnull(A.reagents))
-				if(A.reagents.reagent_list.len > 0)
-					var/reagents_length = A.reagents.reagent_list.len
+			if(!isnull(target.reagents))
+				if(target.reagents.total_volume)
+					var/reagents_length = length(target.reagents.reagent_volumes)
 					to_chat(user, "<span class='notice'>[reagents_length] chemical agent[reagents_length > 1 ? "s" : ""] found.</span>")
-					for (var/re in A.reagents.reagent_list)
+					for (var/re in target.reagents.get_reagent_datums())
 						to_chat(user,"<span class='notice'>    [re]</span>")
 				else
-					to_chat(user,"<span class='notice'>No active chemical agents found in [A].</span>")
+					to_chat(user,"<span class='notice'>No active chemical agents found in [target].</span>")
 			else
-				to_chat(user,"<span class='notice'>No significantchemical agents found in [A].</span>")
+				to_chat(user,"<span class='notice'>No significant chemical agents found in [target].</span>")
 
 		if(5)
-			analyze_gases(A, user)
+			analyze_gases(target, user)
 
-	if (!scanmode && istype(A, /obj/item/paper) && owner)
+	if (!scanmode && istype(target, /obj/item/paper) && owner)
 		// JMO 20140705: Makes scanned document show up properly in the notes. Not pretty for formatted documents,
 		// as this will clobber the HTML, but at least it lets you scan a document. You can restore the original
 		// notes by editing the note again. (Was going to allow you to edit, but scanned documents are too long.)
-		var/raw_scan = (A:info)
+		var/raw_scan = (target:info)
 		var/formatted_scan = ""
 		// Scrub out the tags (replacing a few formatting ones along the way)
 
@@ -1457,7 +1471,7 @@ GLOBAL_LIST_EMPTY(PDAs)
 
     	// Store the scanned document to the notes
 		note = "Scanned Document. Edit to restore previous notes/delete scan.<br>----------<br>" + formatted_scan + "<br>"
-		// notehtml ISN'T set to allow user to get their old notes back. A better implementation would add a "scanned documents"
+		// notehtml ISN'T set to allow user to get their old notes back. target better implementation would add a "scanned documents"
 		// feature to the PDA, which would better convey the availability of the feature, but this will work for now.
 
 		// Inform the user
@@ -1474,7 +1488,7 @@ GLOBAL_LIST_EMPTY(PDAs)
 
 /obj/item/pda/Destroy()
 	GLOB.PDAs -= src
-	if (src.id && prob(100)) //IDs are kept in 90% of the cases //VOREStation Edit - 100% of the cases
+	if (src.id && prob(100)) //IDs are kept in 100% of the cases //TODO: WHY?
 		src.id.forceMove(get_turf(src.loc))
 	else
 		QDEL_NULL(src.id)
@@ -1484,12 +1498,12 @@ GLOBAL_LIST_EMPTY(PDAs)
 
 /obj/item/pda/clown/Crossed(atom/movable/AM as mob|obj) //Clown PDA is slippery.
 	. = ..()
-	if(AM.is_incorporeal())
+	if(AM.is_incorporeal() || AM.is_avoiding_ground())
 		return
 	if (istype(AM, /mob/living))
 		var/mob/living/M = AM
 
-		if(M.slip("the PDA",8) && M.real_name != src.owner && istype(src.cartridge, /obj/item/cartridge/clown))
+		if(M.slip_act(SLIP_CLASS_LUBRICANT, src, 5, 5) > 0 && M.real_name != src.owner && istype(src.cartridge, /obj/item/cartridge/clown))
 			if(src.cartridge.charges < 5)
 				src.cartridge.charges++
 
@@ -1529,20 +1543,22 @@ GLOBAL_LIST_EMPTY(PDAs)
 	icon = 'icons/obj/pda.dmi'
 	icon_state = "pdabox"
 
-	New()
-		..()
-		new /obj/item/pda(src)
-		new /obj/item/pda(src)
-		new /obj/item/pda(src)
-		new /obj/item/pda(src)
-		new /obj/item/cartridge/head(src)
+/obj/item/storage/box/PDAs/Initialize(mapload, empty)
+	. = ..()
+	new /obj/item/pda(src)
+	new /obj/item/pda(src)
+	new /obj/item/pda(src)
+	new /obj/item/pda(src)
+	new /obj/item/cartridge/head(src)
 
-		var/newcart = pick(	/obj/item/cartridge/engineering,
-							/obj/item/cartridge/security,
-							/obj/item/cartridge/medical,
-							/obj/item/cartridge/signal/science,
-							/obj/item/cartridge/quartermaster)
-		new newcart(src)
+	var/newcart = pick(
+		/obj/item/cartridge/engineering,
+		/obj/item/cartridge/medical,
+		/obj/item/cartridge/quartermaster,
+		/obj/item/cartridge/security,
+		/obj/item/cartridge/signal/science,
+	)
+	new newcart(src)
 
 // Pass along the pulse to atoms in contents, largely added so pAIs are vulnerable to EMP
 /obj/item/pda/emp_act(severity)
@@ -1557,10 +1573,10 @@ GLOBAL_LIST_EMPTY(PDAs)
 		var/pressure = environment.return_pressure()
 		var/total_moles = environment.total_moles
 		if (total_moles)
-			var/o2_level = environment.gas[/datum/gas/oxygen]/total_moles
-			var/n2_level = environment.gas[/datum/gas/nitrogen]/total_moles
-			var/co2_level = environment.gas[/datum/gas/carbon_dioxide]/total_moles
-			var/phoron_level = environment.gas[/datum/gas/phoron]/total_moles
+			var/o2_level = environment.gas[GAS_ID_OXYGEN]/total_moles
+			var/n2_level = environment.gas[GAS_ID_NITROGEN]/total_moles
+			var/co2_level = environment.gas[GAS_ID_CARBON_DIOXIDE]/total_moles
+			var/phoron_level = environment.gas[GAS_ID_PHORON]/total_moles
 			var/unknown_level =  1-(o2_level+n2_level+co2_level+phoron_level)
 
 			// entry is what the element is describing
@@ -1583,7 +1599,7 @@ GLOBAL_LIST_EMPTY(PDAs)
 		results = list(list("entry" = "pressure", "units" = "kPa", "val" = "0", "bad_high" = 120, "poor_high" = 110, "poor_low" = 95, "bad_low" = 80))
 	return results
 
-//VR FILE MERGE
+//! ## VR FILE MERGE ## !//
 /obj/item/pda/centcom
 	default_cartridge = /obj/item/cartridge/captain
 	icon_state = "pda-h"
@@ -1592,7 +1608,7 @@ GLOBAL_LIST_EMPTY(PDAs)
 
 /obj/item/pda/pathfinder
 	default_cartridge = /obj/item/cartridge/signal/science
-	icon_state = "pda-lawyer-old"
+	icon_state = "pda-lawyer"
 
 /obj/item/pda/explorer
 	default_cartridge = /obj/item/cartridge/signal/science

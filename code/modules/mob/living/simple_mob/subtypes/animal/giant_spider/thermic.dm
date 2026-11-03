@@ -26,8 +26,8 @@
 	maxHealth = 175
 	health = 175
 
-	melee_damage_lower = 10
-	melee_damage_upper = 25
+	legacy_melee_damage_lower = 10
+	legacy_melee_damage_upper = 25
 
 	heat_resist = 0.75
 	cold_resist = -0.50
@@ -35,3 +35,14 @@
 	poison_chance = 30
 	poison_per_bite = 1
 	poison_type = "thermite_v"
+
+	exotic_type = /obj/item/reagent_containers/glass/venomgland/spider/thermite
+
+/obj/item/reagent_containers/glass/venomgland/spider/thermite
+	name = "Thermic Venom Gland"
+	desc = "A sac of venom. It feels hot to the touch."
+
+/obj/item/reagent_containers/glass/venomgland/spider/thermite/Initialize(mapload)
+	. = ..()
+	reagents.add_reagent("thermite_v", 15)
+

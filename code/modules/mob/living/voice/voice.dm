@@ -10,7 +10,7 @@
 /mob/living/voice/Initialize(mapload)
 	. = ..()
 	add_language(LANGUAGE_GALCOM)
-	set_default_language(GLOB.all_languages[LANGUAGE_GALCOM])
+	set_default_language(RSlanguages.legacy_resolve_language_name(LANGUAGE_GALCOM))
 
 	if(istype(loc, /obj/item/communicator))
 		comm = loc
@@ -22,7 +22,7 @@
 	if(ismob(speaker))
 		icon = speaker.icon
 		icon_state = speaker.icon_state
-		overlays = speaker.overlays
+		copy_overlays(speaker)
 		timeofdeath = speaker.timeofdeath
 
 		alpha = 127 //Maybe we'll have hologram calls later.
@@ -31,9 +31,9 @@
 			name = p.real_name
 			real_name = name
 			gender = p.identifying_gender
-
-			for(var/language in p.alternate_languages)
-				add_language(language)
+			// we don't check if they're above max because fuck you
+			for(var/id in p.all_language_ids())
+				add_language(id)
 
 // Proc: Login()
 // Parameters: None
@@ -95,22 +95,25 @@
 // Proc: Life()
 // Parameters: None
 // Description: Checks the active variable on the Exonet node, and kills the mob if it goes down or stops existing.
-/mob/living/voice/Life()
+/mob/living/voice/Life(seconds, times_fired)
 	if(comm)
 		if(!comm.node || !comm.node.on || !comm.node.allow_external_communicators)
 			comm.close_connection(user = src, target = src, reason = "Connection to telecommunications array timed out")
-	..()
+			return TRUE
+	return ..()
+
+/mob/living/voice/death(gibbed, deathmessage = "no message") // and god taketh away
+	. = ..(gibbed, deathmessage)
 
 // Proc: say()
 // Parameters: 4 (generic say() arguments)
 // Description: Adds a speech bubble to the communicator device, then calls ..() to do the real work.
-/mob/living/voice/say(var/message, var/datum/language/speaking = null, var/verb="says", var/alt_name="", var/whispering=0)
+/mob/living/voice/say(var/message, var/datum/prototype/language/speaking = null, var/verb="says", var/alt_name="", var/whispering=0)
 	//Speech bubbles.
 	if(comm)
 		var/speech_bubble_test = say_test(message)
-		//var/image/speech_bubble = image('icons/mob/talk_vr.dmi',comm,"h[speech_bubble_test]") //VOREStation Edit - Commented out in case of needed reenable.
 		var/speech_type = speech_bubble_appearance()
-		var/image/speech_bubble = image('icons/mob/talk_vr.dmi',comm,"[speech_type][speech_bubble_test]") //VOREStation Edit - talk_vr.dmi instead of talk.dmi for right-side icons
+		var/image/speech_bubble = image('icons/mob/talk_vr.dmi',comm,"[speech_type][speech_bubble_test]")
 		spawn(30)
 			qdel(speech_bubble)
 
@@ -126,7 +129,7 @@
 /mob/living/voice/speech_bubble_appearance()
 	return "comm"
 
-/mob/living/voice/say_understands(var/other,var/datum/language/speaking = null)
+/mob/living/voice/say_understands(var/other,var/datum/prototype/language/speaking = null)
 	//These only pertain to common. Languages are handled by mob/say_understands()
 	if (!speaking)
 		if (istype(other, /mob/living/carbon))
@@ -136,7 +139,3 @@
 		if (istype(other, /mob/living/carbon/brain))
 			return 1
 	return ..()
-
-/mob/living/voice/custom_emote(var/m_type=1,var/message = null,var/range=world.view)
-	if(!comm) return
-	..(m_type,message,comm.video_range)

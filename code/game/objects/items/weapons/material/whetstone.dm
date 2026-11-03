@@ -6,8 +6,8 @@
 	desc = "A simple, fine grit stone, useful for sharpening dull edges and polishing out dents."
 	icon = 'icons/obj/weapons.dmi'
 	icon_state = "whetstone"
-	force = 3
-	w_class = ITEMSIZE_SMALL
+	damage_force = 3
+	w_class = WEIGHT_CLASS_SMALL
 	var/repair_amount = 5
 	var/repair_time = 40
 
@@ -27,14 +27,34 @@
 		else
 			to_chat(user, "You need 5 [src] to refine it into a sharpening kit.")
 
+/obj/item/whetstone/ashlander
+	name = "ashen whetstone"
+	icon = 'icons/obj/lavaland.dmi'
+	icon_state = "sandwhetstone"
+
+/obj/item/whetstone/ashlander/attackby(obj/item/I, mob/user)
+	if(istype(I, /obj/item/stack/material/bone))
+		var/obj/item/stack/material/bone/B = I
+		if(B.amount >= 5)
+			to_chat(user, "You begin to refine the [src] with [B]...")
+			if(do_after(user, 70))
+				B.use(5)
+				var/obj/item/SK
+				SK = new /obj/item/material/sharpeningkit(get_turf(user), B.material.name)
+				to_chat(user, "You sharpen and refine the [src] into \a [SK].")
+				qdel(src)
+				if(SK)
+					user.put_in_hands(SK)
+		else
+			to_chat(user, "You need 5 [src] to refine it into a sharpening kit.")
+
 /obj/item/material/sharpeningkit
 	name = "sharpening kit"
 	desc = "A refined, fine grit whetstone, useful for sharpening dull edges, polishing out dents, and, with extra material, replacing an edge."
 	icon = 'icons/obj/kitchen.dmi'
 	icon_state = "sharpener"
-	hitsound = 'sound/weapons/genhit3.ogg'
-	force_divisor = 0.7
-	thrown_force_divisor = 1
+	attack_sound = 'sound/weapons/genhit3.ogg'
+	material_significance = MATERIAL_SIGNIFICANCE_SHARD
 	var/repair_amount = 5
 	var/repair_time = 40
 	var/sharpen_time = 100
@@ -42,21 +62,18 @@
 
 /obj/item/material/sharpeningkit/examine(mob/user, distance)
 	. = ..()
-	to_chat(user, "There [uses == 1 ? "is" : "are"] [uses] [material] [uses == 1 ? src.material.sheet_singular_name : src.material.sheet_plural_name] left for use.")
+	. += "There's [uses] pieces of material left for usage."
 
-/obj/item/material/sharpeningkit/Initialize(mapload)
+/obj/item/material/sharpeningkit/update_material_single(datum/prototype/material/material)
 	. = ..()
-	setrepair()
-
-/obj/item/material/sharpeningkit/proc/setrepair()
-	repair_amount = material.hardness * 0.1
-	repair_time = material.weight * 0.5
-	sharpen_time = material.weight * 3
+	repair_amount = clamp(material.hardness * 0.5 + 10, 10, 200)
+	repair_time = min(10 SECONDS, material.weight_multiplier * 15)
+	sharpen_time = min(10 SECONDS, material.weight_multiplier * 15)
 
 /obj/item/material/sharpeningkit/attackby(obj/item/W, mob/user)
 	if(istype(W, /obj/item/stack/material))
 		var/obj/item/stack/material/S = W
-		if(S.material == material)
+		if(S.material.id == get_primary_material_id())
 			S.use(1)
 			uses += 1
 			to_chat(user, "You add a [S.material.name] [S.material.sheet_singular_name] to [src].")
@@ -68,11 +85,11 @@
 			return
 		var/obj/item/material/M = W
 		if(uses >= M.w_class*2)
-			if(M.sharpen(src.material.name, sharpen_time, src, user))
+			if(M.sharpen(get_primary_material_id(), sharpen_time, src, user))
 				uses -= M.w_class*2
 				return
 		else
-			to_chat(user, "Not enough material to sharpen [M]. You need [M.w_class*2] [M.material.sheet_plural_name].")
+			to_chat(user, "Not enough material to sharpen [M]. You need [M.w_class*2] [M.get_material_part(MATERIAL_PART_DEFAULT).sheet_plural_name].")
 			return
 	else
 		to_chat(user, "You can't sharpen [W] with [src]!")

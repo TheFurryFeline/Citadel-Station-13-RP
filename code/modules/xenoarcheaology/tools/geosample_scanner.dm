@@ -20,7 +20,7 @@
 	var/last_process_worldtime = 0
 	//
 	var/scanner_progress = 0
-	var/scanner_rate = 1.25			//80 seconds per scan
+	var/scanner_rate = 12.5			// 8 seconds per scan ~ buffed 10x by silicons due to the minigame being awful and unfun, we should redesign this someday.
 	var/scanner_rpm = 0
 	var/scanner_rpm_dir = 1
 	var/scanner_temperature = 0
@@ -29,7 +29,7 @@
 	var/coolant_usage_rate = 0		//measured in u/microsec
 	var/fresh_coolant = 0
 	var/coolant_purity = 0
-	var/datum/reagents/coolant_reagents
+	var/datum/reagent_holder/coolant_reagents
 	var/used_coolant = 0
 	var/list/coolant_reagents_purity = list()
 	//
@@ -91,8 +91,8 @@
 		if(scanned_item)
 			to_chat(user, SPAN_WARNING("\The [src] already has \a [scanned_item] inside!"))
 			return
-		user.drop_item()
-		I.loc = src
+		if(!user.attempt_insert_item_for_installation(I, src))
+			return
 		scanned_item = I
 		to_chat(user, SPAN_NOTICE("You put \the [I] into \the [src]."))
 
@@ -101,7 +101,7 @@
 	fresh_coolant = 0
 	coolant_purity = 0
 	var/num_reagent_types = 0
-	for (var/datum/reagent/current_reagent in reagents.reagent_list)
+	for (var/datum/reagent/current_reagent in reagents.get_reagent_datums())
 		if (!current_reagent)
 			continue
 		var/cur_purity = coolant_reagents_purity[current_reagent.id]
@@ -109,13 +109,13 @@
 			cur_purity = 0.1
 		else if(cur_purity > 1)
 			cur_purity = 1
-		total_purity += cur_purity * current_reagent.volume
-		fresh_coolant += current_reagent.volume
+		total_purity += cur_purity * reagents.reagent_volumes[current_reagent.id]
+		fresh_coolant += reagents.reagent_volumes[current_reagent.id]
 		num_reagent_types += 1
 	if(total_purity && fresh_coolant)
 		coolant_purity = total_purity / fresh_coolant
 
-/obj/machinery/radiocarbon_spectrometer/attack_hand(mob/user)
+/obj/machinery/radiocarbon_spectrometer/attack_hand(mob/user, datum/event_args/actor/clickchain/e_args)
 	ui_interact(user)
 
 /obj/machinery/radiocarbon_spectrometer/ui_interact(mob/user, datum/tgui/ui)
@@ -124,7 +124,7 @@
 		ui = new(user, src, "XenoarchSpectrometer", name)
 		ui.open()
 
-/obj/machinery/radiocarbon_spectrometer/ui_data(mob/user, datum/tgui/ui, datum/ui_state/state)
+/obj/machinery/radiocarbon_spectrometer/ui_data(mob/user, datum/tgui/ui)
 	var/list/data = ..()
 
 
@@ -156,7 +156,7 @@
 
 	return data
 
-/obj/machinery/radiocarbon_spectrometer/ui_act(action, list/params, datum/tgui/ui, datum/ui_state/state)
+/obj/machinery/radiocarbon_spectrometer/ui_act(action, list/params, datum/tgui/ui, datum/ui_state/state, datum/event_args/actor/actor)
 	if(..())
 		return TRUE
 
@@ -231,7 +231,7 @@
 					radiation = rand() * 15 + 85
 					if(!rad_shield)
 						//irradiate nearby mobs
-						SSradiation.radiate(src, radiation / 25)
+						radiation_pulse(src, radiation)
 				else
 					t_left_radspike = pick(10,15,25)
 
@@ -301,21 +301,11 @@
 		var/obj/item/paper/P = new(src)
 		P.name = "[src] report #[++report_num]: [scanned_item.name]"
 		P.stamped = list(/obj/item/stamp)
-		P.overlays = list("paper_stamped")
+		P.add_overlay("paper_stamped")
 
 		//work out data
 		var/data = " - Mundane object: [scanned_item.desc ? scanned_item.desc : "No information on record."]<br>"
-		var/datum/geosample/G
 		switch(scanned_item.type)
-			if(/obj/item/ore)
-				var/obj/item/ore/O = scanned_item
-				if(O.geologic_data)
-					G = O.geologic_data
-
-			if(/obj/item/rocksliver)
-				var/obj/item/rocksliver/O = scanned_item
-				if(O.geological_data)
-					G = O.geological_data
 
 			if(/obj/item/archaeological_find)
 				data = " - Mundane object (archaic xenos origins)<br>"
@@ -325,25 +315,6 @@
 					data = " - Exhibits properties consistent with sonic reproduction and audio capture technologies.<br>"
 
 		var/anom_found = 0
-		if(G)
-			data = " - Spectometric analysis on mineral sample has determined type [finds_as_strings[responsive_carriers.Find(G.source_mineral)]]<br>"
-			if(G.age_billion > 0)
-				data += " - Radiometric dating shows age of [G.age_billion].[G.age_million] billion years<br>"
-			else if(G.age_million > 0)
-				data += " - Radiometric dating shows age of [G.age_million].[G.age_thousand] million years<br>"
-			else
-				data += " - Radiometric dating shows age of [G.age_thousand * 1000 + G.age] years<br>"
-			data += " - Chromatographic analysis shows the following materials present:<br>"
-			for(var/carrier in G.find_presence)
-				if(G.find_presence[carrier])
-					var/index = responsive_carriers.Find(carrier)
-					if(index > 0 && index <= finds_as_strings.len)
-						data += "	> [100 * G.find_presence[carrier]]% [finds_as_strings[index]]<br>"
-
-			if(G.artifact_id && G.artifact_distance >= 0)
-				anom_found = 1
-				data += " - Hyperspectral imaging reveals exotic energy wavelength detected with ID: [G.artifact_id]<br>"
-				data += " - Fourier transform analysis on anomalous energy absorption indicates energy source located inside emission radius of [G.artifact_distance]m<br>"
 
 		if(!anom_found)
 			data += " - No anomalous data<br>"

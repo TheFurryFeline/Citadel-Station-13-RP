@@ -33,25 +33,27 @@
 	maxHealth = 40
 	health = 40
 
-	movement_cooldown = 5	// A bit faster so that they can inject the eggs easier.
+	movement_base_speed = 10 / 5	// A bit faster so that they can inject the eggs easier.
 
-	melee_damage_lower = 5	// Doesn't do a lot of damage, since the goal is to make more spiders with egg attacks.
-	melee_damage_upper = 10
+	legacy_melee_damage_lower = 5	// Doesn't do a lot of damage, since the goal is to make more spiders with egg attacks.
+	legacy_melee_damage_upper = 10
 	poison_per_bite = 5
 	poison_type = "stoxin"
+
+	exotic_type = /obj/item/reagent_containers/glass/venomgland/spider/s_toxin
 
 	player_msg = "You can spin webs on an adjacent tile, or cocoon an object by clicking on it.<br>\
 	You can also cocoon a dying or dead entity by clicking on them, and you will gain charges for egg-laying.<br>\
 	To lay eggs, click a nearby tile. Laying eggs will deplete a charge."
-	ai_holder_type = /datum/ai_holder/simple_mob/melee/nurse_spider
+	ai_holder_type = /datum/ai_holder/polaris/simple_mob/melee/nurse_spider
 
 	var/fed = 0 // Counter for how many egg laying 'charges' the spider has.
 	var/laying_eggs = FALSE	// Only allow one set of eggs to be laid at once.
 	var/egg_inject_chance = 25 // One in four chance to get eggs.
-	var/egg_type = /obj/effect/spider/eggcluster/small
-	var/web_type = /obj/effect/spider/stickyweb/dark
+	var/egg_type = /obj/structure/spider/eggcluster/small
+	var/web_type = /obj/structure/spider/stickyweb/dark
 
-/datum/ai_holder/simple_mob/melee/nurse_spider
+/datum/ai_holder/polaris/simple_mob/melee/nurse_spider
 	mauling = TRUE		// The nurse puts mobs into webs by attacking, so it needs to attack in crit
 	handle_corpse = TRUE	// Lets the nurse wrap dead things
 
@@ -62,7 +64,7 @@
 		var/obj/item/organ/external/O = H.get_organ(target_zone)
 		if(O)
 			var/eggcount = 0
-			for(var/obj/effect/spider/eggcluster/E in O.implants)
+			for(var/obj/structure/spider/eggcluster/E in O.implants)
 				eggcount++
 			if(!eggcount)
 				var/eggs = new egg_type(O, src)
@@ -119,7 +121,7 @@
 		return FALSE
 
 	// Finally done with the checks.
-	var/obj/effect/spider/cocoon/C = new(AM.loc)
+	var/obj/structure/spider/cocoon/C = new(AM.loc)
 	var/large_cocoon = FALSE
 	for(var/mob/living/L in C.loc)
 		if(istype(L, /mob/living/simple_mob/animal/giant_spider)) // Cannibalism is bad.
@@ -140,13 +142,14 @@
 	if(large_cocoon)
 		C.icon_state = pick("cocoon_large1","cocoon_large2","cocoon_large3")
 
+	var/datum/ai_holder/polaris/ai_holder = src.ai_holder
 	ai_holder.target = null
 
 	return TRUE
 
 /mob/living/simple_mob/animal/giant_spider/nurse/handle_special()
 	set waitfor = FALSE
-	if(get_AI_stance() == STANCE_IDLE && !is_AI_busy() && isturf(loc))
+	if(get_polaris_AI_stance() == STANCE_IDLE && !is_AI_busy() && isturf(loc))
 		if(fed)
 			lay_eggs(loc)
 		else
@@ -156,7 +159,7 @@
 	if(!istype(T))
 		return FALSE
 
-	var/obj/effect/spider/stickyweb/W = locate() in T
+	var/obj/structure/spider/stickyweb/W = locate() in T
 	if(W)
 		return FALSE // Already got webs here.
 
@@ -185,7 +188,7 @@
 	if(!fed)
 		return FALSE
 
-	var/obj/effect/spider/eggcluster/E = locate() in T
+	var/obj/structure/spider/eggcluster/E = locate() in T
 	if(E)
 		return FALSE // Already got eggs here.
 
@@ -210,10 +213,17 @@
 	laying_eggs = FALSE
 	return TRUE
 
+/obj/item/reagent_containers/glass/venomgland/spider/sophoric
+	name = "Drowsy Venom Gland"
+	desc = "A sac full of venom. It makes you feel drowsy."
+
+/obj/item/reagent_containers/glass/venomgland/spider/sophoric/Initialize(mapload)
+	. = ..()
+	reagents.add_reagent("stoxin", 15)
 
 // Variant that 'blocks' light (by being a negative light source).
 // This is done to make webbed rooms scary and allow for spiders on the other side of webs to see prey.
-/obj/effect/spider/stickyweb/dark
+/obj/structure/spider/stickyweb/dark
 	name = "dense web"
 	desc = "It's sticky, and blocks a lot of light."
 	light_color = "#FFFFFF"
@@ -229,13 +239,13 @@
 
 
 // The AI for nurse spiders. Wraps things in webs by 'attacking' them.
-/datum/ai_holder/simple_mob/melee/nurse_spider
+/datum/ai_holder/polaris/simple_mob/melee/nurse_spider
 	wander = TRUE
 	base_wander_delay = 8
 	cooperative = FALSE // So we don't ask our spider friends to attack things we're webbing. This might also make them stay at the base if their friends find tasty explorers.
 
 // Get us unachored objects as an option as well.
-/datum/ai_holder/simple_mob/melee/nurse_spider/list_targets()
+/datum/ai_holder/polaris/simple_mob/melee/nurse_spider/list_targets()
 	. = ..()
 
 	var/static/alternative_targets = typecacheof(list(/obj/item, /obj/structure))
@@ -246,7 +256,7 @@
 			. += O
 
 // Select an obj if no mobs are around.
-/datum/ai_holder/simple_mob/melee/nurse_spider/pick_target(list/targets)
+/datum/ai_holder/polaris/simple_mob/melee/nurse_spider/pick_target(list/targets)
 	var/mobs_only = locate(/mob/living) in targets // If a mob is in the list of targets, then ignore objects.
 	if(mobs_only)
 		for(var/A in targets)
@@ -255,10 +265,33 @@
 
 	return ..(targets)
 
-/datum/ai_holder/simple_mob/melee/nurse_spider/can_attack(atom/movable/the_target)
+/datum/ai_holder/polaris/simple_mob/melee/nurse_spider/can_attack(atom/movable/the_target)
 	. = ..()
 	if(!.) // Parent returned FALSE.
 		if(istype(the_target, /obj))
 			var/obj/O = the_target
 			if(!O.anchored)
 				return TRUE
+
+//The Queen Spider
+/mob/living/simple_mob/animal/giant_spider/nurse/queen
+	name = "giant spider queen"
+	desc = "Absolutely gigantic, this creature is horror itself."
+	tt_desc = "X Brachypelma phorus tyrannus"
+	icon = 'icons/mob/64x64.dmi'
+	icon_state = "spider_queen"
+	icon_living = "spider_queen"
+	icon_dead = "spider_queen_dead"
+
+	maxHealth = 320
+	health = 320
+
+	legacy_melee_damage_lower = 20
+	legacy_melee_damage_upper = 30
+	attack_armor_pen = 25
+
+	base_pixel_x = -16
+	base_pixel_y = -16
+
+	mod_min = 100
+	mod_max = 150

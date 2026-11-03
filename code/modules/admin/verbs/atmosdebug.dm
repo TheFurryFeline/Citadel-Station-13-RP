@@ -12,17 +12,17 @@
 
 	to_chat(usr, "Checking for disconnected pipes...")
 	//all plumbing - yes, some things might get stated twice, doesn't matter.
-	for (var/obj/machinery/atmospherics/plumbing in machines)
+	for (var/obj/machinery/atmospherics/plumbing in GLOB.machines)
 		if (plumbing.nodealert)
 			to_chat(usr, "Unconnected [plumbing.name] located at [plumbing.x],[plumbing.y],[plumbing.z] ([get_area(plumbing.loc)])")
 
 	//Manifolds
-	for (var/obj/machinery/atmospherics/pipe/manifold/pipe in machines)
+	for (var/obj/machinery/atmospherics/pipe/manifold/pipe in GLOB.machines)
 		if (!pipe.node1 || !pipe.node2 || !pipe.node3)
 			to_chat(usr, "Unconnected [pipe.name] located at [pipe.x],[pipe.y],[pipe.z] ([get_area(pipe.loc)])")
 
 	//Pipes
-	for (var/obj/machinery/atmospherics/pipe/simple/pipe in machines)
+	for (var/obj/machinery/atmospherics/pipe/simple/pipe in GLOB.machines)
 		if (!pipe.node1 || !pipe.node2)
 			to_chat(usr, "Unconnected [pipe.name] located at [pipe.x],[pipe.y],[pipe.z] ([get_area(pipe.loc)])")
 
@@ -30,7 +30,7 @@
 	next_turf:
 		for(var/turf/T in world)
 			for(var/dir in GLOB.cardinal)
-				var/list/connect_types = list(1 = 0, 2 = 0, 3 = 0)
+				var/list/connect_types = list(0, 0, 0)
 				for(var/obj/machinery/atmospherics/pipe in T)
 					if(dir & pipe.initialize_directions)
 						for(var/connect_type in pipe.connect_types)

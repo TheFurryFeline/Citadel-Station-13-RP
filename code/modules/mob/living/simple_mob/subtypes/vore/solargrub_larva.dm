@@ -11,15 +11,15 @@ var/global/list/grub_machine_overlays = list()
 
 	health = 5
 	maxHealth = 5
-	movement_cooldown = 3
+	movement_base_speed = 10 / 3
 
-	melee_damage_lower = 1	// This is a tiny worm. It will nibble and thats about it.
-	melee_damage_upper = 1
+	legacy_melee_damage_lower = 1	// This is a tiny worm. It will nibble and thats about it.
+	legacy_melee_damage_upper = 1
 
 	meat_amount = 2
 	meat_type = /obj/item/reagent_containers/food/snacks/meat/grubmeat
 
-	faction = "grubs"
+	iff_factions = MOB_IFF_FACTION_GRUB
 
 	response_help = "pats"
 	response_disarm = "nudges"
@@ -27,15 +27,15 @@ var/global/list/grub_machine_overlays = list()
 
 
 	mob_size = MOB_MINISCULE
-	pass_flags = PASSTABLE
-	can_pull_size = ITEMSIZE_TINY
+	pass_flags = ATOM_PASS_TABLE
+	can_pull_size = WEIGHT_CLASS_TINY
 	can_pull_mobs = MOB_PULL_NONE
 	density = 0
 
 	//stop_when_pulled = 0
 
 	var/static/list/ignored_machine_types = list(
-		/obj/machinery/atmospherics/unary/vent_scrubber,
+		/obj/machinery/atmospherics/component/unary/vent_scrubber,
 		/obj/machinery/door/firedoor,
 		/obj/machinery/button/windowtint
 		)
@@ -46,7 +46,7 @@ var/global/list/grub_machine_overlays = list()
 	var/obj/machinery/abstract_grub_machine/powermachine
 	var/power_drained = 0
 
-	ai_holder_type = /datum/ai_holder/simple_mob/solargrub_larva
+	ai_holder_type = /datum/ai_holder/polaris/simple_mob/solargrub_larva
 
 /mob/living/simple_mob/animal/solargrub_larva/Initialize(mapload)
 	GLOB.solargrubs += src
@@ -62,7 +62,7 @@ var/global/list/grub_machine_overlays = list()
 	sparks = new(src)
 	sparks.set_up()
 	sparks.attach(src)
-	verbs += /mob/living/proc/ventcrawl
+	add_verb(src, /mob/living/proc/ventcrawl)
 
 /mob/living/simple_mob/animal/solargrub_larva/death()
 	powermachine.draining = 0
@@ -73,34 +73,36 @@ var/global/list/grub_machine_overlays = list()
 	QDEL_NULL(powermachine)
 	QDEL_NULL(sparks)
 	if(machine_effect)
-		for(var/mob/L in player_list)
+		for(var/mob/L in GLOB.player_list)
 			L.client?.images -= machine_effect
 		QDEL_NULL(machine_effect)
 	return ..()
 
-/mob/living/simple_mob/animal/solargrub_larva/Life()
-	. = ..()
+/mob/living/simple_mob/animal/solargrub_larva/Life(seconds, times_fired)
+	if((. = ..()))
+		return
 
 	if(machine_effect && !istype(loc, /obj/machinery))
 		QDEL_NULL(machine_effect)
 
-	if(!.)	// || ai_inactive
-		return
-
 	if(power_drained >= 7 MEGAWATTS && prob(5))
 		expand_grub()
+		return TRUE
+
+/mob/living/simple_mob/animal/solargrub_larva/PhysicalLife()
+	if((. = ..()))
 		return
 
 	if(istype(loc, /obj/machinery))
-		if(machine_effect && air_master.current_cycle%30)
-			for(var/mob/M in player_list)
+		// to anyone who sees me on git blame, i'm not responsible for this shit code ~silicons
+		if(machine_effect && (SSair.current_cycle % 30))
+			for(var/mob/M in GLOB.player_list)
 				SEND_IMAGE(M, machine_effect)
 		if(prob(10))
 			sparks.start()
-		return
 
 /mob/living/simple_mob/animal/solargrub_larva/attack_target(atom/A)
-	if(istype(A, /obj/machinery) && !istype(A, /obj/machinery/atmospherics/unary/vent_pump))
+	if(istype(A, /obj/machinery) && !istype(A, /obj/machinery/atmospherics/component/unary/vent_pump))
 		var/obj/machinery/M = A
 		if(is_type_in_list(M, ignored_machine_types))
 			return
@@ -111,8 +113,8 @@ var/global/list/grub_machine_overlays = list()
 		enter_machine(M)
 		return TRUE
 
-	if(istype(A, /obj/machinery/atmospherics/unary/vent_pump))
-		var/obj/machinery/atmospherics/unary/vent_pump/V = A
+	if(istype(A, /obj/machinery/atmospherics/component/unary/vent_pump))
+		var/obj/machinery/atmospherics/component/unary/vent_pump/V = A
 		if(V.welded)
 			return
 		do_ventcrawl(V)
@@ -130,7 +132,7 @@ var/global/list/grub_machine_overlays = list()
 	if(!(M.type in grub_machine_overlays))
 		generate_machine_effect(M)
 	machine_effect = image(grub_machine_overlays[M.type], M) //Can't do this the reasonable way with an overlay,
-	for(var/mob/L in player_list)				//because nearly every machine updates its icon by removing all overlays first
+	for(var/mob/L in GLOB.player_list)				//because nearly every machine updates its icon by removing all overlays first
 		SEND_IMAGE(L, machine_effect)
 
 /mob/living/simple_mob/animal/solargrub_larva/proc/generate_machine_effect(var/obj/machinery/M)
@@ -148,18 +150,20 @@ var/global/list/grub_machine_overlays = list()
 	forceMove(get_turf(M))
 	sparks.start()
 	if(machine_effect)
-		for(var/mob/L in player_list)
+		for(var/mob/L in GLOB.player_list)
 			L.client?.images -= machine_effect
 		QDEL_NULL(machine_effect)
-	ai_holder.target = null
+	if(istype(src.ai_holder, /datum/ai_holder/polaris))
+		var/datum/ai_holder/polaris/ai_holder = src.ai_holder
+		ai_holder.target = null
 	powermachine.draining = 1
 	spawn(30)
 		set_AI_busy(FALSE)
 
-/mob/living/simple_mob/animal/solargrub_larva/proc/do_ventcrawl(var/obj/machinery/atmospherics/unary/vent_pump/vent)
+/mob/living/simple_mob/animal/solargrub_larva/proc/do_ventcrawl(var/obj/machinery/atmospherics/component/unary/vent_pump/vent)
 	if(!vent)
 		return
-	var/obj/machinery/atmospherics/unary/vent_pump/end_vent = get_safe_ventcrawl_target(vent)
+	var/obj/machinery/atmospherics/component/unary/vent_pump/end_vent = get_safe_ventcrawl_target(vent)
 	if(!end_vent)
 		return
 	forceMove(vent)
@@ -203,23 +207,22 @@ var/global/list/grub_machine_overlays = list()
 	var/mob/living/simple_mob/animal/solargrub_larva/grub
 
 
-/datum/ai_holder/simple_mob/solargrub_larva
+/datum/ai_holder/polaris/simple_mob/solargrub_larva
 	//var/fleeing
 	var/static/list/ignored_machine_types = list(
-		/obj/machinery/atmospherics/unary/vent_scrubber,
+		/obj/machinery/atmospherics/component/unary/vent_scrubber,
 		/obj/machinery/door/firedoor,
 		/obj/machinery/button/windowtint
 		)
 	var/list/ignored_targets = list()
 
-/datum/ai_holder/simple_mob/solargrub_larva/list_targets()
-	var/static/potential_targets = typecacheof(list(/obj/machinery))
+/datum/ai_holder/polaris/simple_mob/solargrub_larva/list_targets()
 	var/list/actual_targets = list()
 
-	for(var/AT in typecache_filter_list(range(vision_range, holder), potential_targets))
+	for(var/AT in typecache_filter_list(range(vision_range, holder), GLOB.typecache_machine))
 		var/obj/machinery/M = AT
-		if(istype(M, /obj/machinery/atmospherics/unary/vent_pump))
-			var/obj/machinery/atmospherics/unary/vent_pump/V = M
+		if(istype(M, /obj/machinery/atmospherics/component/unary/vent_pump))
+			var/obj/machinery/atmospherics/component/unary/vent_pump/V = M
 			if(!V.welded && prob(50))
 				actual_targets += M
 			continue
@@ -234,7 +237,7 @@ var/global/list/grub_machine_overlays = list()
 		actual_targets += M
 	return actual_targets
 
-/datum/ai_holder/simple_mob/solargrub_larva/can_attack(atom/movable/the_target)
+/datum/ai_holder/polaris/simple_mob/solargrub_larva/can_attack(atom/movable/the_target)
 	.=..()
 	var/obj/machinery/M = the_target
 	if(!istype(M))
@@ -249,8 +252,8 @@ var/global/list/grub_machine_overlays = list()
 		return FALSE
 	return
 
-/datum/ai_holder/simple_mob/solargrub_larva/post_melee_attack(atom/A)
-	if(istype(A, /obj/machinery) && !istype(A, /obj/machinery/atmospherics/unary/vent_pump))
+/datum/ai_holder/polaris/simple_mob/solargrub_larva/post_melee_attack(atom/A)
+	if(istype(A, /obj/machinery) && !istype(A, /obj/machinery/atmospherics/component/unary/vent_pump))
 		if(ignored_targets.len > 3)
 			ignored_targets.Cut(1,1)
 		ignored_targets += A
@@ -294,12 +297,12 @@ var/global/list/grub_machine_overlays = list()
 	idle_power_usages = split_into_3(total_idle_power_usage)
 
 
-/obj/item/multitool/afterattack(obj/O, mob/user, proximity)
-	if(proximity)
-		if(istype(O, /obj/machinery))
-			var/mob/living/simple_mob/animal/solargrub_larva/grub = locate() in O
+/obj/item/multitool/afterattack(atom/target, mob/user, clickchain_flags, list/params)
+	if(clickchain_flags & CLICKCHAIN_HAS_PROXIMITY)
+		if(istype(target, /obj/machinery))
+			var/mob/living/simple_mob/animal/solargrub_larva/grub = locate() in target
 			if(grub)
-				grub.eject_from_machine(O)
-				to_chat(user, "<span class='warning'>You disturb a grub nesting in \the [O]!</span>")
+				grub.eject_from_machine(target)
+				to_chat(user, "<span class='warning'>You disturb a grub nesting in \the [target]!</span>")
 				return
 	return ..()

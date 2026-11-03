@@ -1,4 +1,3 @@
-//This file was auto-corrected by findeclaration.exe on 25.5.2012 20:42:31
 
 var/hsboxspawn = 1
 var/list
@@ -24,7 +23,7 @@ mob
 				sandbox.owner = src.ckey
 				if(src.client.holder)
 					sandbox.admin = 1
-				verbs += new/mob/proc/sandbox_panel
+				add_verb(src, new/mob/proc/sandbox_panel)
 		sandbox_panel()
 			if(sandbox)
 				sandbox.update()
@@ -140,7 +139,7 @@ datum/hSB
 							continue
 						if(istype(O, /obj/item/dummy))
 							continue
-						if(istype(O, /obj/item/melee/energy/sword))
+						if(istype(O, /obj/item/melee/transforming/energy/sword))
 							continue
 						if(istype(O, /obj/structure))
 							continue

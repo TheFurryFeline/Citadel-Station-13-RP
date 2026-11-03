@@ -3,8 +3,8 @@
 	desc = "A combination autopainter and flash anodizer designed to give electronic assemblies a colorful, wear-resistant finish."
 	icon = 'icons/obj/integrated_electronics/electronic_tools.dmi'
 	icon_state = "detailer"
-	item_flags = NOBLUDGEON
-	w_class = ITEMSIZE_SMALL
+	item_flags = ITEM_NO_BLUDGEON | ITEM_ENCUMBERS_WHILE_HELD
+	w_class = WEIGHT_CLASS_SMALL
 	var/detail_color = COLOR_ASSEMBLY_WHITE
 	var/list/color_list = list(
 		"dark gray" = COLOR_ASSEMBLY_BLACK,
@@ -14,7 +14,7 @@
 		"orange" = COLOR_ASSEMBLY_ORANGE,
 		"beige" = COLOR_ASSEMBLY_BEIGE,
 		"brown" = COLOR_ASSEMBLY_BROWN,
-		MAT_GOLD = COLOR_ASSEMBLY_GOLD,
+		"gold" = COLOR_ASSEMBLY_GOLD,
 		"yellow" = COLOR_ASSEMBLY_YELLOW,
 		"gurkha" = COLOR_ASSEMBLY_GURKHA,
 		"light green" = COLOR_ASSEMBLY_LGREEN,
@@ -35,7 +35,7 @@
 	detail_overlay.color = detail_color
 	add_overlay(detail_overlay)
 
-/obj/item/integrated_electronics/detailer/ui_state(mob/user)
+/obj/item/integrated_electronics/detailer/ui_state()
 	return GLOB.inventory_state
 
 /obj/item/integrated_electronics/detailer/ui_interact(mob/user, datum/tgui/ui, datum/tgui/parent_ui)
@@ -44,13 +44,13 @@
 		ui = new(user, src, "ICDetailer", name)
 		ui.open()
 
-/obj/item/integrated_electronics/detailer/ui_data(mob/user, datum/tgui/ui, datum/ui_state/state)
+/obj/item/integrated_electronics/detailer/ui_data(mob/user, datum/tgui/ui)
 	var/list/data = ..()
 	data["detail_color"] = detail_color
 	data["color_list"] = color_list
 	return data
 
-/obj/item/integrated_electronics/detailer/ui_act(action, list/params, datum/tgui/ui, datum/ui_state/state)
+/obj/item/integrated_electronics/detailer/ui_act(action, list/params, datum/tgui/ui, datum/ui_state/state, datum/event_args/actor/actor)
 	if(..())
 		return TRUE
 
@@ -62,7 +62,10 @@
 			update_icon()
 			return TRUE
 
-/obj/item/integrated_electronics/detailer/attack_self(mob/user)
+/obj/item/integrated_electronics/detailer/attack_self(mob/user, datum/event_args/actor/actor)
+	. = ..()
+	if(.)
+		return
 	ui_interact(user)
 	// Leaving this commented out in case someone decides that this would be better as an "any color" selection system
 	// Just uncomment this and get rid of all of the TGUI bullshit lol

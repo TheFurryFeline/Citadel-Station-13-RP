@@ -1,6 +1,12 @@
-// Reorganized and somewhat cleaned up.
-// AI code has been made into a datum, inside the AI module folder.
-
+/**
+ * Simple mobs.
+ *
+ * * Unlike /carbon's and /silicon's, these are slightly less
+ *   composition-based, with most of their properties in their
+ *   frankly ridiculous amount of variables.
+ * * These tend to not have detailed simulation like attack
+ *   zones and whatnot being handled.
+ */
 /mob/living/simple_mob
 	name = "animal"
 	desc = ""
@@ -14,14 +20,26 @@
 	mob_swap_flags = ~HEAVY
 	mob_push_flags = ~HEAVY
 
+	iff_factions = MOB_IFF_FACTION_BIND_AUTO
+
+	//* Attacks - Basic *//
+	/// melee style
+	var/datum/melee_attack/unarmed/melee_style
+
+	//? Darksight
+	/// our innate darksight
+	var/datum/vision/baseline/vision_innate = /datum/vision/baseline/default
+
+	//* Inventory *//
+	/// how many hands we have
+	var/hand_count = 0
+
 	///Tooltip description
 	var/tt_desc = null
 
 	//* Settings for played mobs *//
 	/// Does the percentage health show in the stat panel for the mob
 	var/show_stat_health = TRUE
-	/// Set to TRUE to enable the use of hands and the hands hud
-	var/has_hands = FALSE
 	/// Can a player in this mob use things like guns or AI cards?
 	var/humanoid_hands = FALSE
 	/// Used in IsHumanoidToolUser. 'Your X are not fit-'.
@@ -30,12 +48,11 @@
 	var/list/hud_gears
 	/// Icon file path to use for the HUD, otherwise generic icons are used
 	var/ui_icons
-	/// If they have hands, they could use some icons.
-	var/r_hand_sprite
-	/// If they have hands, they could use some icons.
-	var/l_hand_sprite
 	/// Message to print to players about 'how' to play this mob on login.
 	var/player_msg
+
+	//inv slots
+	var/list/inventory_slots
 
 	//* Mob icon/appearance settings *//
 	/// The iconstate if we're alive. //!REQUIRED
@@ -63,9 +80,10 @@
 	/// Text name of their language if they speak something other than galcom. They speak the first one.
 	var/has_langs = list(LANGUAGE_GALCOM)
 
-	//* Movement things. *//
-	/// Lower is faster.
-	var/movement_cooldown = 5
+	//* Movement *//
+	/// Base movement speed in tiles per second
+	var/movement_base_speed = 2
+
 	/// If set, will play this sound when it moves on its own will.
 	var/movement_sound = null
 	/// If set, plays the sound when the mob's dir changes in most cases.
@@ -83,13 +101,14 @@
 	/// If clicked on harm intent.
 	var/response_harm   = "tries to hurt"
 	/// Mobs on this list wont get attacked regardless of faction status.
+	// TODO: THIS IS A GC FAILURE!
 	var/list/friends = list()
 	/// How much an unarmed harm click does to this mob.
 	var/harm_intent_damage = 3
 	/// The list of lootable objects to drop, with "/path = prob%" structure
 	var/list/loot_list = list()
 	/// An ID card if they have one to give them access to stuff.
-	var/obj/item/card/id/myid
+	var/obj/item/card/id/access_card
 
 	//* Mob environment settings *//
 	/// Minimum "okay" temperature in kelvin
@@ -123,7 +142,7 @@
 
 	//* Hostility settings *//
 	/// Is the mob weak to tasers?
-	var/taser_kill = 1
+	var/taser_kill = FALSE
 
 	//* Attack ranged settings *//
 	/// The projectiles I shoot.
@@ -150,10 +169,13 @@
 	var/reload_sound = 'sound/weapons/flipblade.ogg'
 
 	//* Mob melee settings *//
+
 	/// Lower bound of randomized melee damage.
-	var/melee_damage_lower = 2
+	//! Legacy var, do not use
+	var/legacy_melee_damage_lower = 2
 	/// Upper bound of randomized melee damage.
-	var/melee_damage_upper = 6
+	//! Legacy var, do not use
+	var/legacy_melee_damage_upper = 6
 	/// "You are [attacktext] by the mob!"
 	var/list/attacktext = list("attacked")
 	/// "The mob [friendly] the person."
@@ -198,28 +220,6 @@
 	//* Damage resistances *//
 	/// Chance for a grab attempt to fail. Note that this is not a true resist and is just a prob() of failure.
 	var/grab_resist = 0
-	/// Damage reduction for all types
-	var/resistance = 0
-	/// Values for normal getarmor() checks
-	var/list/armor = list(
-				"melee" = 0,
-				"bullet" = 0,
-				"laser" = 0,
-				"energy" = 0,
-				"bomb" = 0,
-				"bio" = 100,
-				"rad" = 100
-				)
-	/// Values for getsoak() checks.
-	var/list/armor_soak = list(
-				"melee" = 0,
-				"bullet" = 0,
-				"laser" = 0,
-				"energy" = 0,
-				"bomb" = 0,
-				"bio" = 0,
-				"rad" = 0
-				)
 	// Protection against heat/cold/electric/water effects.
 	// 0 is no protection, 1 is total protection. Negative numbers increase vulnerability.
 	var/heat_resist = 0.0
@@ -250,38 +250,38 @@
 	/// Used for if the mob can drop limbs. Overrides the icon cache key, so it doesn't keep remaking the icon needlessly.
 	var/limb_icon_key
 
-//* randomization code. *//
-/mob/living/simple_mob/proc/randomize()
-	if(randomized == TRUE)
-		var/mod = rand(mod_min,mod_max)/100
-		size_multiplier = mod
-		maxHealth = round(maxHealth*mod)
-		health = round(health*mod)
-		melee_damage_lower = round(melee_damage_lower*mod)
-		melee_damage_upper = round(melee_damage_upper*mod)
-		movement_cooldown = round(movement_cooldown*mod)
-		meat_amount = round(meat_amount*mod)
-		update_icons()
+	//  todo: remove
+	/// legacy armor, applied on init
+	var/list/armor_legacy_mob
+
+	///Does the simple mob drop organs when butchered?
+	butchery_drops_organs = FALSE
 
 /mob/living/simple_mob/Initialize(mapload)
-	verbs -= /mob/verb/observe
+	if(armor_legacy_mob)
+		var/list/translated = list()
+		for(var/key in armor_legacy_mob)
+			translated[key] = armor_legacy_mob[key] * 0.01 // new armor is / 100
+		set_armor(translated)
+	init_melee_style()
+
+	remove_verb(src, /mob/verb/observe)
 	health = maxHealth
 	randomize()
 
 	for(var/L in has_langs)
-		languages |= GLOB.all_languages[L]
+		languages |= RSlanguages.legacy_resolve_language_name(L)
 	if(languages.len)
 		default_language = languages[1]
 
 	if(has_eye_glow)
 		add_eyes()
-
 	return ..()
 
 /mob/living/simple_mob/Destroy()
+	release_vore_contents()
 	default_language = null
-	if(myid)
-		QDEL_NULL(myid)
+	QDEL_NULL(access_card)
 
 	friends.Cut()
 	languages.Cut()
@@ -290,21 +290,47 @@
 		remove_eyes()
 	return ..()
 
+/mob/living/simple_mob/init_inventory()
+	if(inventory)
+		return
+	inventory = new(src)
+	inventory.set_inventory_slots(inventory_slots)
+	inventory.set_hand_count(get_usable_hand_count())
+
+/mob/living/simple_mob/proc/init_melee_style()
+	melee_style = new
+	melee_style.damage = 0
+	melee_style.damage_add_low = legacy_melee_damage_lower
+	melee_style.damage_add_high = legacy_melee_damage_upper
+	melee_style.damage_mode = (attack_sharp? DAMAGE_MODE_SHARP : NONE) | (attack_edge? DAMAGE_MODE_EDGE : NONE)
+	melee_style.damage_flag = attack_armor_type
+	//* IT'S GAMER TIME *//
+	melee_style.damage_tier = 5
+	melee_style.attack_verb_legacy = attacktext
+	melee_style.verb_past_participle = attacktext
+
+//* randomization code. *//
+/mob/living/simple_mob/proc/randomize()
+	if(randomized == TRUE)
+		var/mod = rand(mod_min,mod_max)/100
+		size_multiplier = mod
+		maxHealth = round(maxHealth*mod)
+		health = round(health*mod)
+		legacy_melee_damage_lower = round(legacy_melee_damage_lower*mod)
+		legacy_melee_damage_upper = round(legacy_melee_damage_upper*mod)
+		movement_base_speed = movement_base_speed * mod
+		meat_amount = round(meat_amount*mod)
+		update_icons()
+		update_movespeed_base()
+
 /mob/living/simple_mob/death()
 	update_icon()
 	..()
-
 
 //Client attached
 /mob/living/simple_mob/Login()
 	. = ..()
 	to_chat(src,"<b>You are \the [src].</b> [player_msg]")
-
-
-/mob/living/simple_mob/emote(var/act, var/type, var/desc)
-	if(act)
-		..(act, type, desc)
-
 
 /mob/living/simple_mob/SelfMove(turf/n, direct)
 	var/turf/old_turf = get_turf(src)
@@ -317,20 +343,10 @@
 		playsound(src, turn_sound, 50, 1)
 	else if(movement_sound && old_turf != get_turf(src)) // Playing both sounds at the same time generally sounds bad.
 		playsound(src, movement_sound, 50, 1)
-/*
-/mob/living/simple_mob/setDir(new_dir)
-	if(dir != new_dir)
-		playsound(src, turn_sound, 50, 1)
-	return ..()
-*/
-/mob/living/simple_mob/movement_delay()
+
+/mob/living/simple_mob/legacy_movement_delay()
 	. = ..()
 	var/tally = 0 //Incase I need to add stuff other than "speed" later
-
-	tally = movement_cooldown
-
-	if(force_max_speed)
-		return -3
 
 	for(var/datum/modifier/M in modifiers)
 		if(!isnull(M.haste) && M.haste == TRUE)
@@ -340,38 +356,34 @@
 
 	// Turf related slowdown
 	var/turf/T = get_turf(src)
-	if(T && T.movement_cost && !hovering) // Flying mobs ignore turf-based slowdown. Aquatic mobs ignore water slowdown, and can gain bonus speed in it.
+	if(T && T.slowdown && !is_avoiding_ground()) // Flying mobs ignore turf-based slowdown. Aquatic mobs ignore water slowdown, and can gain bonus speed in it.
 		if(istype(T,/turf/simulated/floor/water) && aquatic_movement)
 			tally -= aquatic_movement - 1
 		else
-			tally += T.movement_cost
+			tally += T.slowdown
 
 	if(purge)//Purged creatures will move more slowly. The more time before their purge stops, the slower they'll move.
 		if(tally <= 0)
 			tally = 1
 		tally *= purge
 
-	if(m_intent == "walk")
-		tally *= 1.5
-
-	return . + tally + config_legacy.animal_delay
+	return . + tally
 
 
-/mob/living/simple_mob/Stat()
-	..()
-	if(statpanel("Status") && show_stat_health)
-		stat(null, "Health: [round((health / getMaxHealth()) * 100)]%")
+/mob/living/simple_mob/statpanel_data(client/C)
+	. = ..()
+	if(C.statpanel_tab("Status") && show_stat_health)
+		INJECT_STATPANEL_DATA_LINE(., "Health: [round((health / getMaxHealth()) * 100)]%")
 
-/mob/living/simple_mob/lay_down()
-	..()
+/mob/living/simple_mob/set_resting(value)
+	. = ..()
 	if(resting && icon_rest)
 		icon_state = icon_rest
 	else
 		icon_state = icon_living
 	update_icon()
 
-
-/mob/living/simple_mob/say(var/message, var/datum/language/speaking = null, var/verb="says", var/alt_name="", var/whispering = 0)
+/mob/living/simple_mob/say(var/message, var/datum/prototype/language/speaking = null, var/verb="says", var/alt_name="", var/whispering = 0)
 	verb = "says"
 	if(speak_emote.len)
 		verb = pick(speak_emote)
@@ -387,10 +399,10 @@
 //TODO: This needs to be phased out for a newer butchering system. Though I am too scared to undo all our custom stuff. -Zandario
 // Harvest an animal's delicious byproducts
 /mob/living/simple_mob/harvest(mob/user)
-	var/actual_meat_amount = pick(0, meat_amount)
-	var/actual_bone_amount = pick(0, bone_amount)
-	var/actual_hide_amount = pick(0, hide_amount)
-	var/actual_exotic_amount = pick(0, exotic_amount)
+	var/actual_meat_amount = rand(0, meat_amount)
+	var/actual_bone_amount = rand(0, bone_amount)
+	var/actual_hide_amount = rand(0, hide_amount)
+	var/actual_exotic_amount = rand(0, exotic_amount)
 	if(stat != DEAD)
 		return
 	if(meat_type)
@@ -409,7 +421,7 @@
 			new exotic_type(drop_location())
 	if(issmall(src))
 		user?.visible_message("<span class='danger'>[user] chops up \the [src]!</span>")
-		new /obj/effect/decal/cleanable/blood/splatter(get_turf(src))
+		new /obj/effect/debris/cleanable/blood/splatter(get_turf(src))
 		qdel(src)
 	else
 		user.visible_message("<span class='danger'>[user] butchers \the [src] messily!</span>")
@@ -441,3 +453,13 @@
 	. = ..()
 	if(. && (!is_sharp(I) || !has_edge(I)))
 		return FALSE
+
+//* Inventory *//
+
+/mob/living/simple_mob/get_usable_hand_count()
+	return hand_count
+
+/mob/living/simple_mob/get_usable_hand_indices()
+	. = list()
+	for(var/i in 1 to hand_count)
+		. += i

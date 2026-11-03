@@ -2,7 +2,6 @@
 	name = "meat"
 	desc = "A slab of meat."
 	icon_state = "meat"
-	health = 180
 	filling_color = "#FF1C1C"
 	center_of_mass = list("x"=16, "y"=14)
 
@@ -32,7 +31,7 @@
 	else
 		..()
 
-/obj/item/reagent_containers/food/snacks/meat/syntiflesh
+/obj/item/reagent_containers/food/snacks/meat/synthflesh
 	name = "synthetic meat"
 	desc = "A synthetic slab of flesh."
 
@@ -57,9 +56,19 @@
 	filling_color = "#BBBBAA"
 
 /obj/item/reagent_containers/food/snacks/meat/chicken/Initialize(mapload)
-		..()
-		reagents.remove_reagent("triglyceride", INFINITY)
-		//Chicken is low fat. Less total calories than other meats
+	. = ..()
+	reagents.remove_reagent("triglyceride", INFINITY)
+	//Chicken is low fat. Less total calories than other meats
+
+/obj/item/reagent_containers/food/snacks/meat/sandsifter
+	icon = 'icons/obj/food.dmi'
+	icon_state = "chickenbreast"
+	cooked_icon = "chickenbreast_cooked"
+	filling_color = "#AE625F"
+
+/obj/item/reagent_containers/food/snacks/meat/sandsifter/Initialize(mapload)
+	. = ..()
+	reagents.remove_reagent("triglyceride", INFINITY)
 
 /obj/item/reagent_containers/food/snacks/meat/chicken/penguin
 	name = "meat"

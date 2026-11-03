@@ -1,4 +1,4 @@
-var/global/datum/ntnet/ntnet_global = new()
+var/global/datum/ntnet/ntnet_global
 
 
 // This is the NTNet datum. There can be only one NTNet datum in game at once. Modular computers read data from this.
@@ -31,7 +31,9 @@ var/global/datum/ntnet/ntnet_global = new()
 /datum/ntnet/New()
 	if(ntnet_global && (ntnet_global != src))
 		ntnet_global = src // There can be only one.
-	for(var/obj/machinery/ntnet_relay/R in machines)
+
+/datum/ntnet/proc/initialize_ntnet()
+	for(var/obj/machinery/ntnet_relay/R in GLOB.machines)
 		relays.Add(R)
 		R.NTNet = src
 	build_software_lists()
@@ -152,7 +154,7 @@ var/global/datum/ntnet/ntnet_global = new()
 	if(!lognumber)
 		return 0
 	// Trim the value if necessary
-	lognumber = between(MIN_NTNET_LOGS, lognumber, MAX_NTNET_LOGS)
+	lognumber = clamp( lognumber, MIN_NTNET_LOGS,  MAX_NTNET_LOGS)
 	setting_maxlogcount = lognumber
 	add_log("Configuration Updated. Now keeping [setting_maxlogcount] logs in system memory.")
 
@@ -180,5 +182,7 @@ var/global/datum/ntnet/ntnet_global = new()
 			return 1
 	return 0
 
-
-
+/datum/ntnet/proc/get_chat_channel_by_id(id)
+	for(var/datum/ntnet_conversation/chan in chat_channels)
+		if(chan.id == id)
+			return chan

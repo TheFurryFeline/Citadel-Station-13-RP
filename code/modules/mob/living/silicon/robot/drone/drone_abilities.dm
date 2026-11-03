@@ -21,11 +21,11 @@
 
 	return
 
-/mob/living/silicon/robot/drone/MouseDrop(var/atom/over_object)
+/mob/living/silicon/robot/drone/OnMouseDropLegacy(var/atom/over_object)
 	var/mob/living/carbon/human/H = over_object
 	if(!istype(H) || !Adjacent(H))
 		return ..()
-	if(H.a_intent == "grab" && hat && !(H.l_hand && H.r_hand))
+	if(H.a_intent == "grab" && hat && !H.are_usable_hands_full())
 		hat.loc = get_turf(src)
 		H.put_in_hands(hat)
 		H.visible_message(SPAN_DANGER("\The [H] removes \the [src]'s [hat]."))

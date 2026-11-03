@@ -25,7 +25,7 @@
 	tt_desc = "S Choeros shantak"
 	catalogue_data = list(/datum/category_item/catalogue/fauna/shantak)
 
-	faction = "shantak"
+	iff_factions = MOB_IFF_FACTION_BIND_TO_MAP
 
 	icon_state = "shantak"
 	icon_living = "shantak"
@@ -34,20 +34,11 @@
 
 	maxHealth = 75
 	randomized = TRUE
-	armor_soak = list(
-				"melee" = 5,
-				"bullet" = 0,
-				"laser" = 0,
-				"energy" = 0,
-				"bomb" = 0,
-				"bio" = 0,
-				"rad" = 0
-				)
 
-	movement_cooldown = 5
+	movement_base_speed = 10 / 5
 
-	melee_damage_lower = 6
-	melee_damage_upper = 14
+	legacy_melee_damage_lower = 6
+	legacy_melee_damage_upper = 14
 	base_attack_cooldown = 1 SECOND
 	melee_attack_delay = 0.5 SECONDS
 	attack_armor_pen = 5
@@ -83,9 +74,9 @@
 			continue
 		if(!S.ai_holder)
 			continue
-		if(S.faction != src.faction)
+		if(!S.shares_iff_faction(src))
 			continue
-		var/datum/ai_holder/AI = S.ai_holder
+		var/datum/ai_holder/polaris/AI = S.ai_holder
 		AI.set_follow(src)
 
 // Variant that automatically commands nearby allies to follow it when created.
@@ -97,11 +88,10 @@
 
 // These ones only retaliate. Used for a PoI.
 /mob/living/simple_mob/animal/sif/shantak/retaliate
-	ai_holder_type = /datum/ai_holder/simple_mob/retaliate
+	ai_holder_type = /datum/ai_holder/polaris/simple_mob/retaliate
 
-//Vorestation Addition
 /mob/living/simple_mob/animal/sif/shantak/scruffy
 	name = "Scruffy"
-	ai_holder_type = /datum/ai_holder/simple_mob/passive
+	ai_holder_type = /datum/ai_holder/polaris/simple_mob/passive
 	makes_dirt = 0
-	faction = "neutral"
+	iff_factions = MOB_IFF_FACTION_NEUTRAL

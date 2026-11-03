@@ -22,11 +22,6 @@
 #define DM_TRANSFORM_KEEP_GENDER					"Transform (Keep Gender)"
 #define DM_TRANSFORM_REPLICA						"Transform (Replica Of Self)"
 #define DM_TRANSFORM_CHANGE_SPECIES_AND_TAUR		"Transform (Change Species and Taur)"
-#define DM_TRANSFORM_CHANGE_SPECIES_AND_TAUR_EGG	"Transform (Change Species and Taur) (EGG)"
-#define DM_TRANSFORM_REPLICA_EGG					"Transform (Replica Of Self) (EGG)"
-#define DM_TRANSFORM_KEEP_GENDER_EGG				"Transform (Keep Gender) (EGG)"
-#define DM_TRANSFORM_MALE_EGG						"Transform (Male) (EGG)"
-#define DM_TRANSFORM_FEMALE_EGG						"Transform (Female) (EGG)"
 
 //Addon mode flags
 #define DM_FLAG_NUMBING			0x1
@@ -45,6 +40,8 @@
 // Defines for weight system
 #define MIN_MOB_WEIGHT			70
 #define MAX_MOB_WEIGHT			500
-#define MIN_NUTRITION_TO_GAIN	450	// Above this amount you will gain weight
-#define MAX_NUTRITION_TO_LOSE	50	// Below this amount you will lose weight
+/// Above this amount you will gain weight
+#define MIN_NUTRITION_TO_GAIN	450
+/// Below this amount you will lose weight
+#define MAX_NUTRITION_TO_LOSE	50
 // #define WEIGHT_PER_NUTRITION	0.0285 // Tuned so 1050 (nutrition for average mob) = 30 lbs

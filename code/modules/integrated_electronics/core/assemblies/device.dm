@@ -1,6 +1,6 @@
 /obj/item/assembly/electronic_assembly
 	name = "electronic device"
-	desc = "It's a case for building electronics with. It can be attached to other small devices."
+	desc = "It's a case for building electronics with.  It can be attached to other small devices."
 	icon_state = "setup_device"
 	var/opened = 0
 
@@ -39,25 +39,28 @@
 	if(opened)
 		icon_state = icon_state + "-open"
 
-/obj/item/assembly/electronic_assembly/attack_self(mob/user as mob)
+/obj/item/assembly/electronic_assembly/attack_self(mob/user, datum/event_args/actor/actor)
+	. = ..()
+	if(.)
+		return
 	if(EA)
 		EA.attack_self(user)
 
 /obj/item/assembly/electronic_assembly/pulsed(var/radio = 0)						//Called when another assembly acts on this one, var/radio will determine where it came from for wire calcs
 	if(EA)
-		for(var/obj/item/integrated_circuit/built_in/device_input/I in EA.contents)
+		for(var/obj/item/integrated_circuit/built_in/device_input/I in EA.assembly_components)
 			I.do_work()
 		return
 
-/obj/item/assembly/electronic_assembly/examine(mob/user)
+/obj/item/assembly/electronic_assembly/examine(mob/user, dist)
 	. = ..()
 	if(EA)
-		for(var/obj/item/integrated_circuit/IC in EA.contents)
+		for(var/obj/item/integrated_circuit/IC in EA.assembly_components)
 			IC.external_examine(user)
 
 /obj/item/assembly/electronic_assembly/verb/toggle()
 	set src in usr
-	set category = "Object"
+	set category = VERB_CATEGORY_OBJECT
 	set name = "Open/Close Device Assembly"
 	set desc = "Open or close device assembly!"
 
@@ -69,10 +72,9 @@
 	icon_state = "setup_device"
 	desc = "It's a tiny electronic device with specific use for attaching to other devices."
 	var/obj/item/assembly/electronic_assembly/holder
-	w_class = ITEMSIZE_TINY
+	w_class = WEIGHT_CLASS_TINY
 	max_components = IC_COMPONENTS_BASE * 3/4
 	max_complexity = IC_COMPLEXITY_BASE * 3/4
-
 
 /obj/item/electronic_assembly/device/Initialize(mapload)
 	. = ..()

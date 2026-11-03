@@ -9,18 +9,25 @@
 
 
 /area/triumph/surfacebase
-	icon = 'icons/turf/areas.dmi'
+	name = "Surface Base"
+
 /area/triumph/surfacebase/outside
 	name = "Outside - Surface"
 	sound_env = MOUNTAINS
+	is_outside = OUTSIDE_YES
+
 /area/triumph/surfacebase/outside/outside1
 	icon_state = "outside1"
+
 /area/triumph/surfacebase/outside/outside2
 	icon_state = "outside2"
+
 /area/triumph/surfacebase/outside/outside3
 	icon_state = "outside3"
+
 /area/triumph/surfacebase/outside/empty
 	name = "Outside - Empty Area"
+
 /area/triumph/surfacebase/outside/wilderness
 	name = "Outside - Wilderness"
 	icon_state = "invi"
@@ -34,6 +41,7 @@
 /area/triumph/surfacebase/tram
 	name = "\improper Tram Station"
 	icon_state = "dk_yellow"
+	area_flags = AREA_FLAG_ERODING
 /area/triumph/surfacebase/atrium_one
 	name = "\improper Atrium First Floor"
 	icon_state = "dk_yellow"
@@ -46,7 +54,7 @@
 /area/triumph/surfacebase/north_stairs_one
 	name = "\improper North Stairwell First Floor"
 	icon_state = "dk_yellow"
-/area/triumph/surfacebase/north_staires_two
+/area/triumph/surfacebase/north_stairs_two
 	name = "\improper North Stairwell Second Floor"
 	icon_state = "dk_yellow"
 /area/triumph/surfacebase/north_stairs_three
@@ -118,6 +126,7 @@
 // Solars map areas
 /area/triumph/outpost/solars_outside
 	name = "\improper Solar Farm"
+	is_outside = OUTSIDE_YES
 /area/triumph/outpost/solars_shed
 	name = "\improper Solar Farm Shed"
 //Surface med
@@ -151,13 +160,6 @@
 	name = "\improper Reading Room"
 /area/triumph/surfacebase/vacant_site
 	name = "\improper Vacant Site"
-//Shuttle crashes
-/area/shuttle/triumph/crash1
-	name = "\improper Crash Site 1"
-	icon_state = "shuttle2"
-/area/shuttle/triumph/crash2
-	name = "\improper Crash Site 2"
-	icon_state = "shuttle2"
 
 // Class D world areas
 /area/class_d
@@ -306,18 +308,108 @@
 
 //Gaia planet world areas
 /area/class_m
-	name = "Class M World"
+	name = "Gaia Station"
 	icon_state = "away"
 	requires_power = 1
 	dynamic_lighting = 1
 
 /area/class_m/inside
-	name = "Class M World - Inside (E)"
+	name = "Gaia Station - Inside (E)"
 	icon_state = "red"
 
+/area/class_m/inside/main
+	name = "Gaia Station - Main Facility"
+
+/area/class_m/inside/dorms
+	name = "Gaia Station - Dormitories"
+	icon_state = "green"
+
+/area/class_m/inside/vip_dorms
+	name = "Gaia Station - Premium Dormitories"
+	icon_state = "green"
+
+/area/class_m/inside/bathroom
+	name = "Gaia Station - Bathrooms"
+	icon_state = "green"
+
+/area/class_m/inside/cabin
+	name = "Gaia Station - Cabin"
+
+/area/class_m/inside/islandbeachhouse
+	name = "Gaia Station - Island Beach House"
+
+/area/class_m/inside/sauna
+	name = "Gaia Station - Main Sauna"
+
+/area/class_m/inside/sauna2
+	name = "Gaia Station - Beach Sauna"
+
+/area/class_m/inside/sauna3
+	name = "Gaia Station - Island Sauna"
+
+/area/class_m/inside/garage
+	name = "Gaia Station - Garage"
+
+/area/class_m/inside/hotspringcaves
+	name = "Gaia Station - Hotspring Caves"
+
+/area/class_m/inside/igloos
+	name = "Gaia Station - Igloos"
+
+/area/class_m/inside/hangars
+	name = "Gaia Station - Hangars"
+
+/area/class_m/inside/reception
+	name = "Gaia Station - Reception Area"
+
+/area/class_m/inside/maintenance
+	name = "Gaia Station - Maintnence Areas"
+
+/area/class_m/inside/maintenance/winter
+	name = "Gaia Station - Winter Biome Maintenance"
+
+/area/class_m/inside/maintenance/desert
+	name = "Gaia Station - Dessert Biome Maintenance"
+
+/area/class_m/inside/entrance
+	name = "Gaia Station - Park Gate"
+
+/area/class_m/inside/coats
+	name = "Gaia Station - Coat Room"
+
+/area/class_m/inside/staff
+	name = "Gaia Station - Staff Room"
+
 /area/class_m/outside
-	name = "Class M World - Outside (UE)"
+	name = "Gaia Station - 'Outside' (UE)"
+	icon_state = "bluenew"
+	is_outside = OUTSIDE_YES
+
+/area/class_m/outside/beach
+	name = "Gaia Station - Beach"
 	icon_state = "yellow"
+
+/area/class_m/outside/beachmiddle
+	name = "Gaia Station - Beach Center"
+	icon_state = "purple"
+
+/area/class_m/outside/island
+	name = "Gaia Station - Island"
+	icon_state = "purple"
+
+/area/class_m/outside/island2
+	name = "Gaia Station - Island"
+	icon_state = "blue"
+
+/area/class_m/outside/docks
+	name = "Gaia Station - Docks"
+
+/area/class_m/outside/winter
+	name = "Gaia Station - Winter Biome"
+
+/area/class_m/outside/desert
+	name = "Gaia Station - Desert Biome"
+
 
 // Frozen planet world areas
 /area/class_p
@@ -401,14 +493,58 @@
 	name = "\improper Excursion Shuttle - Pirate Base"
 
 /area/piratebase
-	name = "Away Mission - Pirate Base"
+	name = "Pirate Base"
 	icon = 'icons/turf/areas.dmi'
 	icon_state = "dark"
-
-/area/piratebase/facility
-	icon_state = "debrisexplored"
 	forced_ambience = list('sound/ambience/tension/tension.ogg', 'sound/ambience/tension/horror.ogg')
-	requires_power = FALSE
+
+/area/piratebase/dock
+	name = "Pirate Base - Dock"
+	icon_state = "debrisexplored"
+
+/area/piratebase/sickbay
+	name = "Pirate Base - Sickbay"
+	icon_state = "debrisexplored"
+
+/area/piratebase/mess
+	name = "Pirate Base - Mess Hall"
+	icon_state = "debrisexplored"
+
+/area/piratebase/bunks
+	name = "Pirate Base - Bunks"
+	icon_state = "debrisexplored"
+
+/area/piratebase/captain
+	name = "Pirate Base - Captain's Quarters"
+	icon_state = "debrisexplored"
+
+/area/piratebase/vault
+	name = "Pirate Base - Vault"
+	icon_state = "debrisexplored"
+
+/area/piratebase/atmospherics
+	name = "Pirate Base - Atmospherics"
+	icon_state = "debrisexplored"
+
+/area/piratebase/construction
+	name = "Pirate Base - Construction Zone"
+	icon_state = "debrisexplored"
+
+/area/piratebase/mining
+	name = "Pirate Base - Mining Operations"
+	icon_state = "debrisexplored"
+
+/area/piratebase/power
+	name = "Pirate Base - Power Management"
+	icon_state = "debrisexplored"
+
+/area/piratebase/halls
+	name = "Pirate Base - Halls"
+	icon_state = "debrisexplored"
+
+/area/piratebase/brig
+	name = "Pirate Base - Brig"
+	icon_state = "debrisexplored"
 
 ////////////////////////////////////
 //// END TRIUMPH SPECIFIC AREAS ////
@@ -434,23 +570,29 @@
 	name = "Away Mission - Trade Port"
 	icon = 'icons/turf/areas.dmi'
 	icon_state = "dark"
-	flags = RAD_SHIELDED
+	area_flags = AREA_RAD_SHIELDED
 	requires_power = 1
+	ambience = AMBIENCE_GENERIC
 
 /area/tradeport/facility
 	icon_state = "red"
 
 /area/tradeport/engineering
 	icon_state = "yellow"
+	ambience = AMBIENCE_ENGINEERING
 
 /area/tradeport/commons
 	icon_state = "green"
 
 /area/tradeport/dock
 	icon_state = "blue"
+	ambience = AMBIENCE_HANGAR
+	sound_env = LARGE_ENCLOSED
 
 /area/tradeport/pads
 	icon_state = "purple"
+	ambience = AMBIENCE_HANGAR
+	sound_env = LARGE_ENCLOSED
 
 /area/tradeport/spine
 	name = "\improper Commerce Spine"
@@ -478,9 +620,11 @@
 
 /area/tradeport/medical
 	icon_state = "blue"
+	sound_env = SMALL_ENCLOSED
 
 /area/tradeport/atmospherics
 	icon_state = "yellow"
+	ambience = AMBIENCE_ATMOS
 
 /area/tradeport/exterior
 
@@ -493,7 +637,7 @@
 //////// Mothership areas ////////
 /area/mothership
 	requires_power = 1
-	flags = RAD_SHIELDED
+	area_flags = AREA_RAD_SHIELDED
 	icon_state = "blue-red2"
 /area/mothership/breakroom
 	name = "Warship - Breakroom"
@@ -525,7 +669,7 @@
 	name = "Warship - Surgery"
 /area/mothership/vault
 	name = "Warship - Vault"
-	flags = RAD_SHIELDED | BLUE_SHIELDED
+	area_flags = AREA_RAD_SHIELDED | AREA_FLAG_BLUE_SHIELDED
 /area/mothership/teleporter
 	name = "Warship - Teleporter Room"
 /area/mothership/security
@@ -550,7 +694,7 @@
 	name = "Warship - Warden"
 /area/mothership/armory
 	name = "Warship - Armory"
-	flags = RAD_SHIELDED | BLUE_SHIELDED
+	area_flags = AREA_RAD_SHIELDED | AREA_FLAG_BLUE_SHIELDED
 /area/mothership/bridge
 	name = "Warship - Bridge"
 /area/mothership/holodeck
@@ -576,7 +720,7 @@
 	icon_state = "yellow"
 	requires_power = 0
 	dynamic_lighting = 0
-	flags = RAD_SHIELDED
+	area_flags = AREA_RAD_SHIELDED
 	ambience = AMBIENCE_HIGHSEC
 /area/skipjack_station/transit
 	name = "transit"
@@ -594,7 +738,7 @@
 	name = "\improper Ninja Base"
 	icon_state = "green"
 	requires_power = 0
-	flags = RAD_SHIELDED
+	area_flags = AREA_RAD_SHIELDED
 	ambience = AMBIENCE_HIGHSEC
 /area/ninja_dojo/dojo
 	name = "\improper Clan Dojo"
@@ -613,113 +757,10 @@
 	icon_state = "shuttle"
 	dynamic_lighting = 0
 
-
 // Lavaland
 /area/shuttle/excursion/lavaland
 	name = "Shuttle Landing Point"
-	flags = RAD_SHIELDED
-
-/area/lavaland
-	name = "Lava Land"
-	icon_state = "away"
-	requires_power = 1
-	dynamic_lighting = 1
-
-/area/lavaland/horrors
-	name = "Lava Land - Horrors"
-
-/area/lavaland/dogs
-	name = "Lava Land - Dogs"
-
-/area/lavaland/idleruins
-	name = "Lava Land - Idle Ruins"
-
-/area/lavaland/bosses
-	name = "Lava Land - Boss"
-	requires_power = 0
-
-/area/lavaland/central/base
-	name = "Lava Land (Center) - Mining Base"
-	icon_state = "green"
-
-/area/lavaland/central/base/common
-	name = "Lava Land (Center) - Mining Base"
-	icon_state = "blue"
-
-/area/lavaland/central/explored
-	name = "Lava Land (Center) - Thoroughfare"
-	icon_state = "red"
-
-/area/lavaland/central/unexplored
-	name = "Lava Land (Center) - Unknown"
-	icon_state = "yellow"
-
-/area/lavaland/central/transit
-	name = "Lava Land (Center) - Transit"
-	icon_state = "blue"
-
-/area/lavaland/north/explored
-	name = "Lava Land (North) - Thoroughfare"
-	icon_state = "red"
-
-/area/lavaland/north/unexplored
-	name = "Lava Land (North) - Unknown"
-	icon_state = "yellow"
-
-/area/lavaland/south/explored
-	name = "Lava Land (South) - Thoroughfare"
-	icon_state = "red"
-
-/area/lavaland/south/unexplored
-	name = "Lava Land (South) - Unknown"
-	icon_state = "yellow"
-
-/area/lavaland/east/explored
-	name = "Lava Land (East) - Thoroughfare"
-	icon_state = "red"
-
-/area/lavaland/east/unexplored
-	name = "Lava Land (East) - Unknown"
-	icon_state = "yellow"
-
-/area/lavaland/east/colony
-	name = "Lava Land (East) - Colony"
-	icon_state = "blue"
-
-/area/lavaland/east/transit
-	name = "Lava Land (East) - Transit"
-	icon_state = "blue"
-
-/area/lavaland/east/lab
-	name = "Lava Land (East) - S4"
-
-/area/lavaland/east/lab/core
-	name = "Lava Land (East) - S4"
-	icon_state = "blue"
-
-/area/lavaland/east/lab/containment
-	name = "Lava Land (East) - S4 Containment"
-	icon_state = "blue"
-
-/area/lavaland/east/lab/bunker
-	name = "Lava Land (East) - S4 Bunker"
-	icon_state = "blue"
-
-/area/lavaland/west/explored
-	name = "Lava Land (West) - Thoroughfare"
-	icon_state = "red"
-
-/area/lavaland/west/unexplored
-	name = "Lava Land (West) - Unknown"
-	icon_state = "yellow"
-
-/area/lavaland/dungeon/exterior
-	name = "Lava Land (Dungeon) - Unknown"
-	icon_state = "yellow"
-
-/area/lavaland/dungeon/facility
-	name = "Lava Land (Dungeon) - Pump Facility"
-	icon_state = "blue"
+	area_flags = AREA_RAD_SHIELDED
 
 // Aerostat
 /area/shuttle/excursion/away_aerostat
@@ -738,6 +779,7 @@
 	icon_state = "away"
 	requires_power = FALSE
 	dynamic_lighting = FALSE
+	is_outside = OUTSIDE_YES
 
 /area/aerostat/inside
 	name = "\improper Away Mission - Aerostat Inside"
@@ -745,14 +787,16 @@
 	requires_power = TRUE
 	dynamic_lighting = TRUE
 	forced_ambience = list('sound/ambience/tension/tension.ogg', 'sound/ambience/tension/argitoth.ogg', 'sound/ambience/tension/burning_terror.ogg')
+	is_outside = OUTSIDE_NO
 
 /area/aerostat/solars
 	name = "\improper Away Mission - Aerostat Solars"
 	icon_state = "crew_quarters"
 	dynamic_lighting = TRUE
+	is_outside = OUTSIDE_NO
 
 /area/aerostat/surface
-	flags = RAD_SHIELDED
+	area_flags = AREA_RAD_SHIELDED
 	ambience = list('sound/ambience/ambimine.ogg', 'sound/ambience/song_game.ogg')
 
 /area/aerostat/surface/explored
@@ -831,7 +875,7 @@
 	requires_power = 0
 
 /area/awaymission/spacebattle/cruiser
-	name = "\improper NanoTrasen Cruiser"
+	name = "\improper Nanotrasen Cruiser"
 
 /area/awaymission/spacebattle/syndicate1
 	name = "\improper Syndicate Assault Ship 1"
@@ -893,6 +937,7 @@
 	requires_power = 1
 	always_unpowered = 1
 	dynamic_lighting = 1
+	is_outside = OUTSIDE_YES
 	power_light = 0
 	power_equip = 0
 	power_environ = 0
@@ -931,6 +976,7 @@
 	requires_power = 1
 	always_unpowered = 1
 	dynamic_lighting = 1
+	is_outside = OUTSIDE_YES
 	power_light = 0
 	power_equip = 0
 	power_environ = 0
@@ -1091,3 +1137,30 @@
 	icon_state = "purple"
 
 // The Frozen Temple POI
+
+/area/killhouse
+	icon_state = "purple"
+	is_outside = OUTSIDE_NO
+
+/area/killhouse/teleporter
+
+/area/killhouse/one
+	icon_state = "red"
+
+/area/killhouse/one/outside
+	icon_state = "green"
+	is_outside = OUTSIDE_YES
+
+/area/killhouse/two
+	icon_state = "red"
+
+/area/killhouse/two/outside
+	icon_state = "green"
+	is_outside = OUTSIDE_YES
+
+/area/killhouse/three
+	icon_state = "red"
+
+/area/killhouse/three/outside
+	icon_state = "green"
+	is_outside = OUTSIDE_YES

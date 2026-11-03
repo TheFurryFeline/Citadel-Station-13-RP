@@ -1,14 +1,8 @@
 //SC Exploration Secure Closets Port
 /obj/structure/closet/secure_closet/explorer
 	name = "explorer locker"
-	icon = 'icons/obj/closet.dmi'
-	icon_state = "secureexp1"
-	icon_closed = "secureexp"
-	icon_locked = "secureexp1"
-	icon_opened = "secureexpopen"
-	icon_broken = "secureexpbroken"
-	icon_off = "secureexpoff"
-	req_access = list(access_explorer)
+	closet_appearance = /singleton/closet_appearance/secure_closet/expedition
+	req_access = list(ACCESS_GENERAL_EXPLORER)
 
 	starts_with = list(
 		/obj/item/clothing/under/explorer,
@@ -16,89 +10,47 @@
 		/obj/item/clothing/mask/gas/explorer,
 		/obj/item/clothing/shoes/boots/winter/explorer,
 		/obj/item/clothing/gloves/black,
-		/obj/item/gun/energy/frontier/locked/holdout,
+		/obj/item/gun/projectile/energy/frontier/locked/holdout,
 		/obj/item/radio/headset/explorer,
+		/obj/item/clothing/accessory/armor/helmetcamera/exploration/body,
 		/obj/item/flashlight,
 		/obj/item/gps/explorer,
 		/obj/item/storage/box/flare,
-		/obj/item/geiger,
-		/obj/item/cell/device,
+		/obj/item/geiger_counter,
+		/obj/item/cell/basic/tier_2/small,
+		/obj/item/cell/basic/tier_2/weapon,
 		/obj/item/radio,
 		/obj/item/stack/marker_beacon/thirty,
 		/obj/item/storage/box/survival_knife,
 		/obj/item/material/knife/machete,
 		/obj/item/clothing/accessory/holster/machete,
-		/obj/item/reagent_containers/food/snacks/liquidfood,
-		/obj/item/reagent_containers/food/snacks/liquidprotein,
-		/obj/item/cataloguer)
+		/obj/item/reagent_containers/food/snacks/liquid,
+		/obj/item/reagent_containers/food/snacks/liquid/protein,
+		/obj/item/cataloguer,
+		/obj/item/rangefinder,
+	)
 
 /obj/structure/closet/secure_closet/explorer/Initialize(mapload)
 	if(prob(50))
 		starts_with += /obj/item/storage/backpack
 	else
 		starts_with += /obj/item/storage/backpack/satchel/norm
-	/* VOREStation Removal - Always give both
-	if(prob(75))
-		starts_with += /obj/item/material/knife/tacknife/survival
-	else
-		starts_with += /obj/item/material/knife/machete
-	*/ //VOREStation Removal End
 	return ..()
-
-//SAR Lockers
-/*This one is actually not the right one.
-/obj/structure/closet/secure_closet/sar
-	name = "search and rescue locker"
-	desc = "Supplies for a wilderness first responder."
-	icon_state = "medical1"
-	icon_closed = "medical"
-	icon_locked = "medical1"
-	icon_opened = "medicalopen"
-	icon_broken = "medicalbroken"
-	icon_off = "medicaloff"
-	req_access = list(access_medical_equip)
-
-	starts_with = list(
-		/obj/item/storage/backpack/dufflebag/emt,
-		/obj/item/storage/box/autoinjectors,
-		/obj/item/storage/box/syringes,
-		/obj/item/reagent_containers/glass/bottle/inaprovaline,
-		/obj/item/reagent_containers/glass/bottle/antitoxin,
-		/obj/item/storage/belt/medical/emt,
-		/obj/item/clothing/mask/gas,
-		/obj/item/clothing/suit/storage/hooded/wintercoat/medical/sar,
-		/obj/item/clothing/shoes/boots/winter/explorer,
-		/obj/item/radio/headset/sar,
-		/obj/item/cartridge/medical,
-		/obj/item/flashlight,
-		/obj/item/tank/emergency/oxygen/engi,
-		/obj/item/clothing/glasses/hud/health,
-		/obj/item/healthanalyzer,
-		/obj/item/radio/off,
-		/obj/random/medical,
-		/obj/item/tool/crowbar,
-		/obj/item/extinguisher/mini,
-		/obj/item/storage/box/freezer,
-		/obj/item/clothing/accessory/storage/white_vest,
-		/obj/item/barrier_tape_roll/medical,
-		/obj/item/gps/medical,
-		/obj/item/geiger,
-		/obj/item/bodybag/cryobag)
-*/
 
 //SC Misc_vr locker.
 /obj/structure/closet/secure_closet/sar
 	name = "field medic locker"
-
+	closet_appearance = /singleton/closet_appearance/secure_closet/expedition/medic
 	starts_with = list(
 		/obj/item/storage/backpack/dufflebag/emt,
 		/obj/item/storage/box/autoinjectors,
 		/obj/item/storage/box/syringes,
+		/obj/item/clothing/accessory/armor/helmetcamera/exploration/body,
 		/obj/item/reagent_containers/glass/bottle/inaprovaline,
 		/obj/item/reagent_containers/glass/bottle/antitoxin,
 		/obj/item/storage/belt/medical/emt,
 		/obj/item/storage/box/survival_knife,
-		/obj/item/gun/energy/frontier/locked/holdout,
+		/obj/item/gun/projectile/energy/frontier/locked/holdout,
 		/obj/item/clothing/mask/gas/explorer,
 		/obj/item/clothing/suit/storage/hooded/explorer/medic,
 		/obj/item/clothing/suit/storage/hooded/wintercoat/medical/sar,
@@ -113,48 +65,33 @@
 		/obj/item/healthanalyzer,
 		/obj/item/radio/off,
 		/obj/random/medical,
-		/obj/item/reagent_containers/food/snacks/liquidfood = 2,
-		/obj/item/reagent_containers/food/snacks/liquidprotein = 2,
+		/obj/item/reagent_containers/food/snacks/liquid = 2,
+		/obj/item/reagent_containers/food/snacks/liquid/protein = 2,
 		/obj/item/tool/crowbar,
 		/obj/item/extinguisher/mini,
 		/obj/item/storage/box/freezer,
 		/obj/item/clothing/accessory/storage/white_vest,
 		/obj/item/barrier_tape_roll/medical,
 		/obj/item/gps/medical,
-		/obj/item/geiger,
+		/obj/item/geiger_counter,
 		/obj/item/bodybag/cryobag,
-		/obj/item/cataloguer/compact)
+		/obj/item/cataloguer/compact,
+		/obj/item/rangefinder,
+		/obj/item/gun/projectile/ballistic/shotgun/flare/paramed,
+		/obj/item/storage/box/flashshells/large)
 
 //Pilot Locker
-
 /obj/structure/closet/secure_closet/pilot
 	name = "pilot locker"
-	req_access = list(access_pilot)
-/*
-	starts_with = list(
-		/obj/item/storage/backpack/parachute,
-		/obj/item/material/knife/tacknife/survival,
-		/obj/item/clothing/head/pilot,
-		/obj/item/clothing/under/rank/pilot1,
-		/obj/item/clothing/suit/storage/toggle/bomber/pilot,
-		/obj/item/clothing/mask/gas/half,
-		/obj/item/clothing/shoes/black,
-		/obj/item/clothing/gloves/fingerless,
-		/obj/item/radio/headset/pilot/alt,
-		/obj/item/flashlight,
-		/obj/item/reagent_containers/food/snacks/liquidfood,
-		/obj/item/reagent_containers/food/drinks/cans/waterbottle,
-		/obj/item/storage/box/flare,
-		/obj/item/cell/device,
-		/obj/item/radio)
-*/
-
-/obj/structure/closet/secure_closet/pilot
+	closet_appearance = /singleton/closet_appearance/secure_closet/pilot
+	req_access = list(ACCESS_GENERAL_PILOT)
 	starts_with = list(
 		/obj/item/storage/backpack/parachute,
 		/obj/item/storage/box/survival_knife,
-		/obj/item/gun/energy/frontier/locked/holdout,
+		/obj/item/gun/projectile/energy/frontier/locked/holdout,
 		/obj/item/clothing/head/pilot,
+		/obj/item/clothing/accessory/armor/helmetcamera/exploration,
+		/obj/item/clothing/accessory/armor/helmetcamera/exploration/body,
 		/obj/item/clothing/under/rank/pilot1,
 		/obj/item/clothing/suit/storage/toggle/bomber/pilot,
 		/obj/item/clothing/shoes/boots/winter/explorer,
@@ -163,16 +100,19 @@
 		/obj/item/clothing/gloves/fingerless,
 		/obj/item/radio/headset/pilot/alt,
 		/obj/item/flashlight,
-		/obj/item/reagent_containers/food/snacks/liquidfood,
-		/obj/item/reagent_containers/food/snacks/liquidprotein,
+		/obj/item/reagent_containers/food/snacks/liquid,
+		/obj/item/reagent_containers/food/snacks/liquid/protein,
 		/obj/item/reagent_containers/food/drinks/cans/waterbottle,
 		/obj/item/storage/box/flare,
-		/obj/item/gun/projectile/shotgun/flare/explo,
+		/obj/item/gun/projectile/ballistic/shotgun/flare/explo,
 		/obj/item/storage/box/flashshells,
-		/obj/item/cell/device,
+		/obj/item/cell/basic/tier_2/small,
+		/obj/item/cell/basic/tier_2/weapon,
 		/obj/item/radio,
 		/obj/item/gps/explorer,
-		/obj/item/cataloguer/compact)
+		/obj/item/cataloguer/compact,
+		/obj/item/rangefinder/laser_designator,
+	)
 
 /obj/structure/closet/secure_closet/pilot/Initialize(mapload)
 	if(prob(50))
@@ -184,14 +124,8 @@
 //Pathfinder
 /obj/structure/closet/secure_closet/pathfinder
 	name = "pathfinder locker"
-	icon = 'icons/obj/closet.dmi'
-	icon_state = "secureexp1"
-	icon_closed = "secureexp"
-	icon_locked = "secureexp1"
-	icon_opened = "secureexpopen"
-	icon_broken = "secureexpbroken"
-	icon_off = "secureexpoff"
-	req_access = list(access_gateway)
+	closet_appearance = /singleton/closet_appearance/secure_closet/expedition/pathfinder
+	req_access = list(ACCESS_GENERAL_GATEWAY)
 
 	starts_with = list(
 		/obj/item/clothing/under/explorer,
@@ -201,28 +135,32 @@
 		/obj/item/clothing/gloves/black,
 		/obj/item/radio/headset/pathfinder,
 		/obj/item/radio/headset/pathfinder/alt,
+		/obj/item/clothing/accessory/armor/helmetcamera/exploration,
+		/obj/item/clothing/accessory/armor/helmetcamera/exploration/body,
 		/obj/item/flashlight,
 		/obj/item/gps/explorer,
 		/obj/item/storage/belt/explorer,
 		/obj/item/storage/box/flare,
 		/obj/item/storage/box/explorerkeys,
-		/obj/item/geiger,
-		/obj/item/cell/device,
+		/obj/item/geiger_counter,
+		/obj/item/cell/basic/tier_2/small,
+		/obj/item/cell/basic/tier_2/weapon,
 		/obj/item/radio,
-		/obj/item/bluespace_radio,
 		/obj/item/stack/marker_beacon/thirty,
 		/obj/item/storage/box/survival_knife,
 		/obj/item/material/knife/machete/deluxe,
-		/obj/item/gun/energy/frontier/locked/carbine,
-		/obj/item/gun/projectile/fnseven,
-		/obj/item/ammo_magazine/m57x28mm,
-		/obj/item/ammo_magazine/m57x28mm,
+		/obj/item/gun/projectile/energy/frontier/locked/carbine,
+		/obj/item/gun/projectile/ballistic/ntles/pathfinder,
+		/obj/item/ammo_magazine/a5_7mm/nt_les,
+		/obj/item/ammo_magazine/a5_7mm/nt_les,
 		/obj/item/clothing/accessory/holster/machete,
-		/obj/item/reagent_containers/food/snacks/liquidfood,
-		/obj/item/reagent_containers/food/snacks/liquidprotein,
-		/obj/item/card/mining_point_card/survey/gimmick,
-		/obj/item/clothing/glasses/omnihud/exp,
-		/obj/item/cataloguer/compact/pathfinder)
+		/obj/item/clothing/accessory/holster/leg,
+		/obj/item/reagent_containers/food/snacks/liquid,
+		/obj/item/reagent_containers/food/snacks/liquid/protein,
+		/obj/item/point_redemption_voucher/preloaded/survey/c300,
+		/obj/item/cataloguer/compact/pathfinder,
+		/obj/item/rangefinder/laser_designator,
+	)
 
 /obj/structure/closet/secure_closet/pathfinder/Initialize(mapload)
 	if(prob(50))

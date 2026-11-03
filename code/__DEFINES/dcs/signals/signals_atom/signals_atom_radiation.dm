@@ -4,12 +4,17 @@
  * * All signals send the source datum of the signal as the first argument
  */
 
-/// From proc/get_rad_contents(): ()
-#define COMSIG_ATOM_RAD_PROBE "atom_rad_probe"
-	#define COMPONENT_BLOCK_RADIATION (1<<0)
-/// From base of datum/radiation_wave/radiate(): (strength)
-#define COMSIG_ATOM_RAD_CONTAMINATING "atom_rad_contam"
-	#define COMPONENT_BLOCK_CONTAMINATION (1<<0)
-/// From base of datum/radiation_wave/check_obstructions(): (datum/radiation_wave, width)
-#define COMSIG_ATOM_RAD_WAVE_PASSING "atom_rad_wave_pass"
-	#define COMPONENT_RAD_WAVE_HANDLED (1<<0)
+//* -- READ THIS -- *//
+/// STOP. Are you about to add RAD_PROBE?
+/// Well, don't. Add a trait system to manage rad_flags & RAD_BLOCK_CONTENTS, because
+/// that's all it does, and there's literally no point in sending arg-less signals!
+/// If we ever decide to make the signal have an arg, then yes, feel free to. For now, DON'T.
+//* --    END    -- *//
+
+/// From /datum/radiation_wave's iteration: (strength, datum/radiation_wave/wave)
+/// * Called on a turf when a radiation wave hits.
+#define COMSIG_TURF_RAD_PULSE_ITERATE "rad_pulse_iterate"
+
+/// From base on atom/rad_act(): (strength, datum/radiation_wave/wave)
+/// * Called by radiation listener components/elements
+#define COMSIG_ATOM_RAD_ACT "atom_rad_act"

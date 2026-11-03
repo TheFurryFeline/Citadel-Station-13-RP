@@ -1,328 +1,245 @@
-/datum/design/item/medical
-	materials = list(MAT_STEEL = 30, MAT_GLASS = 20)
-
-/datum/design/item/medical/AssembleDesignName()
-	..()
-	name = "Medical equipment prototype ([item_name])"
+/datum/prototype/design/science/medical
+	abstract_type = /datum/prototype/design/science/medical
+	category = DESIGN_CATEGORY_MEDICAL
+	materials_base = list(MAT_STEEL = 30, MAT_GLASS = 20)
 
 // Surgical devices
 
-/datum/design/item/medical/scalpel_laser1
-	name = "Basic Laser Scalpel"
-	desc = "A scalpel augmented with a directed laser, for more precise cutting without blood entering the field. This one looks basic and could be improved."
-	id = "scalpel_laser1"
+/datum/prototype/design/science/medical/scalpel_laser1
+	id = "laserscalpel"
 	req_tech = list(TECH_BIO = 2, TECH_MATERIAL = 2, TECH_MAGNET = 2)
-	materials = list(MAT_STEEL = 8000, MAT_GLASS = 5000)
+	materials_base = list(MAT_STEEL = 350, MAT_GLASS = 125)
 	build_path = /obj/item/surgical/scalpel/laser1
-	sort_string = "KAAAA"
 
-/datum/design/item/medical/scalpel_laser2
-	name = "Improved Laser Scalpel"
-	desc = "A scalpel augmented with a directed laser, for more precise cutting without blood entering the field. This one looks somewhat advanced."
-	id = "scalpel_laser2"
+/datum/prototype/design/science/medical/scalpel_laser2
+	id = "ilaserscalpel"
 	req_tech = list(TECH_BIO = 3, TECH_MATERIAL = 4, TECH_MAGNET = 4)
-	materials = list(MAT_STEEL = 8000, MAT_GLASS = 5000, MAT_SILVER = 2500)
+	materials_base = list(MAT_STEEL = 500, MAT_GLASS = 250, MAT_SILVER = 125)
 	build_path = /obj/item/surgical/scalpel/laser2
-	sort_string = "KAAAB"
 
-/datum/design/item/medical/scalpel_laser3
-	name = "Advanced Laser Scalpel"
-	desc = "A scalpel augmented with a directed laser, for more precise cutting without blood entering the field. This one looks to be the pinnacle of precision energy cutlery!"
-	id = "scalpel_laser3"
+/datum/prototype/design/science/medical/scalpel_laser3
+	id = "advlaserscalpel"
 	req_tech = list(TECH_BIO = 4, TECH_MATERIAL = 6, TECH_MAGNET = 5)
-	materials = list(MAT_STEEL = 8000, MAT_GLASS = 5000, MAT_SILVER = 2000, MAT_GOLD = 1500)
+	materials_base = list(MAT_STEEL = 550, MAT_GLASS = 350, MAT_SILVER = 250, MAT_GOLD = 125)
 	build_path = /obj/item/surgical/scalpel/laser3
-	sort_string = "KAAAC"
 
-/datum/design/item/medical/scalpel_manager
-	name = "Incision Management System"
-	desc = "A true extension of the surgeon's body, this marvel instantly and completely prepares an incision allowing for the immediate commencement of therapeutic steps."
-	id = "scalpel_manager"
+/datum/prototype/design/science/medical/scalpel_manager
+	id = "ims"
 	req_tech = list(TECH_BIO = 4, TECH_MATERIAL = 7, TECH_MAGNET = 5, TECH_DATA = 4)
-	materials = list(MAT_STEEL = 8000, MAT_GLASS = 5000, MAT_SILVER = 1500, MAT_GOLD = 1500, MAT_DIAMOND = 750)
+	materials_base = list(MAT_STEEL = 850, MAT_GLASS = 750, MAT_SILVER = 500, MAT_GOLD = 500, MAT_DIAMOND = 250)
 	build_path = /obj/item/surgical/scalpel/manager
-	sort_string = "KAAAD"
 
-/datum/design/item/medical/saw_manager
-	name = "Energetic Bone Diverter"
-	desc = "A strange development following the I.M.S., this heavy tool can split and open, or close and shut, intentional holes in bones."
-	id = "advanced_saw"
+/datum/prototype/design/science/medical/saw_manager
+	id = "superbonesaw"
 	req_tech = list(TECH_BIO = 4, TECH_MATERIAL = 7, TECH_MAGNET = 6, TECH_DATA = 5)
-	materials = list (MAT_STEEL = 12500, MAT_PLASTIC = 800, MAT_SILVER = 1500, MAT_GOLD = 1500, MAT_OSMIUM = 1000)
+	materials_base = list (MAT_STEEL = 1250, MAT_PLASTIC = 800, MAT_SILVER = 250, MAT_GOLD = 350, MAT_OSMIUM = 350)
 	build_path = /obj/item/surgical/circular_saw/manager
-	sort_string = "KAAAE"
 
-/datum/design/item/medical/organ_ripper
-	name = "Organ Ripper"
-	desc = "A modern and horrifying take on an ancient practice, this tool is capable of rapidly removing an organ from a hopefully willing patient, without damaging it."
-	id = "organ_ripper"
+/datum/prototype/design/science/medical/organ_ripper
+	id = "organshredder"
 	req_tech = list(TECH_BIO = 3, TECH_MATERIAL = 5, TECH_MAGNET = 4, TECH_ILLEGAL = 3)
-	materials = list (MAT_STEEL = 12500, MAT_PLASTIC = 8000, MAT_OSMIUM = 2500)
+	materials_base = list (MAT_STEEL = 1250, MAT_PLASTIC = 1500, MAT_OSMIUM = 750)
 	build_path = /obj/item/surgical/scalpel/ripper
-	sort_string = "KAAAF"
 
-/datum/design/item/medical/bone_clamp
-	name = "Bone Clamp"
-	desc = "A miracle of modern science, this tool rapidly knits together bone, without the need for bone gel."
-	id = "bone_clamp"
+/datum/prototype/design/science/medical/bone_clamp
+	id = "boneclamp"
 	req_tech = list(TECH_BIO = 4, TECH_MATERIAL = 5, TECH_MAGNET = 4, TECH_DATA = 4)
-	materials = list (MAT_STEEL = 12500, MAT_GLASS = 7500, MAT_SILVER = 2500)
+	materials_base = list (MAT_STEEL = 1250, MAT_GLASS = 1250, MAT_SILVER = 750)
 	build_path = /obj/item/surgical/bone_clamp
-	sort_string = "KAABA"
 
-/datum/design/item/medical/switchtool
-	name = "Surgical Multi-tool"
-	desc = "A set of compact surgical instruments housed in a small handle, allowing surgical proccedures on the go."
-	id = "surgery_switchtool"
+/datum/prototype/design/science/medical/switchtool
+	id = "surgeonswitchtool"
 	req_tech = list(TECH_BIO = 4, TECH_MATERIAL = 5, TECH_MAGNET = 4, TECH_DATA = 4)
-	materials = list (MAT_STEEL = 12500, MAT_GLASS = 7500, MAT_SILVER = 2500)
+	materials_base = list (MAT_STEEL = 750, MAT_GLASS = 250, MAT_SILVER = 750)
 	build_path = /obj/item/switchtool/surgery
-	sort_string = "KAABA"
 
-/datum/design/item/medical/medical_analyzer
-	name = "health analyzer"
-	desc = "A hand-held body scanner able to distinguish vital signs of the subject."
-	id = "medical_analyzer"
+/datum/prototype/design/science/medical/medical_analyzer
+	id = "healthscanner"
 	req_tech = list(TECH_MAGNET = 2, TECH_BIO = 2)
-	materials = list(MAT_STEEL = 500, MAT_GLASS = 500)
+	materials_base = list(MAT_STEEL = 350, MAT_GLASS = 125)
 	build_path = /obj/item/healthanalyzer
-	sort_string = "KBAAA"
 
-/datum/design/item/medical/improved_analyzer
-	name = "improved health analyzer"
-	desc = "A prototype version of the regular health analyzer, able to distinguish the location of more serious injuries as well as accurately determine radiation levels."
-	id = "improved_analyzer"
+/datum/prototype/design/science/medical/improved_analyzer
+	id = "ihealthscanner"
 	req_tech = list(TECH_MAGNET = 5, TECH_BIO = 6)
-	materials = list(MAT_STEEL = 2000, MAT_GLASS = 1000, MAT_SILVER = 1000, MAT_GOLD = 1500)
+	materials_base = list(MAT_STEEL = 350, MAT_GLASS = 250, MAT_SILVER = 250, MAT_GOLD = 250)
 	build_path = /obj/item/healthanalyzer/improved
-	sort_string = "KBAAB"
 
-/datum/design/item/medical/advanced_analyzer
-	name = "advanced health analyzer"
-	desc = "A prototype version of the improved health analyzer, able to distinguish the location of more serious injuries as well as accurately determine radiation levels, and neurological analysis suites"
-	id = "advanced_analyzer"
+/datum/prototype/design/science/medical/advanced_analyzer
+	id = "advhealthscanner"
 	req_tech = list(TECH_MAGNET = 6, TECH_BIO = 7, TECH_PHORON = 4)
-	materials = list(MAT_STEEL = 2000, MAT_GLASS = 1000, MAT_SILVER = 1250, MAT_GOLD = 1750, MAT_URANIUM = 1000, MAT_PLASTIC = 500)
+	materials_base = list(MAT_STEEL = 375, MAT_GLASS = 250, MAT_SILVER = 350, MAT_GOLD = 500, MAT_URANIUM = 250, MAT_PLASTIC = 125)
 	build_path = /obj/item/healthanalyzer/advanced
-	sort_string = "KBAAC"
 
-/datum/design/item/medical/phasic_analyzer
-	name = "phasic health analyzer"
-	desc = "A prototype version of the advanced health analyzer, able to distinguish the location of more serious injuries as well as accurately determine radiation levels, and neurological analysis suites. This analyzer even picks up chemicals in the patient's stomach."
-	id = "phasic_analyzer"
+/datum/prototype/design/science/medical/phasic_analyzer
+	id = "phahealthscanner"
 	req_tech = list(TECH_MAGNET = 7, TECH_BIO = 8, TECH_BLUESPACE = 6, TECH_PHORON = 5)
-	materials = list(MAT_STEEL = 2000, MAT_GLASS = 1000, MAT_SILVER = 1500, MAT_GOLD = 2000, MAT_URANIUM = 1250, MAT_DIAMOND = 750, MAT_PHORON = 500, MAT_PLASTIC = 1000, MAT_OSMIUM = 500)
+	materials_base = list(MAT_STEEL = 375, MAT_GLASS = 250, MAT_SILVER = 750, MAT_GOLD = 500, MAT_URANIUM = 500, MAT_DIAMOND = 255, MAT_PHORON = 255, MAT_PLASTIC = 125, MAT_OSMIUM = 255)
 	build_path = /obj/item/healthanalyzer/phasic
-	sort_string = "KBAAD"
 
-/datum/design/item/medical/advanced_roller
-	name = "advanced roller bed"
-	desc = "A more advanced version of the regular roller bed, with inbuilt surgical stabilisers and an improved folding system."
-	id = "roller_bed"
+/datum/prototype/design/science/medical/advanced_roller
+	id = "superrollerbed"
 	req_tech = list(TECH_BIO = 3, TECH_MATERIAL = 3, TECH_MAGNET = 3)
-	materials = list(MAT_STEEL = 4000, MAT_GLASS = 2000, MAT_PHORON = 2000)
+	materials_base = list(MAT_STEEL = 2000, MAT_GLASS = 750, MAT_PHORON = 250)
 	build_path = /obj/item/roller/adv
-	sort_string = "KCAAA"
-
-/*
-	KV - ML3M stuff
-		KVA - gun
-		KVB - magazines
-		KVC - cells
-			KVCA - tier 0
-			KVCB - tier 1
-			KVCC - tier 2
-			KVCD - tier 3
-			KVCE - tier 4
-			KVCO - tierless
-*/
 
 //General stuff
 
-// /datum/design/item/medical/sleevemate
-// 	name = "SleeveMate 3700"
-// 	id = "sleevemate"
-// 	req_tech = list(TECH_MATERIAL = 3, TECH_MAGNET = 2, TECH_BIO = 2)
-// 	materials = list(MAT_STEEL = 4000, MAT_GLASS = 4000)
-// 	build_path = /obj/item/sleevemate
-// 	sort_string = "KCAVA"
-
-/datum/design/item/medical/protohypospray
-	name = "prototype hypospray"
-	desc = "This prototype hypospray is a sterile, air-needle autoinjector for rapid administration of drugs to patients."
-	id = "protohypospray"
+/datum/prototype/design/science/medical/protohypospray
+	id = "protohypo"
 	req_tech = list(TECH_MATERIAL = 4, TECH_ENGINEERING = 3, TECH_POWER = 2, TECH_BIO = 4, TECH_ILLEGAL = 2)
-	materials = list(MAT_STEEL = 500, MAT_GLASS = 1500, MAT_SILVER = 2000, MAT_GOLD = 1500, MAT_URANIUM = 1000)
-	build_path = /obj/item/reagent_containers/hypospray/science
-	sort_string = "KCAVB"
+	materials_base = list(MAT_STEEL = 500, MAT_GLASS = 750, MAT_SILVER = 1250, MAT_GOLD = 750, MAT_URANIUM = 250)
+	build_path = /obj/item/hypospray/advanced
 
-// ML-3M medigun and cells
-/datum/design/item/medical/cell_based/AssembleDesignName()
-	..()
-	name = "Cell-based medical prototype ([item_name])"
+/datum/prototype/design/science/medical/cell_based
+	abstract_type = /datum/prototype/design/science/medical/cell_based
 
-/datum/design/item/medical/cell_based/cell_medigun_mag_advanced
-	name = "advanced medical cell magazine"
-	id = "cell_medigun_mag_advanced"
+/datum/prototype/design/science/medical/cell_based/cell_medigun_mag_advanced
+	design_name = "advanced medical cell magazine"
+	id = "advmedcellmag"
 	req_tech = list(TECH_MATERIAL = 7, TECH_MAGNET = 6, TECH_POWER = 4, TECH_BIO = 7)
-	materials = list(MAT_STEEL = 5000, MAT_PLASTIC = 10000, MAT_GLASS = 5000, MAT_SILVER = 1500, MAT_GOLD = 1500, MAT_DIAMOND = 5000)
-	build_path = /obj/item/ammo_magazine/cell_mag/medical/advanced
-	sort_string = "KVAAA"
+	materials_base = list(MAT_STEEL = 1250, MAT_PLASTIC = 750, MAT_GLASS = 750, MAT_SILVER = 250, MAT_GOLD = 500, MAT_DIAMOND = 250)
+	build_path = /obj/item/ammo_magazine/microbattery/vm_aml/sidearm/advanced
 
-/datum/design/item/ml3m_cell/AssembleDesignName()
-	..()
-	name = "Nanite cell prototype ([name])"
+/datum/prototype/design/science/medigun_cell
+	category = DESIGN_CATEGORY_MEDIGUN //stop clogging up other categoriesp lease
+	abstract_type = /datum/prototype/design/science/medigun_cell
+
+/datum/prototype/design/science/medigun_cell/generate_name(template)
+	return "Nanite cell prototype ([..()])"
 
 //Tier 1
 
-/datum/design/item/ml3m_cell/toxin
-	name = "TOXIN"
-	id = "ml3m_cell_toxin"
+/datum/prototype/design/science/medigun_cell/toxin
+	design_name = "TOXIN"
+	id = "meditoxcell"
 	req_tech = list(TECH_MATERIAL = 3, TECH_MAGNET = 3, TECH_BIO = 4)
-	materials = list(MAT_STEEL = 4500, MAT_GLASS = 4500, MAT_PLASTIC = 2250)
-	build_path = /obj/item/ammo_casing/microbattery/medical/toxin
-	sort_string = "KVBAA"
+	materials_base = list(MAT_STEEL = 4500 * (1 / 3), MAT_GLASS = 4500 * (1 / 3), MAT_PLASTIC = 2250 * (1 / 3))
+	build_path = /obj/item/ammo_casing/microbattery/vm_aml/toxin
 
-/datum/design/item/ml3m_cell/omni
-	name = "OMNI"
-	id = "ml3m_cell_omni"
+/datum/prototype/design/science/medigun_cell/omni
+	design_name = "OMNI"
+	id = "mediomnicell"
 	req_tech = list(TECH_MATERIAL = 3, TECH_MAGNET = 3, TECH_BIO = 4)
-	materials = list(MAT_STEEL = 4500, MAT_GLASS = 4500, MAT_PLASTIC = 2250)
-	build_path = /obj/item/ammo_casing/microbattery/medical/omni
-	sort_string = "KVBAB"
+	materials_base = list(MAT_STEEL = 4500 * (1 / 3), MAT_GLASS = 4500 * (1 / 3), MAT_PLASTIC = 2250 * (1 / 3))
+	build_path = /obj/item/ammo_casing/microbattery/vm_aml/omni
 
-/datum/design/item/ml3m_cell/antirad
-	name = "ANTIRAD"
-	id = "ml3m_cell_antirad"
+/datum/prototype/design/science/medigun_cell/antirad
+	design_name = "ANTIRAD"
+	id = "mediaradcell"
 	req_tech = list(TECH_MATERIAL = 3, TECH_MAGNET = 3, TECH_BIO = 4)
-	materials = list(MAT_STEEL = 4500, MAT_GLASS = 4500, MAT_PLASTIC = 2250)
-	build_path = /obj/item/ammo_casing/microbattery/medical/antirad
-	sort_string = "KVBAC"
+	materials_base = list(MAT_STEEL = 4500 * (1 / 3), MAT_GLASS = 4500 * (1 / 3), MAT_PLASTIC = 2250 * (1 / 3))
+	build_path = /obj/item/ammo_casing/microbattery/vm_aml/antirad
 
 //Tier 2
 
-/datum/design/item/ml3m_cell/brute2
-	name = "BRUTE-II"
-	id = "ml3m_cell_brute2"
+/datum/prototype/design/science/medigun_cell/brute2
+	design_name = "BRUTE-II"
+	id = "medibrute2cell"
 	req_tech = list(TECH_MATERIAL = 5, TECH_MAGNET = 3, TECH_POWER = 2, TECH_BIO = 5)
-	materials = list(MAT_STEEL = 4500, MAT_GLASS = 4500, MAT_PLASTIC = 2250, MAT_GOLD = 900)
-	build_path = /obj/item/ammo_casing/microbattery/medical/brute2
-	sort_string = "KVCBA"
+	materials_base = list(MAT_STEEL = 4500 * (1 / 3), MAT_GLASS = 4500 * (1 / 3), MAT_PLASTIC = 2250 * (1 / 3), MAT_GOLD = 900 * (1 / 3))
+	build_path = /obj/item/ammo_casing/microbattery/vm_aml/brute2
 
-/datum/design/item/ml3m_cell/burn2
-	name = "BURN-II"
-	id = "ml3m_cell_burn2"
+/datum/prototype/design/science/medigun_cell/burn2
+	design_name = "BURN-II"
+	id = "mediburn2cell"
 	req_tech = list(TECH_MATERIAL = 5, TECH_MAGNET = 3, TECH_POWER = 2, TECH_BIO = 5)
-	materials = list(MAT_STEEL = 4500, MAT_GLASS = 4500, MAT_PLASTIC = 2250, MAT_GOLD = 900)
-	build_path = /obj/item/ammo_casing/microbattery/medical/burn2
-	sort_string = "KVCBB"
+	materials_base = list(MAT_STEEL = 4500 * (1 / 3), MAT_GLASS = 4500 * (1 / 3), MAT_PLASTIC = 2250 * (1 / 3), MAT_GOLD = 900 * (1 / 3))
+	build_path = /obj/item/ammo_casing/microbattery/vm_aml/burn2
 
-/datum/design/item/ml3m_cell/stabilize2
-	name = "STABILIZE-II"
-	id = "ml3m_cell_stabilize2"
+/datum/prototype/design/science/medigun_cell/stabilize2
+	design_name = "STABILIZE-II"
+	id = "RNDDesignMedigunCellStab2"
 	req_tech = list(TECH_MATERIAL = 5, TECH_MAGNET = 3, TECH_POWER = 2, TECH_BIO = 5)
-	materials = list(MAT_STEEL = 4500, MAT_GLASS = 4500, MAT_PLASTIC = 2250, MAT_SILVER = 900)
-	build_path = /obj/item/ammo_casing/microbattery/medical/stabilize2
-	sort_string = "KVCBC"
+	materials_base = list(MAT_STEEL = 4500 * (1 / 3), MAT_GLASS = 4500 * (1 / 3), MAT_PLASTIC = 2250 * (1 / 3), MAT_SILVER = 900 * (1 / 3))
+	build_path = /obj/item/ammo_casing/microbattery/vm_aml/stabilize2
 
-/datum/design/item/ml3m_cell/omni2
-	name = "OMNI-II"
-	id = "ml3m_cell_omni2"
+/datum/prototype/design/science/medigun_cell/omni2
+	design_name = "OMNI-II"
+	id = "mediomni2cell"
 	req_tech = list(TECH_MATERIAL = 5, TECH_MAGNET = 3, TECH_POWER = 2, TECH_BIO = 5)
-	materials = list(MAT_STEEL = 4500, MAT_GLASS = 4500, MAT_PLASTIC = 2250, MAT_URANIUM = 900)
-	build_path = /obj/item/ammo_casing/microbattery/medical/omni2
-	sort_string = "KVCBD"
+	materials_base = list(MAT_STEEL = 4500 * (1 / 3), MAT_GLASS = 4500 * (1 / 3), MAT_PLASTIC = 2250 * (1 / 3), MAT_URANIUM = 900 * (1 / 3))
+	build_path = /obj/item/ammo_casing/microbattery/vm_aml/omni2
 
 //Tier 3
 
-/datum/design/item/ml3m_cell/toxin2
-	name = "TOXIN-II"
-	id = "ml3m_cell_toxin2"
+/datum/prototype/design/science/medigun_cell/toxin2
+	design_name = "TOXIN-II"
+	id = "meditox2cell"
 	req_tech = list(TECH_MATERIAL = 6, TECH_MAGNET = 3, TECH_POWER = 3, TECH_BIO = 6)
-	materials = list(MAT_STEEL = 4500, MAT_GLASS = 4500, MAT_PLASTIC = 2250, MAT_URANIUM = 900, MAT_SILVER = 900, MAT_DIAMOND = 500)
-	build_path = /obj/item/ammo_casing/microbattery/medical/toxin2
-	sort_string = "KVCCA"
+	materials_base = list(MAT_STEEL = 4500 * (1 / 3), MAT_GLASS = 4500 * (1 / 3), MAT_PLASTIC = 2250 * (1 / 3), MAT_URANIUM = 900 * (1 / 3), MAT_SILVER = 900 * (1 / 3), MAT_DIAMOND = 500 * (1 / 3))
+	build_path = /obj/item/ammo_casing/microbattery/vm_aml/toxin2
 
-/datum/design/item/ml3m_cell/haste
-	name = "HASTE"
-	id = "ml3m_cell_haste"
+/datum/prototype/design/science/medigun_cell/haste
+	design_name = "HASTE"
+	id = "medihastecell"
 	req_tech = list(TECH_MATERIAL = 6, TECH_MAGNET = 3, TECH_POWER = 3, TECH_BIO = 6)
-	materials = list(MAT_STEEL = 4500, MAT_GLASS = 4500, MAT_PLASTIC = 2250, MAT_GOLD = 900, MAT_SILVER = 900, MAT_DIAMOND = 900)
-	build_path = /obj/item/ammo_casing/microbattery/medical/haste
-	sort_string = "KVCCB"
+	materials_base = list(MAT_STEEL = 4500 * (1 / 3), MAT_GLASS = 4500 * (1 / 3), MAT_PLASTIC = 2250 * (1 / 3), MAT_GOLD = 900 * (1 / 3), MAT_SILVER = 900 * (1 / 3), MAT_DIAMOND = 900 * (1 / 3))
+	build_path = /obj/item/ammo_casing/microbattery/vm_aml/haste
 
-/datum/design/item/ml3m_cell/resist
-	name = "RESIST"
-	id = "ml3m_cell_resist"
+/datum/prototype/design/science/medigun_cell/resist
+	design_name = "RESIST"
+	id = "mediresistcell"
 	req_tech = list(TECH_MATERIAL = 6, TECH_MAGNET = 3, TECH_POWER = 3, TECH_BIO = 6)
-	materials = list(MAT_STEEL = 4500, MAT_GLASS = 4500, MAT_PLASTIC = 2250, MAT_GOLD = 900, MAT_URANIUM = 900, MAT_DIAMOND = 900)
-	build_path = /obj/item/ammo_casing/microbattery/medical/resist
-	sort_string = "KVCCC"
+	materials_base = list(MAT_STEEL = 4500 * (1 / 3), MAT_GLASS = 4500 * (1 / 3), MAT_PLASTIC = 2250 * (1 / 3), MAT_GOLD = 900 * (1 / 3), MAT_URANIUM = 900 * (1 / 3), MAT_DIAMOND = 900 * (1 / 3))
+	build_path = /obj/item/ammo_casing/microbattery/vm_aml/resist
 
-/datum/design/item/ml3m_cell/corpse_mend
-	name = "CORPSE MEND"
-	id = "ml3m_cell_corpse_mend"
+/datum/prototype/design/science/medigun_cell/corpse_mend
+	design_name = "CORPSE MEND"
+	id = "medicorpsemendcell"
 	req_tech = list(TECH_MATERIAL = 6, TECH_MAGNET = 3, TECH_POWER = 3, TECH_BIO = 6)
-	materials = list(MAT_STEEL = 4500, MAT_GLASS = 4500, MAT_PLASTIC = 2250, MAT_PHORON = 3000, MAT_DIAMOND = 3000)
-	build_path = /obj/item/ammo_casing/microbattery/medical/corpse_mend
-	sort_string = "KVCCD"
+	materials_base = list(MAT_STEEL = 4500 * (1 / 3), MAT_GLASS = 4500 * (1 / 3), MAT_PLASTIC = 2250 * (1 / 3), MAT_PHORON = 3000 * (1 / 3), MAT_DIAMOND = 3000 * (1 / 3))
+	build_path = /obj/item/ammo_casing/microbattery/vm_aml/corpse_mend
 
 //Tier 4
 
-/datum/design/item/ml3m_cell/brute3
-	name = "BRUTE-III"
-	id = "ml3m_cell_brute3"
+/datum/prototype/design/science/medigun_cell/brute3
+	design_name = "BRUTE-III"
+	id = "medibrut3cell"
 	req_tech = list(TECH_MATERIAL = 7, TECH_MAGNET = 6, TECH_POWER = 5, TECH_BIO = 7, TECH_PRECURSOR = 2)
-	materials = list(MAT_STEEL = 4500, MAT_GLASS = 4500, MAT_PLASTIC = 2250, MAT_DIAMOND = 500, MAT_VERDANTIUM = 900)
-	build_path = /obj/item/ammo_casing/microbattery/medical/brute3
-	sort_string = "KVCDA"
+	materials_base = list(MAT_STEEL = 4500 * (1 / 3), MAT_GLASS = 4500 * (1 / 3), MAT_PLASTIC = 2250 * (1 / 3), MAT_DIAMOND = 500 * (1 / 3), MAT_VERDANTIUM = 900 * (1 / 3))
+	build_path = /obj/item/ammo_casing/microbattery/vm_aml/brute3
 
-/datum/design/item/ml3m_cell/burn3
-	name = "BURN-III"
-	id = "ml3m_cell_burn3"
+/datum/prototype/design/science/medigun_cell/burn3
+	design_name = "BURN-III"
+	id = "mediburn3cell"
 	req_tech = list(TECH_MATERIAL = 7, TECH_MAGNET = 6, TECH_POWER = 5, TECH_BIO = 7, TECH_PRECURSOR = 2)
-	materials = list(MAT_STEEL = 4500, MAT_GLASS = 4500, MAT_PLASTIC = 2250, MAT_DIAMOND = 500, MAT_VERDANTIUM = 900)
-	build_path = /obj/item/ammo_casing/microbattery/medical/burn3
-	sort_string = "KVCDB"
+	materials_base = list(MAT_STEEL = 4500 * (1 / 3), MAT_GLASS = 4500 * (1 / 3), MAT_PLASTIC = 2250 * (1 / 3), MAT_DIAMOND = 500 * (1 / 3), MAT_VERDANTIUM = 900 * (1 / 3))
+	build_path = /obj/item/ammo_casing/microbattery/vm_aml/burn3
 
-/datum/design/item/ml3m_cell/toxin3
-	name = "TOXIN-III"
-	id = "ml3m_cell_toxin3"
+/datum/prototype/design/science/medigun_cell/toxin3
+	design_name = "meditox3cell"
+	id = "meditox3cell"
 	req_tech = list(TECH_MATERIAL = 7, TECH_MAGNET = 6, TECH_POWER = 5, TECH_BIO = 7, TECH_ARCANE = 2)
-	materials = list(MAT_STEEL = 4500, MAT_GLASS = 4500, MAT_PLASTIC = 2250, MAT_DIAMOND = 500, MAT_VERDANTIUM = 900)
-	build_path = /obj/item/ammo_casing/microbattery/medical/toxin3
-	sort_string = "KVCDC"
+	materials_base = list(MAT_STEEL = 4500 * (1 / 3), MAT_GLASS = 4500 * (1 / 3), MAT_PLASTIC = 2250 * (1 / 3), MAT_DIAMOND = 500 * (1 / 3), MAT_VERDANTIUM = 900 * (1 / 3))
+	build_path = /obj/item/ammo_casing/microbattery/vm_aml/toxin3
 
-/datum/design/item/ml3m_cell/omni3
-	name = "OMNI-III"
-	id = "ml3m_cell_omni3"
+/datum/prototype/design/science/medigun_cell/omni3
+	design_name = "OMNI-III"
+	id = "mediomni3cell"
 	req_tech = list(TECH_MATERIAL = 7, TECH_MAGNET = 6, TECH_POWER = 5, TECH_BIO = 7, TECH_ARCANE = 2)
-	materials = list(MAT_STEEL = 4500, MAT_GLASS = 4500, MAT_PLASTIC = 2250, MAT_DIAMOND = 500, MAT_VERDANTIUM = 900)
-	build_path = /obj/item/ammo_casing/microbattery/medical/omni3
-	sort_string = "KVCDD"
+	materials_base = list(MAT_STEEL = 4500 * (1 / 3), MAT_GLASS = 4500 * (1 / 3), MAT_PLASTIC = 2250 * (1 / 3), MAT_DIAMOND = 500 * (1 / 3), MAT_VERDANTIUM = 900 * (1 / 3))
+	build_path = /obj/item/ammo_casing/microbattery/vm_aml/omni3
 
 //Tierless
 
-/datum/design/item/ml3m_cell/shrink
-	name = "SHRINK"
-	id = "ml3m_cell_shrink"
+/datum/prototype/design/science/medigun_cell/shrink
+	design_name = "SHRINK"
+	id = "medishrinkcell"
 	req_tech = list(TECH_MATERIAL = 5, TECH_MAGNET = 3, TECH_BLUESPACE = 3, TECH_BIO = 5, TECH_ILLEGAL = 5)
-	materials = list(MAT_STEEL = 4500, MAT_GLASS = 4500, MAT_PLASTIC = 2250, MAT_URANIUM = 1800)
-	build_path = /obj/item/ammo_casing/microbattery/medical/shrink
-	sort_string = "KVCOA"
+	materials_base = list(MAT_STEEL = 4500 * (1 / 3), MAT_GLASS = 4500 * (1 / 3), MAT_PLASTIC = 2250 * (1 / 3), MAT_URANIUM = 1800 * (1 / 3))
+	build_path = /obj/item/ammo_casing/microbattery/vm_aml/shrink
 
-/datum/design/item/ml3m_cell/grow
-	name = "GROW"
-	id = "ml3m_cell_grow"
+/datum/prototype/design/science/medigun_cell/grow
+	design_name = "GROW"
+	id = "medigrowcell"
 	req_tech = list(TECH_MATERIAL = 5, TECH_MAGNET = 3, TECH_BLUESPACE = 3, TECH_BIO = 5, TECH_ILLEGAL = 5)
-	materials = list(MAT_STEEL = 4500, MAT_GLASS = 4500, MAT_PLASTIC = 2250, MAT_URANIUM = 1800)
-	build_path = /obj/item/ammo_casing/microbattery/medical/grow
-	sort_string = "KVCOB"
+	materials_base = list(MAT_STEEL = 4500 * (1 / 3), MAT_GLASS = 4500 * (1 / 3), MAT_PLASTIC = 2250 * (1 / 3), MAT_URANIUM = 1800 * (1 / 3))
+	build_path = /obj/item/ammo_casing/microbattery/vm_aml/grow
 
-/datum/design/item/ml3m_cell/normalsize
-	name = "NORMALSIZE"
-	id = "ml3m_cell_normalsize"
+/datum/prototype/design/science/medigun_cell/normalsize
+	design_name = "NORMALSIZE"
+	id = "medinormalcell"
 	req_tech = list(TECH_MATERIAL = 5, TECH_MAGNET = 3, TECH_BLUESPACE = 3, TECH_BIO = 5, TECH_ILLEGAL = 5)
-	materials = list(MAT_STEEL = 4500, MAT_GLASS = 4500, MAT_PLASTIC = 2250, MAT_URANIUM = 1800)
-	build_path = /obj/item/ammo_casing/microbattery/medical/normalsize
-	sort_string = "KVCOC"
+	materials_base = list(MAT_STEEL = 4500 * (1 / 3), MAT_GLASS = 4500 * (1 / 3), MAT_PLASTIC = 2250 * (1 / 3), MAT_URANIUM = 1800 * (1 / 3))
+	build_path = /obj/item/ammo_casing/microbattery/vm_aml/normalsize

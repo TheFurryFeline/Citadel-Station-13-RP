@@ -32,7 +32,7 @@
 	max_target_dist = 250
 	target_speed = 3
 	max_frustration = 5
-	botcard_access = list(access_maint_tunnels, access_mailsorting, access_cargo, access_cargo_bot, access_qm, access_mining, access_mining_station)
+	botcard_access = list(ACCESS_ENGINEERING_MAINT, ACCESS_SUPPLY_MAIN, ACCESS_SUPPLY_BAY, ACCESS_SUPPLY_MULEBOT, ACCESS_SUPPLY_QM, ACCESS_SUPPLY_MINE, ACCESS_SUPPLY_MINE_OUTPOST)
 
 	var/atom/movable/load
 
@@ -61,7 +61,7 @@
 
 	name = "Mulebot #[suffix]"
 
-/mob/living/bot/mulebot/MouseDrop_T(var/atom/movable/C, var/mob/user)
+/mob/living/bot/mulebot/MouseDroppedOnLegacy(var/atom/movable/C, var/mob/user)
 	if(user.stat)
 		return
 
@@ -79,7 +79,7 @@
 		ui = new(user, src, "MuleBot", "Mulebot [suffix ? "([suffix])" : ""]")
 		ui.open()
 
-/mob/living/bot/mulebot/ui_data(mob/user)
+/mob/living/bot/mulebot/ui_data(mob/user, datum/tgui/ui)
 	var/list/data = list(
 		"suffix" = suffix,
 		"power" = on,
@@ -93,7 +93,7 @@
 	)
 	return data
 
-/mob/living/bot/mulebot/ui_act(action, params)
+/mob/living/bot/mulebot/ui_act(action, list/params, datum/tgui/ui, datum/ui_state/state, datum/event_args/actor/actor)
 	if(..())
 		return TRUE
 
@@ -181,7 +181,7 @@
 	locked = !locked
 	to_chat(user, "<span class='notice'>You [locked ? "lock" : "unlock"] the mulebot's controls!</span>")
 	flick("mulebot-emagged", src)
-	playsound(loc, 'sound/effects/sparks1.ogg', 100, 0)
+	playsound(loc, /datum/soundbyte/sparks, 100, 0)
 	return 1
 
 /mob/living/bot/mulebot/update_icons()
@@ -235,8 +235,8 @@
 /mob/living/bot/mulebot/Bump(var/mob/living/M)
 	if(!safety && istype(M))
 		visible_message("<span class='warning'>[src] knocks over [M]!</span>")
-		M.Stun(8)
-		M.Weaken(5)
+		M.afflict_paralyze(1 SECONDS)
+		M.afflict_knockdown(2 SECONDS)
 	..()
 
 /mob/living/bot/mulebot/proc/runOver(var/mob/living/M)
@@ -245,14 +245,18 @@
 		playsound(loc, 'sound/effects/splat.ogg', 50, 1)
 
 		var/damage = rand(5, 7)
-		M.apply_damage(2 * damage, BRUTE, BP_HEAD)
-		M.apply_damage(2 * damage, BRUTE, BP_TORSO)
-		M.apply_damage(0.5 * damage, BRUTE, BP_L_LEG)
-		M.apply_damage(0.5 * damage, BRUTE, BP_R_LEG)
-		M.apply_damage(0.5 * damage, BRUTE, BP_L_ARM)
-		M.apply_damage(0.5 * damage, BRUTE, BP_R_ARM)
+		M.apply_damage(2 * damage, DAMAGE_TYPE_BRUTE, BP_HEAD)
+		M.apply_damage(2 * damage, DAMAGE_TYPE_BRUTE, BP_TORSO)
+		M.apply_damage(0.5 * damage, DAMAGE_TYPE_BRUTE, BP_L_LEG)
+		M.apply_damage(0.5 * damage, DAMAGE_TYPE_BRUTE, BP_R_LEG)
+		M.apply_damage(0.5 * damage, DAMAGE_TYPE_BRUTE, BP_L_ARM)
+		M.apply_damage(0.5 * damage, DAMAGE_TYPE_BRUTE, BP_R_ARM)
 
-		blood_splatter(src, M, 1)
+		var/datum/blood_mixture/to_use
+		if(iscarbon(M))
+			var/mob/living/carbon/carbon = M
+			to_use = carbon.get_blood_mixture()
+		blood_splatter_legacy(get_turf(M), to_use, TRUE)
 
 /mob/living/bot/mulebot/relaymove(var/mob/user, var/direction)
 	if(load == user)
@@ -273,7 +277,7 @@
 	s.set_up(3, 1, src)
 	s.start()
 
-	new /obj/effect/decal/cleanable/blood/oil(Tsec)
+	new /obj/effect/debris/cleanable/blood/oil(Tsec)
 	..()
 
 /mob/living/bot/mulebot/proc/GetBeaconList()
@@ -314,7 +318,7 @@
 	C.pixel_y += 9
 	if(C.layer < layer)
 		C.layer = layer + 0.1
-	overlays += C
+	add_overlay(C)
 
 	busy = 0
 

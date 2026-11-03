@@ -1,42 +1,59 @@
 /datum/config_entry/flag/minimaps_enabled
-	config_entry_value = TRUE
-
-/datum/config_entry/number/max_bunker_days
-	config_entry_value = 7
-	min_val = 1
+	default = TRUE
 
 /datum/config_entry/string/invoke_youtubedl
 	protection = CONFIG_ENTRY_LOCKED | CONFIG_ENTRY_HIDDEN
 
 /datum/config_entry/number/client_warn_version
-	config_entry_value = null
+	default = null
 	min_val = 500
 
 /datum/config_entry/number/client_warn_version
-	config_entry_value = null
+	default = null
 	min_val = 500
 
 /datum/config_entry/string/client_warn_message
-	config_entry_value = "Your version of byond may have issues or be blocked from accessing this server in the future."
+	default = "Your version of byond may have issues or be blocked from accessing this server in the future."
 
 /datum/config_entry/flag/client_warn_popup
 
 /datum/config_entry/number/client_error_version
-	config_entry_value = null
+	default = null
 	min_val = 500
 
 /datum/config_entry/string/client_error_message
-	config_entry_value = "Your version of byond is too old, may have issues, and is blocked from accessing this server."
+	default = "Your version of byond is too old, may have issues, and is blocked from accessing this server."
 
 /datum/config_entry/number/client_error_build
-	config_entry_value = null
+	default = null
 	min_val = 0
 
-/datum/config_entry/string/community_shortname
+/datum/config_entry/flag/cache_assets
+	default = TRUE
 
-/datum/config_entry/string/community_link
+/// allows admins with relevant permissions to have their own ooc colour
+/datum/config_entry/flag/allow_admin_ooccolor
+	default = TRUE
 
-/datum/config_entry/string/tagline
-	config_entry_value = "<br><small><a href='https://discord.gg/citadelstation'>Roleplay focused 18+ server with extensive species choices.</a></small></br>"
+/datum/config_entry/number/rounds_until_hard_restart
+	default = -1
+	min_val = 0
 
-/datum/config_entry/flag/usetaglinestrings
+/// Enable or disable the toast notification when the the instance finishes initializing.
+/datum/config_entry/flag/toast_notification_on_init
+
+/datum/config_entry/number/hard_deletes_overrun_threshold
+	integer = FALSE
+	min_val = 0
+	default = 0.5
+
+/datum/config_entry/number/hard_deletes_overrun_limit
+	default = 0
+	min_val = 0
+
+/**
+ * Tgui ui_act payloads larger than 2kb are split into chunks a maximum of 1kb in size.
+ * This flag represents the maximum chunk count the server is willing to receive.
+ */
+/datum/config_entry/number/tgui_max_chunk_count
+	default = 32

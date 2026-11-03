@@ -1,61 +1,46 @@
-/mob/living/silicon/robot/Life()
-	set invisibility = 0
-	set background = 1
-
-	if (src.transforming)
+/mob/living/silicon/robot/Life(seconds, times_fired)
+	if((. = ..()))
 		return
-
-	src.blinded = null
 
 	//Status updates, death etc.
 	clamp_values()
 	handle_regular_UI_updates()
-	handle_actions()
-	handle_instability()
-	// For some reason borg Life() doesn't call ..()
-	handle_modifiers()
-	handle_light()
+
+	// TODO: actual smoothing?? or less awful-ify this lol
+	var/avg_power_elapsed = world.time - avg_power_last
+	if(avg_power_elapsed > 0)
+		avg_power = avg_power_accumulator / (avg_power_elapsed / (1 SECONDS))
+	avg_power_last = world.time
+	avg_power_accumulator = 0
+
+/mob/living/silicon/robot/PhysicalLife(seconds, times_fired)
+	if((. = ..()))
+		return
 
 	if(client)
-		handle_regular_hud_updates()
-		handle_vision()
 		update_items()
 	if (src.stat != DEAD) //still using power
 		use_power()
-		process_killswitch()
-		process_locks()
 		process_queued_alarms()
-	update_canmove()
 
 /mob/living/silicon/robot/proc/clamp_values()
+	var/datum/status_effect/effect
+	effect = is_unconscious()
+	if(effect?.time_left() > 20 SECONDS)
+		effect.set_duration_from_now(20 SECONDS)
 
-//	SetStunned(min(stunned, 30))
-	SetParalysis(min(paralysis, 30))
-//	SetWeakened(min(weakened, 20))
-	SetSleeping(0)
-	adjustBruteLoss(0)
-	adjustToxLoss(0)
-	adjustOxyLoss(0)
-	adjustFireLoss(0)
+	set_sleeping(0)
 
 /mob/living/silicon/robot/proc/use_power()
-	// Debug only
-	// to_chat(world, "DEBUG: life.dm line 35: cyborg use_power() called at tick [controller_iteration]")
-	used_power_this_tick = 0
 	for(var/V in components)
 		var/datum/robot_component/C = components[V]
 		C.update_power_state()
 
 	if ( cell && is_component_functioning("power cell") && src.cell.charge > 0 )
-		if(src.module_state_1)
-			cell_use_power(50) // 50W load for every enabled tool TODO: tool-specific loads
-		if(src.module_state_2)
-			cell_use_power(50)
-		if(src.module_state_3)
-			cell_use_power(50)
+		legacy_cell_use_power(50 * length(robot_inventory.inv_get_active()))
 
 		if(lights_on)
-			cell_use_power(30) 	// 30W light. Normal lights would use ~15W, but increased for balance reasons.
+			legacy_cell_use_power(30) 	// 30W light. Normal lights would use ~15W, but increased for balance reasons.
 
 		src.has_power = 1
 	else
@@ -69,49 +54,20 @@
 /mob/living/silicon/robot/handle_regular_UI_updates()
 
 	if(src.camera && !scrambledcodes)
-		if(src.stat == 2 || wires.is_cut(WIRE_BORG_CAMERA))
+		if(IS_DEAD(src) || wires.is_cut(WIRE_BORG_CAMERA))
 			src.camera.set_status(0)
 		else
 			src.camera.set_status(1)
 
-	updatehealth()
-
-	if(src.sleeping)
-		Paralyse(3)
-		AdjustSleeping(-1)
-
-	//if(src.resting) // VOREStation edit. Our borgos would rather not.
-	//	Weaken(5)
+	update_health()
+	update_stat()
 
 	if(health < config_legacy.health_threshold_dead && src.stat != 2) //die only once
 		death()
 
-	if (src.stat != 2) //Alive.
-		if (src.paralysis || src.stunned || src.weakened || !src.has_power) //Stunned etc.
-			src.set_stat(UNCONSCIOUS)
-			if (src.stunned > 0)
-				AdjustStunned(-1)
-			if (src.weakened > 0)
-				AdjustWeakened(-1)
-			if (src.paralysis > 0)
-				AdjustParalysis(-1)
-				src.blinded = 1
-			else
-				src.blinded = 0
-
-		else	//Not stunned.
-			src.set_stat(CONSCIOUS)
-
-		AdjustConfused(-1)
-
-	else //Dead or just unconscious.
-		src.blinded = 1
+	AdjustConfused(-1)
 
 	if (src.stuttering) src.stuttering--
-
-	if (src.eye_blind || HAS_TRAIT(src, TRAIT_BLIND))
-		src.AdjustBlinded(-1)
-		src.blinded = 1
 
 	if (src.ear_deaf > 0) src.ear_deaf--
 	if (src.ear_damage < 25)
@@ -120,9 +76,7 @@
 
 	src.density = !( src.lying )
 
-	if (src.sdisabilities & BLIND)
-		src.blinded = 1
-	if (src.sdisabilities & DEAF)
+	if (src.sdisabilities & SDISABILITY_DEAF)
 		src.ear_deaf = 1
 
 	if (src.eye_blurry > 0)
@@ -135,7 +89,7 @@
 
 	//update the state of modules and components here
 	if (src.stat != 0)
-		uneq_all()
+		inventory.drop_held_items()
 
 	if(radio)
 		if(!is_component_functioning("radio"))
@@ -144,35 +98,48 @@
 			radio.on = 1
 
 	if(is_component_functioning("camera"))
-		src.blinded = 0
+		remove_blindness_source(TRAIT_BLINDNESS_CAMERA)
 	else
-		src.blinded = 1
+		add_blindness_source(TRAIT_BLINDNESS_CAMERA)
 
 	return 1
 
 /mob/living/silicon/robot/handle_regular_hud_updates()
+	. = ..()
 	var/fullbright = FALSE
-	var/seemeson = FALSE
-	SetSeeInDarkSelf(8)
-	SetSeeInvisibleSelf(SEE_INVISIBLE_LIVING)
+
+	// TODO: event driven, this is slow.
+	//       hooks / traits?
+	var/sight_mode = NONE
+	for(var/obj/item/borg/sight/sight in get_equipped_items())
+		sight_mode |= sight.sight_mode
+
 	if(stat == 2)
 		AddSightSelf(SEE_TURFS | SEE_MOBS | SEE_OBJS)
+		RemoveSightSelf(SEE_BLACKNESS)
 		SetSeeInvisibleSelf(SEE_INVISIBLE_LEVEL_TWO)
-	if((XRAY in src.mutations) || (sight_mode & BORGXRAY))
+	if((MUTATION_XRAY in src.mutations) || (sight_mode & BORGXRAY))
 		AddSightSelf(SEE_TURFS | SEE_MOBS | SEE_OBJS)
+		RemoveSightSelf(SEE_BLACKNESS)
 		fullbright = TRUE
 	if(sight_mode & BORGMESON)
 		AddSightSelf(SEE_TURFS)
+		RemoveSightSelf(SEE_BLACKNESS)
 		fullbright = TRUE
-		seemeson = TRUE
 	if(sight_mode & BORGMATERIAL)
 		AddSightSelf(SEE_OBJS)
+		RemoveSightSelf(SEE_BLACKNESS)
+		fullbright = TRUE
 	if(sight_mode & BORGTHERM)
 		AddSightSelf(SEE_MOBS)
+		RemoveSightSelf(SEE_BLACKNESS)
+		fullbright = TRUE
 
-	plane_holder.set_vis(VIS_FULLBRIGHT, fullbright)
-	plane_holder.set_vis(VIS_MESONS, seemeson)
-	..()
+	if(fullbright)
+		// todo: legacy, remove
+		self_perspective.legacy_force_set_hard_darkvision(0)
+	else
+		self_perspective.legacy_force_set_hard_darkvision(null)
 
 	if (src.healths)
 		if (src.stat != 2)
@@ -204,29 +171,20 @@
 						src.healths.icon_state = "health3"
 					if(0 to 50)
 						src.healths.icon_state = "health4"
-					if(config_legacy.health_threshold_dead to 0)
-						src.healths.icon_state = "health5"
 					else
-						src.healths.icon_state = "health6"
+						if(config_legacy.health_threshold_dead && config_legacy.health_threshold_dead >= health)
+							healths.icon_state = "health5"
+						else
+							healths.icon_state = "health6"
 		else
 			src.healths.icon_state = "health7"
 
-	if (src.syndicate && src.client)
-		for(var/datum/mind/tra in traitors.current_antagonists)
-			if(tra.current)
-				// TODO: Update to new antagonist system.
-				var/I = image('icons/mob/mob.dmi', loc = tra.current, icon_state = "traitor")
-				src.client.images += I
+	if (src.syndicate) // WTF WHYYYY PAIN
 		src.disconnect_from_ai()
-		if(src.mind)
-			// TODO: Update to new antagonist system.
-			if(!src.mind.special_role)
-				src.mind.special_role = "traitor"
-				traitors.current_antagonists |= src.mind
 
 	if (src.cells)
 		if (src.cell)
-			var/cellcharge = src.cell.charge/src.cell.maxcharge
+			var/cellcharge = src.cell.charge/src.cell.max_charge
 			switch(cellcharge)
 				if(0.75 to INFINITY)
 					src.cells.icon_state = "charge4"
@@ -241,29 +199,14 @@
 		else
 			src.cells.icon_state = "charge-empty"
 
-	if(bodytemp)
-		switch(src.bodytemperature) //310.055 optimal body temp
-			if(335 to INFINITY)
-				src.bodytemp.icon_state = "temp2"
-			if(320 to 335)
-				src.bodytemp.icon_state = "temp1"
-			if(300 to 320)
-				src.bodytemp.icon_state = "temp0"
-			if(260 to 300)
-				src.bodytemp.icon_state = "temp-1"
-			else
-				src.bodytemp.icon_state = "temp-2"
 
 //Oxygen and fire does nothing yet!!
 //	if (src.oxygen) src.oxygen.icon_state = "oxy[src.oxygen_alert ? 1 : 0]"
 //	if (src.fire) src.fire.icon_state = "fire[src.fire_alert ? 1 : 0]"
 
 	if(stat != 2)
-		if(blinded)
-			overlay_fullscreen("blind", /atom/movable/screen/fullscreen/scaled/blind)
-		else
-			clear_fullscreen("blind")
-		if(disabilities & NEARSIGHTED)
+		//Blindness is handled by the modifier, it also sets the fullscreen overlay
+		if(disabilities & DISABILITY_NEARSIGHTED)
 			overlay_fullscreen("impaired", /atom/movable/screen/fullscreen/scaled/impaired, 1)
 		else
 			clear_fullscreen("impaired")
@@ -287,52 +230,22 @@
 		for(var/obj/I in src.contents)
 			if(I && !(istype(I,/obj/item/cell) || istype(I,/obj/item/radio)  || istype(I,/obj/machinery/camera) || istype(I,/obj/item/mmi)))
 				src.client.screen += I
-	if(src.module_state_1)
-		src.module_state_1:screen_loc = ui_inv1
-	if(src.module_state_2)
-		src.module_state_2:screen_loc = ui_inv2
-	if(src.module_state_3)
-		src.module_state_3:screen_loc = ui_inv3
 	updateicon()
 
-/mob/living/silicon/robot/proc/process_killswitch()
-	if(killswitch)
-		killswitch_time --
-		if(killswitch_time <= 0)
-			if(src.client)
-				to_chat(src, "<span class='danger'>Killswitch Activated</span>")
-			killswitch = 0
-			spawn(5)
-				gib()
-
-/mob/living/silicon/robot/proc/process_locks()
-	if(weapon_lock)
-		uneq_all()
-		weaponlock_time --
-		if(weaponlock_time <= 0)
-			if(src.client)
-				to_chat(src, "<span class='danger'>Weapon Lock Timed Out!</span>")
-			weapon_lock = 0
-			weaponlock_time = 120
-
-/mob/living/silicon/robot/update_canmove()
-	..() // Let's not reinvent the wheel.
-	if(lockdown || !is_component_functioning("actuator"))
-		canmove = FALSE
-	return canmove
+// todo: better way
+/mob/living/silicon/robot/update_mobility()
+	. = ..()
+	if(!is_component_functioning("actuator"))
+		mobility_flags &= ~MOBILITY_CAN_MOVE
+	if(lockdown)
+		mobility_flags &= ~(MOBILITY_FLAGS_ANY_INTERACTION | MOBILITY_CAN_MOVE | MOBILITY_CAN_PULL | MOBILITY_CAN_RESIST)
+	return mobility_flags
 
 /mob/living/silicon/robot/update_fire()
-	overlays -= image("icon"='icons/mob/OnFire.dmi', "icon_state" = get_fire_icon_state())
+	cut_overlay(image("icon"='icons/mob/OnFire.dmi', "icon_state" = get_fire_icon_state()))
 	if(on_fire)
-		overlays += image("icon"='icons/mob/OnFire.dmi', "icon_state" = get_fire_icon_state())
+		add_overlay(image("icon"='icons/mob/OnFire.dmi', "icon_state" = get_fire_icon_state()))
 
 /mob/living/silicon/robot/fire_act()
 	if(!on_fire) //Silicons don't gain stacks from hotspots, but hotspots can ignite them
 		IgniteMob()
-
-/mob/living/silicon/robot/handle_light()
-	. = ..()
-	if(. == FALSE) // If no other light sources are on.
-		if(lights_on)
-			set_light(integrated_light_power, 1, "#FFFFFF")
-			return TRUE

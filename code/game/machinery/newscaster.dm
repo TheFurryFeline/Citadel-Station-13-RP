@@ -61,7 +61,7 @@
 /datum/feed_network/New()
 	CreateFeedChannel("Station Announcements", "SS13", 1, 1, "New Station Announcement Available")
 
-/datum/feed_network/proc/CreateFeedChannel(var/channel_name, var/author, var/locked, var/adminChannel = 0, var/announcement_message)
+/datum/feed_network/proc/CreateFeedChannel(channel_name, author, locked, adminChannel = 0, announcement_message)
 	var/datum/feed_channel/newChannel = new /datum/feed_channel
 	newChannel.channel_name = channel_name
 	newChannel.author = author
@@ -73,30 +73,30 @@
 		newChannel.announcement = "Breaking news from [channel_name]!"
 	network_channels += newChannel
 
-/datum/feed_network/proc/SubmitArticle(var/msg, var/author, var/channel_name, var/obj/item/photo/photo, var/adminMessage = 0, var/message_type = "")
+/datum/feed_network/proc/SubmitArticle(msg, author, channel_name, obj/item/photo/photo, adminMessage = 0, message_type = "")
 	var/datum/feed_message/newMsg = new /datum/feed_message
 	newMsg.author = author
 	newMsg.body = msg
 	newMsg.time_stamp = "[stationtime2text()]"
 	newMsg.is_admin_message = adminMessage
-	newMsg.post_time = round_duration_in_ds // Should be almost universally unique
+	newMsg.post_time = STATION_TIME_PASSED() // Should be almost universally unique
 	if(message_type)
 		newMsg.message_type = message_type
 	if(photo)
-		newMsg.img = photo.img
+		newMsg.img = photo.full_image()
 		newMsg.caption = photo.scribble
 	for(var/datum/feed_channel/FC in network_channels)
 		if(FC.channel_name == channel_name)
 			insert_message_in_channel(FC, newMsg) //Adding message to the network's appropriate feed_channel
 			break
 
-/datum/feed_network/proc/insert_message_in_channel(var/datum/feed_channel/FC, var/datum/feed_message/newMsg)
+/datum/feed_network/proc/insert_message_in_channel(datum/feed_channel/FC, datum/feed_message/newMsg)
 	FC.messages += newMsg
 	newMsg.parent_channel = FC
 	FC.update()
 	alert_readers(FC.announcement)
 
-/datum/feed_network/proc/alert_readers(var/annoncement)
+/datum/feed_network/proc/alert_readers(annoncement)
 	for(var/obj/machinery/newscaster/NEWSCASTER in allCasters)
 		NEWSCASTER.newsAlert(annoncement)
 		NEWSCASTER.update_icon()
@@ -129,11 +129,15 @@ var/list/obj/machinery/newscaster/allCasters = list() //Global list that will co
 	icon_state = "newscaster_normal"
 	plane = TURF_PLANE
 	layer = ABOVE_TURF_LAYER
-	var/isbroken = 0  //1 if someone banged it with something heavy
-	var/ispowered = 1 //starts powered, changes with power_change()
+	anchored = TRUE
+
+	/// TRUE if someone banged it with something heavy.
+	var/isbroken = FALSE
+	/// Starts powered, changes with power_change()
+	var/ispowered = 1
 	//var/list/datum/feed_channel/channel_list = list() //This list will contain the names of the feed channels. Each name will refer to a data region where the messages of the feed channels are stored.
 	//OBSOLETE: We're now using a global news network
-	var/screen = 0                  //Or maybe I'll make it into a list within a list afterwards... whichever I prefer, go fuck yourselves :3
+	var/screen = 0 //Or maybe I'll make it into a list within a list afterwards... whichever I prefer, go fuck yourselves :3
 		// 0 = welcome screen - main menu
 		// 1 = view feed channels
 		// 2 = create feed channel
@@ -168,25 +172,23 @@ var/list/obj/machinery/newscaster/allCasters = list() //Global list that will co
 	var/hitstaken = 0      //Death at 3 hits from an item with force>=15
 	var/datum/feed_channel/viewing_channel = null
 	light_range = 0
-	anchored = 1
 	var/obj/machinery/exonet_node/node = null
 	circuit = /obj/item/circuitboard/newscaster
 
-/obj/machinery/newscaster/security_unit                   //Security unit
+/obj/machinery/newscaster/security_unit //Security unit
 	name = "Security Newscaster"
 	securityCaster = 1
 
 /obj/machinery/newscaster/Initialize(mapload, newdir)
 	. = ..()
 	allCasters += src
-	paper_remaining = 15            // Will probably change this to something better
+	paper_remaining = 15 // Will probably change this to something better
 	for(var/obj/machinery/newscaster/NEWSCASTER in allCasters) // Let's give it an appropriate unit number
 		unit_no++
 	update_icon() //for any custom ones on the map...
 	return INITIALIZE_HINT_LATELOAD
 
 /obj/machinery/newscaster/LateInitialize()
-	. = ..()
 	node = get_exonet_node()
 
 /obj/machinery/newscaster/Destroy()
@@ -194,41 +196,40 @@ var/list/obj/machinery/newscaster/allCasters = list() //Global list that will co
 	return ..()
 
 /obj/machinery/newscaster/update_icon()
+	cut_overlays()
+	. = ..()
+
 	if(!ispowered || isbroken)
 		icon_state = "newscaster_off"
 		if(isbroken) //If the thing is smashed, add crack overlay on top of the unpowered sprite.
-			overlays.Cut()
-			overlays += image(icon, "crack3")
+			set_overlays("crack3")
 		return
-
-	overlays.Cut() //reset overlays
 
 	if(news_network.wanted_issue) //wanted icon state, there can be no overlays on it as it's a priority message
 		icon_state = "newscaster_wanted"
 		return
 
 	if(alert) //new message alert overlay
-		overlays += "newscaster_alert"
+		add_overlay("newscaster_alert")
 
 	if(hitstaken > 0) //Cosmetic damage overlay
-		overlays += image(icon, "crack[hitstaken]")
+		add_overlay("crack[hitstaken]")
 
 	icon_state = "newscaster_normal"
-	return
 
 /obj/machinery/newscaster/power_change()
 	if(isbroken) //Broken shit can't be powered.
 		return
 	..()
-	if(!(stat & NOPOWER))
-		ispowered = 1
+	if(!(machine_stat & NOPOWER))
+		ispowered = TRUE
 		update_icon()
 	else
 		spawn(rand(0, 15))
-			ispowered = 0
+			ispowered = FALSE
 			update_icon()
 
-/obj/machinery/newscaster/ex_act(severity)
+/obj/machinery/newscaster/legacy_ex_act(severity)
 	switch(severity)
 		if(1.0)
 			qdel(src)
@@ -245,10 +246,10 @@ var/list/obj/machinery/newscaster/allCasters = list() //Global list that will co
 				isbroken=1
 			update_icon()
 
-/obj/machinery/newscaster/attack_ai(mob/user as mob)
+/obj/machinery/newscaster/attack_ai(mob/user)
 	return attack_hand(user)
 
-/obj/machinery/newscaster/attack_hand(mob/user as mob)            //########### THE MAIN BEEF IS HERE! And in the proc below this...############
+/obj/machinery/newscaster/attack_hand(mob/user, datum/event_args/actor/clickchain/e_args)
 	if(!ispowered || isbroken)
 		return
 
@@ -256,24 +257,23 @@ var/list/obj/machinery/newscaster/allCasters = list() //Global list that will co
 		node = get_exonet_node()
 
 	if(!node || !node.on || !node.allow_external_newscasters)
-		to_chat(user, "<span class='danger'>Error: Cannot connect to external content.  Please try again in a few minutes.  If this error persists, please \
-		contact the system administrator.</span>")
-		return 0
+		to_chat(user, SPAN_DANGER("Error: Cannot connect to external content.  Please try again in a few minutes.  If this error persists, please \
+		contact the system administrator."))
+		return FALSE
 
 	if(!user.IsAdvancedToolUser())
-		return 0
+		return FALSE
 
 	if(istype(user, /mob/living/carbon/human) || istype(user,/mob/living/silicon))
 		var/mob/living/human_or_robot_user = user
-		var/dat
-		dat = text("<HEAD><TITLE>Newscaster</TITLE></HEAD><H3>Newscaster Unit #[unit_no]</H3>")
+		var/dat = "<HEAD><TITLE>Newscaster</TITLE></HEAD><H3>Newscaster Unit #[unit_no]</H3>"
 
 		scan_user(human_or_robot_user) //Newscaster scans you
 
 		switch(screen)
 			if(0)
 				dat += "Welcome to Newscasting Unit #[unit_no].<BR> Interface & News networks Operational."
-				dat += "<BR><FONT SIZE=1>Property of NanoTrasen Inc</FONT>"
+				dat += "<BR><FONT SIZE=1>Property of Nanotrasen Inc</FONT>"
 				if(news_network.wanted_issue)
 					dat+= "<HR><A href='?src=\ref[src];view_wanted=1'>Read Wanted Issue</A>"
 				dat+= "<HR><BR><A href='?src=\ref[src];create_channel=1'>Create Feed Channel</A>"
@@ -290,7 +290,7 @@ var/list/obj/machinery/newscaster/allCasters = list() //Global list that will co
 					dat+="<HR><B>Feed Security functions:</B><BR>"
 					dat+="<BR><A href='?src=\ref[src];menu_wanted=1'>[(wanted_already) ? ("Manage") : ("Publish")] \"Wanted\" Issue</A>"
 					dat+="<BR><A href='?src=\ref[src];menu_censor_story=1'>Censor Feed Stories</A>"
-					dat+="<BR><A href='?src=\ref[src];menu_censor_channel=1'>Mark Feed Channel with [GLOB.using_map.company_name] D-Notice</A>"
+					dat+="<BR><A href='?src=\ref[src];menu_censor_channel=1'>Mark Feed Channel with [(LEGACY_MAP_DATUM).company_name] D-Notice</A>"
 				dat+="<BR><HR>The newscaster recognises you as: <FONT COLOR='green'>[scanned_user]</FONT>"
 			if(1)
 				dat+= "Station Feed Channels<HR>"
@@ -371,7 +371,7 @@ var/list/obj/machinery/newscaster/allCasters = list() //Global list that will co
 			if(9)
 				dat+="<B>[viewing_channel.channel_name]: </B><FONT SIZE=1>\[created by: <FONT COLOR='maroon'>[viewing_channel.author]</FONT>\]</FONT><HR>"
 				if(viewing_channel.censored)
-					dat+="<FONT COLOR='red'><B>ATTENTION: </B></FONT>This channel has been deemed as threatening to the welfare of the station, and marked with a [GLOB.using_map.company_name] D-Notice.<BR>"
+					dat+="<FONT COLOR='red'><B>ATTENTION: </B></FONT>This channel has been deemed as threatening to the welfare of the station, and marked with a [(LEGACY_MAP_DATUM).company_name] D-Notice.<BR>"
 					dat+="No further feed story additions are allowed while the D-Notice is in effect.</FONT><BR><BR>"
 				else
 					if(!length(viewing_channel.messages))
@@ -391,7 +391,7 @@ var/list/obj/machinery/newscaster/allCasters = list() //Global list that will co
 				dat+="<BR><HR><A href='?src=\ref[src];refresh=1'>Refresh</A>"
 				dat+="<BR><A href='?src=\ref[src];setScreen=[1]'>Back</A>"
 			if(10)
-				dat+="<B>[GLOB.using_map.company_name] Feed Censorship Tool</B><BR>"
+				dat+="<B>[(LEGACY_MAP_DATUM).company_name] Feed Censorship Tool</B><BR>"
 				dat+="<FONT SIZE=1>NOTE: Due to the nature of news Feeds, total deletion of a Feed Story is not possible.<BR>"
 				dat+="Keep in mind that users attempting to view a censored feed will instead see the \[REDACTED\] tag above it.</FONT>"
 				dat+="<HR>Select Feed channel to get Stories from:<BR>"
@@ -402,7 +402,7 @@ var/list/obj/machinery/newscaster/allCasters = list() //Global list that will co
 						dat+="<A href='?src=\ref[src];pick_censor_channel=\ref[CHANNEL]'>[CHANNEL.channel_name]</A> [(CHANNEL.censored) ? ("<FONT COLOR='red'>***</FONT>") : null]<BR>"
 				dat+="<BR><A href='?src=\ref[src];setScreen=[0]'>Cancel</A>"
 			if(11)
-				dat+="<B>[GLOB.using_map.company_name] D-Notice Handler</B><HR>"
+				dat+="<B>[(LEGACY_MAP_DATUM).company_name] D-Notice Handler</B><HR>"
 				dat+="<FONT SIZE=1>A D-Notice is to be bestowed upon the channel if the handling Authority deems it as harmful for the station's"
 				dat+="morale, integrity or disciplinary behaviour. A D-Notice will render a channel unable to be updated by anyone, without deleting any feed"
 				dat+="stories it might contain at the time. You can lift a D-Notice if you have the required access at any time.</FONT><HR>"
@@ -429,7 +429,7 @@ var/list/obj/machinery/newscaster/allCasters = list() //Global list that will co
 				dat+="<B>[viewing_channel.channel_name]: </B><FONT SIZE=1>\[ created by: <FONT COLOR='maroon'>[viewing_channel.author]</FONT> \]</FONT><BR>"
 				dat+="Channel messages listed below. If you deem them dangerous to the station, you can <A href='?src=\ref[src];toggle_d_notice=\ref[viewing_channel]'>Bestow a D-Notice upon the channel</A>.<HR>"
 				if(viewing_channel.censored)
-					dat+="<FONT COLOR='red'><B>ATTENTION: </B></FONT>This channel has been deemed as threatening to the welfare of the station, and marked with a [GLOB.using_map.company_name] D-Notice.<BR>"
+					dat+="<FONT COLOR='red'><B>ATTENTION: </B></FONT>This channel has been deemed as threatening to the welfare of the station, and marked with a [(LEGACY_MAP_DATUM).company_name] D-Notice.<BR>"
 					dat+="No further feed story additions are allowed while the D-Notice is in effect.<BR><BR>"
 				else
 					if(!length(viewing_channel.messages))
@@ -629,26 +629,26 @@ var/list/obj/machinery/newscaster/allCasters = list() //Global list that will co
 						WANTED.body = msg
 						WANTED.backup_author = scanned_user //I know, a bit wacky
 						if(photo_data)
-							WANTED.img = photo_data.photo.img
+							WANTED.img = photo_data.photo.full_image()
 						news_network.wanted_issue = WANTED
 						news_network.alert_readers()
 						screen = 15
 					else
 						if(news_network.wanted_issue.is_admin_message)
-							alert("The wanted issue has been distributed by a [GLOB.using_map.company_name] higherup. You cannot edit it.","Ok")
+							alert("The wanted issue has been distributed by a [(LEGACY_MAP_DATUM).company_name] higherup. You cannot edit it.","Ok")
 							return
 						news_network.wanted_issue.author = channel_name
 						news_network.wanted_issue.body = msg
 						news_network.wanted_issue.backup_author = scanned_user
 						if(photo_data)
-							news_network.wanted_issue.img = photo_data.photo.img
+							news_network.wanted_issue.img = photo_data.photo.full_image()
 						screen = 19
 
 			updateUsrDialog()
 
 		else if(href_list["cancel_wanted"])
 			if(news_network.wanted_issue.is_admin_message)
-				alert("The wanted issue has been distributed by a [GLOB.using_map.company_name] higherup. You cannot take it down.","Ok")
+				alert("The wanted issue has been distributed by a [(LEGACY_MAP_DATUM).company_name] higherup. You cannot take it down.","Ok")
 				return
 			var/choice = alert("Please confirm Wanted Issue removal","Network Security Handler","Confirm","Cancel")
 			if(choice=="Confirm")
@@ -664,7 +664,7 @@ var/list/obj/machinery/newscaster/allCasters = list() //Global list that will co
 		else if(href_list["censor_channel_author"])
 			var/datum/feed_channel/FC = locate(href_list["censor_channel_author"])
 			if(FC.is_admin_channel)
-				alert("This channel was created by a [GLOB.using_map.company_name] Officer. You cannot censor it.","Ok")
+				alert("This channel was created by a [(LEGACY_MAP_DATUM).company_name] Officer. You cannot censor it.","Ok")
 				return
 			if(FC.author != "<B>\[REDACTED\]</B>")
 				FC.backup_author = FC.author
@@ -677,7 +677,7 @@ var/list/obj/machinery/newscaster/allCasters = list() //Global list that will co
 		else if(href_list["censor_channel_story_author"])
 			var/datum/feed_message/MSG = locate(href_list["censor_channel_story_author"])
 			if(MSG.is_admin_message)
-				alert("This message was created by a [GLOB.using_map.company_name] Officer. You cannot censor its author.","Ok")
+				alert("This message was created by a [(LEGACY_MAP_DATUM).company_name] Officer. You cannot censor its author.","Ok")
 				return
 			if(MSG.author != "<B>\[REDACTED\]</B>")
 				MSG.backup_author = MSG.author
@@ -690,7 +690,7 @@ var/list/obj/machinery/newscaster/allCasters = list() //Global list that will co
 		else if(href_list["censor_channel_story_body"])
 			var/datum/feed_message/MSG = locate(href_list["censor_channel_story_body"])
 			if(MSG.is_admin_message)
-				alert("This channel was created by a [GLOB.using_map.company_name] Officer. You cannot censor it.","Ok")
+				alert("This channel was created by a [(LEGACY_MAP_DATUM).company_name] Officer. You cannot censor it.","Ok")
 				return
 			if(MSG.body != "<B>\[REDACTED\]</B>")
 				MSG.backup_body = MSG.body
@@ -716,7 +716,7 @@ var/list/obj/machinery/newscaster/allCasters = list() //Global list that will co
 		else if(href_list["toggle_d_notice"])
 			var/datum/feed_channel/FC = locate(href_list["toggle_d_notice"])
 			if(FC.is_admin_channel)
-				alert("This channel was created by a [GLOB.using_map.company_name] Officer. You cannot place a D-Notice upon it.","Ok")
+				alert("This channel was created by a [(LEGACY_MAP_DATUM).company_name] Officer. You cannot place a D-Notice upon it.","Ok")
 				return
 			FC.censored = !FC.censored
 			FC.update()
@@ -751,21 +751,21 @@ var/list/obj/machinery/newscaster/allCasters = list() //Global list that will co
 		else if(href_list["refresh"])
 			updateUsrDialog()
 
-/obj/machinery/newscaster/attackby(I as obj, user as mob)
+/obj/machinery/newscaster/attackby(obj/item/I, mob/user)
 	if(computer_deconstruction_screwdriver(user, I))
 		return
 	else
 		attack_hand(user)
 	return
 
-/obj/machinery/newscaster/attack_ai(mob/user as mob)
+/obj/machinery/newscaster/attack_ai(mob/user)
 	return attack_hand(user) //or maybe it'll have some special functions? No idea.
 
 /datum/news_photo
 	var/is_synth = 0
 	var/obj/item/photo/photo = null
 
-/datum/news_photo/New(var/obj/item/photo/p, var/synth)
+/datum/news_photo/New(obj/item/photo/p, synth)
 	is_synth = synth
 	photo = p
 
@@ -777,17 +777,16 @@ var/list/obj/machinery/newscaster/allCasters = list() //Global list that will co
 				user.put_in_inactive_hand(photo_data.photo)
 		qdel(photo_data)
 
-	if(istype(user.get_active_hand(), /obj/item/photo))
-		var/obj/item/photo = user.get_active_hand()
-		user.drop_item()
-		photo.loc = src
+	if(istype(user.get_active_held_item(), /obj/item/photo))
+		var/obj/item/photo = user.get_active_held_item()
+		if(!user.attempt_insert_item_for_installation(photo, src))
+			return
 		photo_data = new(photo, 0)
 	else if(istype(user,/mob/living/silicon))
 		var/mob/living/silicon/tempAI = user
 		var/obj/item/photo/selection = tempAI.GetPicture()
 		if(!selection)
 			return
-
 		photo_data = new(selection, 1)
 
 //########################################################################################################################
@@ -799,7 +798,7 @@ var/list/obj/machinery/newscaster/allCasters = list() //Global list that will co
 	desc = "An issue of The Griffon, the newspaper circulating aboard most stations."
 	icon = 'icons/obj/bureaucracy.dmi'
 	icon_state = "newspaper"
-	w_class = ITEMSIZE_SMALL	//Let's make it fit in trashbags!
+	w_class = WEIGHT_CLASS_SMALL	//Let's make it fit in trashbags!
 	attack_verb = list("bapped")
 	var/screen = 0
 	var/pages = 0
@@ -811,7 +810,10 @@ var/list/obj/machinery/newscaster/allCasters = list() //Global list that will co
 	drop_sound = 'sound/items/drop/wrapper.ogg'
 	pickup_sound = 'sound/items/pickup/wrapper.ogg'
 
-obj/item/newspaper/attack_self(mob/user as mob)
+/obj/item/newspaper/attack_self(mob/user, datum/event_args/actor/actor)
+	. = ..()
+	if(.)
+		return
 	if(ishuman(user))
 		var/mob/living/carbon/human/human_user = user
 		var/dat
@@ -819,7 +821,7 @@ obj/item/newspaper/attack_self(mob/user as mob)
 		switch(screen)
 			if(0) //Cover
 				dat+="<DIV ALIGN='center'><B><FONT SIZE=6>The Griffon</FONT></B></div>"
-				dat+="<DIV ALIGN='center'><FONT SIZE=2>[GLOB.using_map.company_name]-standard newspaper, for use on [GLOB.using_map.company_name]� Space Facilities</FONT></div><HR>"
+				dat+="<DIV ALIGN='center'><FONT SIZE=2>[(LEGACY_MAP_DATUM).company_name]-standard newspaper, for use on [(LEGACY_MAP_DATUM).company_name]� Space Facilities</FONT></div><HR>"
 				if(!length(news_content))
 					if(important_message)
 						dat+="Contents:<BR><ul><B><FONT COLOR='red'>**</FONT>Important Security Announcement<FONT COLOR='red'>**</FONT></B> <FONT SIZE=2>\[page [pages+2]\]</FONT><BR></ul>"
@@ -890,7 +892,7 @@ obj/item/newspaper/attack_self(mob/user as mob)
 	else
 		to_chat(user, "The paper is full of intelligible symbols!")
 
-obj/item/newspaper/Topic(href, href_list)
+/obj/item/newspaper/Topic(href, href_list)
 	var/mob/living/U = usr
 	..()
 	if((src in U.contents) || (istype(loc, /turf) && in_range(src, U)))
@@ -921,7 +923,7 @@ obj/item/newspaper/Topic(href, href_list)
 		if(istype(src.loc, /mob))
 			attack_self(src.loc)
 
-obj/item/newspaper/attackby(obj/item/W as obj, mob/user as mob)
+/obj/item/newspaper/attackby(obj/item/W, mob/user)
 	if(istype(W, /obj/item/pen))
 		if(scribble_page == curr_page)
 			to_chat(user, "<font color=#4F49AF>There's already a scribble in this page... You wouldn't want to make things too cluttered, would you?</FONT>")
@@ -939,7 +941,7 @@ obj/item/newspaper/attackby(obj/item/W as obj, mob/user as mob)
 
 ////////////////////////////////////helper procs
 
-/obj/machinery/newscaster/proc/scan_user(mob/living/user as mob)
+/obj/machinery/newscaster/proc/scan_user(mob/living/user)
 	if(istype(user,/mob/living/carbon/human))                       //User is a human
 		var/mob/living/carbon/human/human_user = user
 		var/obj/item/card/id/I = human_user.GetIdCard()
@@ -962,7 +964,7 @@ obj/item/newspaper/attackby(obj/item/W as obj, mob/user as mob)
 	paper_remaining--
 	return
 
-/obj/machinery/newscaster/proc/newsAlert(var/news_call)
+/obj/machinery/newscaster/proc/newsAlert(news_call)
 	if(!node || !node.on || !node.allow_external_newscasters) //The messages will still be there once the connection returns.
 		return
 	var/turf/T = get_turf(src)

@@ -12,11 +12,13 @@
 
 
 /datum/surgery_step/slime/cut_flesh
+	step_name = "Incise"
 	allowed_tools = list(
-	/obj/item/surgical/scalpel = 100,		\
-	/obj/item/surgical/scalpel_primitive = 80,	\
-	/obj/item/material/knife = 75,	\
-	/obj/item/material/shard = 50, 		\
+	/obj/item/surgical/scalpel = 100,
+	/obj/item/surgical/scalpel_bronze = 90,
+	/obj/item/surgical/scalpel_primitive = 80,
+	/obj/item/material/knife = 75,
+	/obj/item/material/shard = 50,
 	)
 
 	min_duration = 30
@@ -41,8 +43,11 @@
 
 
 /datum/surgery_step/slime/cut_innards
+	step_name = "Expose core"
+
 	allowed_tools = list(
 	/obj/item/surgical/scalpel = 100,		\
+	/obj/item/surgical/scalpel_bronze = 90,	\
 	/obj/item/surgical/scalpel_primitive = 80,	\
 	/obj/item/material/knife = 75,	\
 	/obj/item/material/shard = 50, 		\
@@ -70,8 +75,11 @@
 
 
 /datum/surgery_step/slime/saw_core
+	step_name = "Extract core"
+
 	allowed_tools = list(
 	/obj/item/surgical/circular_saw = 100, \
+	/obj/item/surgical/saw_bronze = 90, \
 	/obj/item/surgical/saw_primitive = 80, \
 	/obj/item/material/knife/machete/hatchet = 75
 	)
@@ -98,6 +106,6 @@
 
 
 /datum/surgery_step/slime/saw_core/fail_step(mob/living/user, mob/living/simple_mob/slime/target, target_zone, obj/item/tool)
-	var/datum/gender/T = gender_datums[user.get_visible_gender()]
+	var/datum/gender/T = GLOB.gender_datums[user.get_visible_gender()]
 	user.visible_message("<font color='red'>[user]'s hand slips, causing [T.him] to miss the core!</font>", \
 	"<font color='red'>Your hand slips, causing you to miss the core!</font>")

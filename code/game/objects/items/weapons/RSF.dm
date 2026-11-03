@@ -1,9 +1,3 @@
-/*
-CONTAINS:
-RSF
-
-*/
-
 /obj/item/rsf
 	name = "\improper Rapid-Service-Fabricator"
 	desc = "A device used to rapidly deploy service items."
@@ -30,9 +24,9 @@ RSF
 		"condiment bottle" = /obj/item/reagent_containers/food/condiment
 		)
 
-	w_class = ITEMSIZE_NORMAL
+	w_class = WEIGHT_CLASS_NORMAL
 
-/obj/item/rsf/examine(mob/user)
+/obj/item/rsf/examine(mob/user, dist)
 	. = ..()
 	. += "<span class='notice'>It currently holds [stored_matter]/30 fabrication-units.</span>"
 
@@ -62,7 +56,10 @@ RSF
 	else
 		glasstype = /obj/item/reagent_containers/food/drinks/metaglass
 
-/obj/item/rsf/attack_self(mob/user as mob)
+/obj/item/rsf/attack_self(mob/user, datum/event_args/actor/actor)
+	. = ..()
+	if(.)
+		return
 	playsound(src.loc, 'sound/effects/pop.ogg', 50, 0)
 	if (mode == 1)
 		mode = 2
@@ -97,9 +94,9 @@ RSF
 		to_chat(user,"<span class='notice'>Changed dispensing mode to 'Cigarette'</span>")
 		return
 
-/obj/item/rsf/afterattack(atom/A, mob/user as mob, proximity)
+/obj/item/rsf/afterattack(atom/target, mob/user, clickchain_flags, list/params)
 
-	if(!proximity) return
+	if(!(clickchain_flags & CLICKCHAIN_HAS_PROXIMITY)) return
 
 	if(istype(user,/mob/living/silicon/robot))
 		var/mob/living/silicon/robot/R = user
@@ -109,38 +106,38 @@ RSF
 		if(stored_matter <= 0)
 			return
 
-	if(!istype(A, /obj/structure/table) && !istype(A, /turf/simulated/floor))
+	if(!istype(target, /obj/structure/table) && !istype(target, /turf/simulated/floor))
 		return
 
 	playsound(src, 'sound/machines/click.ogg', 10, 1)
 	var/used_energy = 0
 	var/obj/product
-	var/turf/target = get_turf(A)
+	var/turf/target_turf = get_turf(target)
 
 	switch(mode)
 		if(1)
-			product = new /obj/item/clothing/mask/smokable/cigarette(target)
+			product = new /obj/item/clothing/mask/smokable/cigarette(target_turf)
 			used_energy = 10
 		if(2)
-			product = new glasstype(target)
+			product = new glasstype(target_turf)
 			used_energy = 50
 		if(3)
-			product = new /obj/item/reagent_containers/food/drinks/glass2/shot(target)
+			product = new /obj/item/reagent_containers/food/drinks/glass2/shot(target_turf)
 			used_energy = 25
 		if(4)
-			product = new /obj/item/reagent_containers/food/drinks/glass2/wine(target)
+			product = new /obj/item/reagent_containers/food/drinks/glass2/wine(target_turf)
 			used_energy = 25
 		if(5)
-			product = new /obj/item/paper(target)
+			product = new /obj/item/paper(target_turf)
 			used_energy = 10
 		if(6)
-			product = new /obj/item/pen(target)
+			product = new /obj/item/pen(target_turf)
 			used_energy = 50
 		if(7)
-			product = new /obj/item/storage/pill_bottle/dice(target)
+			product = new /obj/item/storage/pill_bottle/dice(target_turf)
 			used_energy = 200
 		if(8)
-			product = new /obj/random/plushie(target) //dear god if this gets spammed i will commit die
+			product = new /obj/random/plushie(target_turf) //dear god if this gets spammed i will commit die
 			used_energy = 1000
 
 	to_chat(user,"<span class='notice'>Dispensing [product ? product : "product"]...</span>")
@@ -152,3 +149,5 @@ RSF
 	else
 		stored_matter--
 		to_chat(user,"<span class='notice'>The RSF now holds [stored_matter]/30 fabrication-units.</span>")
+
+/obj/item/rsf/loaded

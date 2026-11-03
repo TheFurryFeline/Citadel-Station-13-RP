@@ -27,7 +27,7 @@
 
 /mob/living/simple_mob/horror
 	tt_desc = "Homo Horrificus"
-	faction = "horror"
+	iff_factions = MOB_IFF_FACTION_MUTANT
 	icon = 'icons/mob/horror_show/GHPS.dmi'
 	icon_gib = "generic_gib"
 	taser_kill = 0
@@ -36,7 +36,9 @@
 	hide_type = /obj/item/stack/hairlesshide
 	exotic_type = /obj/item/stack/sinew
 
-/datum/ai_holder/simple_mob/horror
+	mob_class = MOB_CLASS_ABERRATION
+
+/datum/ai_holder/polaris/simple_mob/horror
 	hostile = TRUE // The majority of simplemobs are hostile, gaslamps are nice.
 	cooperative = FALSE
 	retaliate = TRUE //so the monster can attack back

@@ -3,7 +3,7 @@
 	desc = "A small electronic device able to ignite combustable substances."
 	icon_state = "igniter"
 	origin_tech = list(TECH_MAGNET = 1)
-	matter = list(MAT_STEEL = 500, MAT_GLASS = 50)
+	materials_base = list(MAT_STEEL = 500, MAT_GLASS = 50)
 
 	secured = TRUE
 	wires = WIRE_RECEIVE
@@ -12,8 +12,8 @@
 	if(!..())
 		return FALSE
 
-	if(holder && istype(holder.loc,/obj/item/grenade/chem_grenade))
-		var/obj/item/grenade/chem_grenade/grenade = holder.loc
+	if(holder && istype(holder.loc,/obj/item/grenade/simple/chemical))
+		var/obj/item/grenade/simple/chemical/grenade = holder.loc
 		grenade.detonate()
 	else
 		var/turf/location = get_turf(loc)
@@ -28,13 +28,12 @@
 		var/datum/effect_system/spark_spread/s = new /datum/effect_system/spark_spread
 		s.set_up(3, 1, src)
 		s.start()
-
 	return TRUE
 
-
-/obj/item/assembly/igniter/attack_self(var/mob/user)
+/obj/item/assembly/igniter/attack_self(mob/user, datum/event_args/actor/actor)
 	activate()
 	add_fingerprint(user)
+	return TRUE
 
 /obj/item/assembly/igniter/is_hot()
 	return TRUE

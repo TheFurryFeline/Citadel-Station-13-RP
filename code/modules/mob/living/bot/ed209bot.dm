@@ -26,7 +26,7 @@
 	mob_swap_flags = ~HEAVY
 	mob_push_flags = HEAVY
 
-	used_weapon = /obj/item/gun/energy/taser
+	used_weapon = /obj/item/gun/projectile/energy/taser
 
 	var/shot_delay = 4
 	var/last_shot = 0
@@ -43,8 +43,8 @@
 
 	new /obj/item/secbot_assembly/ed209_assembly(Tsec)
 
-	var/obj/item/gun/energy/taser/G = new used_weapon(Tsec)
-	G.power_supply.charge = 0
+	var/obj/item/gun/projectile/energy/taser/G = new used_weapon(Tsec)
+	G.obj_cell_slot.cell.set_charge(0)
 	if(prob(50))
 		new /obj/item/robot_parts/l_leg(Tsec)
 	if(prob(50))
@@ -59,7 +59,7 @@
 	s.set_up(3, 1, src)
 	s.start()
 
-	new /obj/effect/decal/cleanable/blood/oil(Tsec)
+	new /obj/effect/debris/cleanable/blood/oil(Tsec)
 	qdel(src)
 
 /mob/living/bot/secbot/ed209/handleRangedTarget()
@@ -72,12 +72,12 @@
 
 	last_shot = world.time
 
-	var/projectile = /obj/item/projectile/beam/stun
+	var/projectile = /obj/projectile/beam/stun
 	if(emagged)
-		projectile = /obj/item/projectile/beam
+		projectile = /obj/projectile/beam
 
 	playsound(loc, emagged ? 'sound/weapons/Laser.ogg' : 'sound/weapons/Taser.ogg', 50, 1)
-	var/obj/item/projectile/P = new projectile(loc)
+	var/obj/projectile/P = new projectile(loc)
 
 	P.firer = src
 	P.old_style_target(A)
@@ -109,8 +109,8 @@
 	switch(build_step)
 		if(0, 1)
 			if(istype(W, /obj/item/robot_parts/l_leg) || istype(W, /obj/item/robot_parts/r_leg) || (istype(W, /obj/item/organ/external/leg) && ((W.name == "robotic right leg") || (W.name == "robotic left leg"))))
-				user.drop_item()
-				qdel(W)
+				if(!user.attempt_consume_item_for_construction(W))
+					return
 				build_step++
 				to_chat(user, "<span class='notice'>You add the robot leg to [src].</span>")
 				name = "legs/frame assembly"
@@ -121,8 +121,8 @@
 
 		if(2)
 			if(istype(W, /obj/item/clothing/suit/storage/vest))
-				user.drop_item()
-				qdel(W)
+				if(!user.attempt_consume_item_for_construction(W))
+					return
 				build_step++
 				to_chat(user, "<span class='notice'>You add the armor to [src].</span>")
 				name = "vest/legs/frame assembly"
@@ -138,8 +138,8 @@
 					to_chat(user, "<span class='notice'>You welded the vest to [src].</span>")
 		if(4)
 			if(istype(W, /obj/item/clothing/head/helmet))
-				user.drop_item()
-				qdel(W)
+				if(!user.attempt_consume_item_for_construction(W))
+					return
 				build_step++
 				to_chat(user, "<span class='notice'>You add the helmet to [src].</span>")
 				name = "covered and shielded frame assembly"
@@ -148,8 +148,8 @@
 
 		if(5)
 			if(isprox(W))
-				user.drop_item()
-				qdel(W)
+				if(!user.attempt_consume_item_for_construction(W))
+					return
 				build_step++
 				to_chat(user, "<span class='notice'>You add the prox sensor to [src].</span>")
 				name = "covered, shielded and sensored frame assembly"
@@ -171,14 +171,14 @@
 				return
 
 		if(7)
-			if(istype(W, /obj/item/gun/energy/taser/xeno))
+			if(istype(W, /obj/item/gun/projectile/energy/taser/xeno))
+				if(!user.attempt_consume_item_for_construction(W))
+					return
 				name = "xenotaser SL-ED-209 assembly"
 				item_state = "sled209_taser"
 				icon_state = "sled209_taser"
 				build_step++
 				to_chat(user, "<span class='notice'>You add [W] to [src].</span>")
-				user.drop_item()
-				qdel(W)
 				var/turf/T = get_turf(src)
 				var/obj/item/secbot_assembly/ed209_assembly/slime/S = new /obj/item/secbot_assembly/ed209_assembly/slime(T)
 				S.name = name
@@ -186,21 +186,20 @@
 				S.icon_state = icon_state
 				S.build_step = build_step
 				S.created_name = created_name
-				user.drop_from_inventory(src)
 				qdel(src)
 
-			else if(istype(W, /obj/item/gun/energy/taser))
+			else if(istype(W, /obj/item/gun/projectile/energy/taser))
+				if(!user.attempt_consume_item_for_construction(W))
+					return
 				name = "taser ED-209 assembly"
 				item_state = "ed209_taser"
 				icon_state = "ed209_taser"
 				build_step++
 				to_chat(user, "<span class='notice'>You add [W] to [src].</span>")
-				user.drop_item()
-				qdel(W)
 
 		if(8)
 			if(W.is_screwdriver())
-				playsound(src, W.usesound, 100, 1)
+				playsound(src, W.tool_sound, 100, 1)
 				var/turf/T = get_turf(user)
 				to_chat(user, "<span class='notice'>Now attaching the gun to the frame...</span>")
 				sleep(40)
@@ -210,12 +209,12 @@
 					to_chat(user, "<span class='notice'>Taser gun attached.</span>")
 
 		if(9)
+			// TODO: have them run off cells after lol
 			if(istype(W, /obj/item/cell))
+				if(!user.attempt_consume_item_for_construction(W))
+					return
 				build_step++
 				to_chat(user, "<span class='notice'>You complete the ED-209.</span>")
 				var/turf/T = get_turf(src)
 				new /mob/living/bot/secbot/ed209(T,created_name,lasercolor)
-				user.drop_item()
-				qdel(W)
-				user.drop_from_inventory(src)
 				qdel(src)

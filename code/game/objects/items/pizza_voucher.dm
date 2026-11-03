@@ -5,7 +5,7 @@
 	icon_state = "pizza_voucher"
 	var/spent = FALSE
 	var/special_delivery = FALSE
-	w_class = ITEMSIZE_SMALL
+	w_class = WEIGHT_CLASS_SMALL
 
 /obj/item/pizzavoucher/Initialize(mapload)
 	. = ..()
@@ -20,7 +20,10 @@
 	"WE ALWAYS DELIVER! WE ALWAYS DELIVER! WE ALWAYS DELIVER!")
 	desc = "A pocket-sized plastic slip with a button in the middle. \"[pick(descstrings)]\" is written on the back."
 
-/obj/item/pizzavoucher/attack_self(mob/user)
+/obj/item/pizzavoucher/attack_self(mob/user, datum/event_args/actor/actor)
+	. = ..()
+	if(.)
+		return
 	add_fingerprint(user)
 	if(!spent)
 		user.visible_message("<span class='notice'>[user] presses a button on [src]!</span>")

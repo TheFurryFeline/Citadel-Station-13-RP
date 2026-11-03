@@ -18,22 +18,12 @@
 	fireaxe = new /obj/item/material/twohanded/fireaxe()
 
 /obj/structure/fireaxecabinet/attackby(var/obj/item/O as obj, var/mob/user as mob)  //Marker -Agouri
-	//..() //That's very useful, Erro
-
-	// This could stand to be put further in, made better, etc. but fuck you. Fuck whoever
-	// wrote this code. Fuck everything about this object. I hope you step on a Lego.
-	user.setClickCooldown(10)
-	// Seriously why the fuck is this even a closet aghasjdhasd I hate you
-
-	//var/hasaxe = 0       //gonna come in handy later~ // FUCK YOUR TILDES.
-	//if(fireaxe)
-	//	hasaxe = 1
 
 	if (isrobot(user) || locked)
 		if(istype(O, /obj/item/multitool))
 			to_chat(user, "<span class='warning'>Resetting circuitry...</span>")
 			playsound(user, 'sound/machines/lockreset.ogg', 50, 1)
-			if(do_after(user, 20 * O.toolspeed))
+			if(do_after(user, 20 * O.tool_speed))
 				locked = 0
 				to_chat(user, SPAN_CAUTION("You disable the locking modules."))
 				update_icon()
@@ -46,7 +36,7 @@
 				return
 			else
 				playsound(user, 'sound/effects/Glasshit.ogg', 100, 1) //We don't want this playing every time
-			if(W.force < 15)
+			if(W.damage_force < 15)
 				to_chat(user, "<span class='notice'>The cabinet's protective glass glances off the hit.</span>")
 			else
 				hitstaken++
@@ -59,12 +49,9 @@
 		return
 	if (istype(O, /obj/item/material/twohanded/fireaxe) && open)
 		if(!fireaxe)
-			if(O:wielded)
-				O:wielded = 0
-				O.update_icon()
+			if(!user.attempt_insert_item_for_installation(O, src))
+				return
 			fireaxe = O
-			user.remove_from_mob(O)
-			contents += O
 			to_chat(user, "<span class='notice'>You place the fire axe back in the [name].</span>")
 			update_icon()
 		else
@@ -84,7 +71,7 @@
 			else
 				to_chat(user, "<span class='warning'>Resetting circuitry...</span>")
 				playsound(user, 'sound/machines/lockenable.ogg', 50, 1)
-				if(do_after(user,20 * O.toolspeed))
+				if(do_after(user,20 * O.tool_speed))
 					locked = 1
 					to_chat(user, SPAN_CAUTION("You re-enable the locking modules."))
 				return
@@ -92,7 +79,7 @@
 			toggle_close_open()
 
 
-/obj/structure/fireaxecabinet/attack_hand(mob/user as mob)
+/obj/structure/fireaxecabinet/attack_hand(mob/user, datum/event_args/actor/clickchain/e_args)
 	//var/hasaxe = 0	//Fuck this. Fuck everything about this. Who wrote this. Why.
 	//if(fireaxe)
 	//	hasaxe = 1
@@ -137,7 +124,7 @@
 
 /obj/structure/fireaxecabinet/verb/toggle_openness() //nice name, huh? HUH?! -Erro //YEAH -Agouri
 	set name = "Open/Close"
-	set category = "Object"
+	set category = VERB_CATEGORY_OBJECT
 
 	if (isrobot(usr) || locked || smashed)
 		if(locked)
@@ -151,7 +138,7 @@
 
 /obj/structure/fireaxecabinet/verb/remove_fire_axe()
 	set name = "Remove Fire Axe"
-	set category = "Object"
+	set category = VERB_CATEGORY_OBJECT
 
 	if (isrobot(usr))
 		return
@@ -180,7 +167,8 @@
 		return
 
 /obj/structure/fireaxecabinet/update_icon() //Template: fireaxe[has fireaxe][is opened][hits taken][is smashed]. If you want the opening or closing animations, add "opening" or "closing" right after the numbers
+	. = ..()
 	hasaxe = 0
 	if(fireaxe)
 		hasaxe = 1
-	icon_state = text("fireaxe[][][][]",hasaxe,open,hitstaken,smashed)
+	icon_state = "fireaxe[hasaxe][open][hitstaken][smashed]"

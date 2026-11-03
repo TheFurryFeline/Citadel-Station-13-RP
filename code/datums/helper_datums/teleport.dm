@@ -1,5 +1,5 @@
 //wrapper
-/proc/do_teleport(ateleatom, adestination, aprecision=0, afteleport=1, aeffectin=null, aeffectout=null, asoundin=null, asoundout=null, local=TRUE, bohsafe=FALSE) //VOREStation Edit
+/proc/do_teleport(ateleatom, adestination, aprecision=0, afteleport=1, aeffectin=null, aeffectout=null, asoundin=null, asoundout=null, local=TRUE, bohsafe=FALSE)
 	new /datum/teleport/instant/science(arglist(args))
 	return
 
@@ -123,7 +123,7 @@
 		teleatom.forceMove(destturf)
 		playSpecials(destturf,effectout,soundout)
 	else
-		if(teleatom.Move(destturf))
+		if(teleatom.forceMove(destturf))
 			playSpecials(destturf,effectout,soundout)
 	if(C)
 		C.forceMove(destturf)
@@ -164,7 +164,7 @@
 	if(istype(teleatom, /obj/item/storage/backpack/holding))
 		precision = rand(1,100)
 
-	var/list/bagholding = teleatom.search_contents_for(/obj/item/storage/backpack/holding)
+	var/list/bagholding = teleatom.get_all_contents_filtered(cached_typecacheof(/obj/item/storage/backpack/holding))
 	if(bagholding.len)
 		precision = max(rand(1,100)*bagholding.len,100)
 		if(istype(teleatom, /mob/living))
@@ -177,27 +177,16 @@
 		teleatom.visible_message(SPAN_DANGER("\The [teleatom] bounces off of the portal!"))
 		return FALSE
 
-	if(!!length(teleatom.search_contents_for(/obj/item/disk/nuclear)))
+	if(length(teleatom.get_all_contents_filtered(cached_typecacheof(/obj/item/disk/nuclear))))
 		if(istype(teleatom, /mob/living))
 			var/mob/living/MM = teleatom
 			MM.visible_message(SPAN_DANGER("\The [MM] bounces off of the portal!"), SPAN_WARNING("Something you are carrying seems to be unable to pass through the portal. Better drop it if you want to go through."))
 		else
 			teleatom.visible_message(SPAN_DANGER("\The [teleatom] bounces off of the portal!"))
 		return FALSE
-	/* VOREStation Removal
-	if(destination.z in GLOB.using_map.admin_levels) //CentCom z-level
-		if(istype(teleatom, /obj/mecha))
-			var/obj/mecha/MM = teleatom
-			to_chat(MM.occupant, SPAN_DANGER("\The [MM] would not survive the jump to a location so far away!"))
-			return FALSE
-		if(!!length(teleatom.search_contents_for(/obj/item/storage/backpack/holding)))
-			teleatom.visible_message(SPAN_DANGER("\The [teleatom] bounces off of the portal!"))
-			return FALSE
-	*/ //VOREStation Removal End
-	//VOREStation Edit Start
 	var/obstructed = 0
 	var/turf/dest_turf = get_turf(destination)
-	if(local && !(dest_turf.z in GLOB.using_map.player_levels))
+	if(local && !(dest_turf.z in (LEGACY_MAP_DATUM).station_levels))
 		if(istype(teleatom, /mob/living))
 			to_chat(teleatom, SPAN_WARNING("The portal refuses to carry you that far away!"))
 		return FALSE
@@ -219,9 +208,8 @@
 		return FALSE
 	else
 		return TRUE
-	//VOREStation Edit End
 
-//VR FILE MERGE
+//! ## VR FILE MERGE ## !//
 
 //wrapper
 /proc/do_noeffect_teleport(ateleatom, adestination, aprecision=0, afteleport=1, aeffectin=null, aeffectout=null, asoundin=null, asoundout=null, local=FALSE)

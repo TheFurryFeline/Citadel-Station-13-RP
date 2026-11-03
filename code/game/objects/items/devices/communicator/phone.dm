@@ -71,12 +71,12 @@
 	message_admins(msg)
 	log_game(msg)
 	new_voice.mind = candidate.mind			//Transfer the mind, if any.
-	new_voice.ckey = candidate.ckey			//Finally, bring the client over.
+	candidate.transfer_client_to(new_voice)
 	voice_mobs.Add(new_voice)
 	listening_objects |= src
 
 	var/atom/movable/screen/blackness = new() 	//Makes a black screen, so the candidate can't see what's going on before actually 'connecting' to the communicator.
-	blackness.screen_loc = ui_entire_screen
+	blackness.screen_loc = SCREEN_LOC_FULLSCREEN
 	blackness.icon = 'icons/effects/effects.dmi'
 	blackness.icon_state = "1"
 	blackness.mouse_opacity = 2			//Can't see anything!
@@ -163,7 +163,7 @@
 	if(ringer)
 		playsound(src, 'sound/machines/twobeep.ogg', 50, 1)
 		for (var/mob/O in hearers(2, loc))
-			O.show_message(text("[icon2html(src, world)] *beep*"))
+			O.show_message("[icon2html(src, world)] *beep*")
 
 	alert_called = 1
 	update_icon()
@@ -207,7 +207,7 @@
 	for(var/obj/item/communicator/comm in communicating)
 		var/turf/T = get_turf(comm)
 		if(!T) return
-		//VOREStation Edit Start for commlinks
+		// Commlinks
 		var/list/mobs_to_relay
 		if(istype(comm,/obj/item/communicator/commlink))
 			var/obj/item/communicator/commlink/CL = comm
@@ -215,7 +215,6 @@
 		else
 			var/list/in_range = get_mobs_and_objs_in_view_fast(T,world.view,0) //Range of 3 since it's a tiny video display
 			mobs_to_relay = in_range["mobs"]
-		//VOREStation Edit End
 
 		for(var/mob/mob in mobs_to_relay) //We can't use visible_message(), or else we will get an infinite loop if two communicators hear each other.
 			var/dst = get_dist(get_turf(mob),get_turf(comm))
@@ -236,7 +235,7 @@
 		var/turf/T = get_turf(comm)
 		if(!T)
 			return
-		//VOREStation Edit Start for commlinks
+		// Commlinks
 		var/list/mobs_to_relay
 		if(istype(comm,/obj/item/communicator/commlink))
 			var/obj/item/communicator/commlink/CL = comm
@@ -244,7 +243,6 @@
 		else
 			var/list/in_range = get_mobs_and_objs_in_view_fast(T,world.view,0) //Range of 3 since it's a tiny video display
 			mobs_to_relay = in_range["mobs"]
-		//VOREStation Edit End
 
 		var/mob/living/L = (isliving(M) && M) || null
 		var/message = text
@@ -318,7 +316,7 @@
 		to_chat(src , "<span class='danger'>There are no available communicators, sorry.</span>")
 		return
 
-	var/choice = input(src,"Send a voice request to whom?") as null|anything in choices
+	var/choice = tgui_input_list(src,"Send a voice request to whom?","Communicator selection", choices)
 	if(choice)
 		var/obj/item/communicator/chosen_communicator = choice
 		var/mob/observer/dead/O = src
@@ -330,14 +328,14 @@
 // Proc: connect_video()
 // Parameters: user - the mob doing the viewing of video, comm - the communicator at the far end
 // Description: Sets up a videocall and puts the first view into it using watch_video, and updates the icon
-/obj/item/communicator/proc/connect_video(mob/user,obj/item/communicator/comm)
+/obj/item/communicator/proc/connect_video(mob/living/user,obj/item/communicator/comm)
 	if((!user) || (!comm) || user.stat) return //KO or dead, or already in a video
 
 	if(video_source) //Already in a video
 		to_chat(user, "<span class='danger'>You are already connected to a video call!</span>")
 		return
 
-	if(user.blinded) //User is blinded
+	if(user.has_status_effect(/datum/status_effect/sight/blindness)) //User is blinded
 		to_chat(user, "<span class='danger'>You cannot see well enough to do that!</span>")
 		return
 
@@ -352,7 +350,7 @@
 	video_source = comm.camera
 	comm.visible_message("<span class='danger'>[icon2html(src, world)] New video connection from [comm].</span>")
 	update_active_camera_screen()
-	RegisterSignal(video_source, COMSIG_MOVABLE_MOVED, .proc/update_active_camera_screen)
+	RegisterSignal(video_source, COMSIG_MOVABLE_MOVED, PROC_REF(update_active_camera_screen))
 	update_icon()
 
 // Proc: end_video()
@@ -367,4 +365,3 @@
 
 	visible_message(.)
 	update_icon()
-

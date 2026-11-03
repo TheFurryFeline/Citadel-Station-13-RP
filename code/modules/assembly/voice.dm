@@ -2,8 +2,9 @@
 	name = "voice analyzer"
 	desc = "A small electronic device able to record a voice sample, and send a signal when that sample is repeated."
 	icon_state = "voice"
+	atom_flags = ATOM_HEAR
 	origin_tech = list(TECH_MAGNET = 1)
-	matter = list(MAT_STEEL = 500, MAT_GLASS = 50)
+	materials_base = list(MAT_STEEL = 500, MAT_GLASS = 50)
 	var/listening = 0
 	var/recorded	//the activation message
 
@@ -25,9 +26,7 @@
 			T.visible_message("[icon2html(thing = src, target = world)] beeps, \"[listening ? "Now" : "No longer"] recording input.\"")
 
 
-/obj/item/assembly/voice/attack_self(mob/user)
-	if(!user)
-		return FALSE
+/obj/item/assembly/voice/attack_self(mob/user, datum/event_args/actor/actor)
 	activate()
 	return TRUE
 

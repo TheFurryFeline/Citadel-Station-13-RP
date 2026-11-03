@@ -11,7 +11,7 @@
 
 	explosion_resistance = 100
 
-	maxhealth = 9999999 //No.
+	integrity_flags = INTEGRITY_INDESTRUCTIBLE
 
 	var/list/locks = list()
 	var/lockID = null
@@ -26,18 +26,17 @@
 			return 0
 	return 1
 
-/obj/machinery/door/blast/puzzle/bullet_act(var/obj/item/projectile/Proj)
-	if(!istype(Proj, /obj/item/projectile/test))
-		visible_message("<span class='cult'>\The [src] is completely unaffected by \the [Proj].</span>")
-	qdel(Proj) //No piercing. No.
+/obj/machinery/door/blast/puzzle/on_bullet_act(obj/projectile/proj, impact_flags, list/bullet_act_args)
+	impact_flags &= ~PROJECTILE_IMPACT_FLAGS_SHOULD_GO_THROUGH
+	return ..()
 
-/obj/machinery/door/blast/puzzle/ex_act(severity)
+/obj/machinery/door/blast/puzzle/legacy_ex_act(severity)
 	visible_message("<span class='cult'>\The [src] is completely unaffected by the blast.</span>")
 	return
 
 /obj/machinery/door/blast/puzzle/Initialize(mapload)
 	. = ..()
-	implicit_material = get_material_by_name("dungeonium")
+	implicit_material = RSmaterials.fetch_local_or_throw(/datum/prototype/material/alienalloy/dungeonium)
 	if(locks.len)
 		return
 	var/check_range = world.view * checkrange_mult
@@ -53,7 +52,7 @@
 			locks -= L
 	..()
 
-/obj/machinery/door/blast/puzzle/attack_hand(mob/user as mob)
+/obj/machinery/door/blast/puzzle/attack_hand(mob/user, datum/event_args/actor/clickchain/e_args)
 	if(check_locks())
 		force_toggle(1, user)
 	else
@@ -61,24 +60,17 @@
 
 /obj/machinery/door/blast/puzzle/attackby(obj/item/C as obj, mob/user as mob)
 	if(istype(C, /obj/item))
-		if(C.pry == 1 && (user.a_intent != INTENT_HARM || (stat & BROKEN)))
-			if(istype(C,/obj/item/material/twohanded/fireaxe))
-				var/obj/item/material/twohanded/fireaxe/F = C
-				if(!F.wielded)
-					to_chat(user, "<span class='warning'>You need to be wielding \the [F] to do that.</span>")
-					return
-
+		if(C.pry == 1 && (user.a_intent != INTENT_HARM || (machine_stat & BROKEN)))
 			if(check_locks())
 				force_toggle(1, user)
-
 			else
 				to_chat(user, "<span class='notice'>[src]'s arcane workings resist your effort.</span>")
 			return
 
 		else if(src.density && (user.a_intent == INTENT_HARM))
 			var/obj/item/W = C
-			user.setClickCooldown(user.get_attack_speed(W))
-			if(W.damtype == BRUTE || W.damtype == BURN)
+			user.setClickCooldownLegacy(user.get_attack_speed_legacy(W))
+			if(W.damage_type == DAMAGE_TYPE_BRUTE || W.damage_type == DAMAGE_TYPE_BURN)
 				user.do_attack_animation(src)
 				user.visible_message("<span class='danger'>\The [user] hits \the [src] with \the [W] with no visible effect.</span>")
 

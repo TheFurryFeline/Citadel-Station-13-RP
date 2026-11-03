@@ -15,7 +15,7 @@
 
 	mob_class = MOB_CLASS_ABERRATION
 
-	faction = "creature"
+	iff_factions = MOB_IFF_FACTION_MUTANT
 
 	maxHealth = 40
 	health = 40
@@ -25,8 +25,8 @@
 
 	harm_intent_damage = 8
 
-	melee_damage_lower = 8
-	melee_damage_upper = 15
+	legacy_melee_damage_lower = 8
+	legacy_melee_damage_upper = 15
 	attack_armor_pen = 5	//It's a horror from beyond, I ain't gotta explain 5 AP
 	attack_sharp = 1
 	attack_edge = 1
@@ -37,12 +37,16 @@
 
 	speak_emote = list("gibbers")
 
-	ai_holder_type = /datum/ai_holder/simple_mob/melee
+	ai_holder_type = /datum/ai_holder/polaris/simple_mob/melee
 
 	hide_amount = 4
 	hide_type = /obj/item/stack/hairlesshide
 	exotic_amount = 3
 	exotic_type = /obj/item/stack/sinew
+
+/mob/living/simple_mob/creature/Initialize(mapload)
+	. = ..()
+	AddComponent(/datum/component/horror_aura/weak)
 
 // Strong Variant
 /mob/living/simple_mob/creature/strong
@@ -50,14 +54,14 @@
 	health = 160
 
 	harm_intent_damage = 5
-	melee_damage_lower = 13
-	melee_damage_upper = 25
+	legacy_melee_damage_lower = 13
+	legacy_melee_damage_upper = 25
 
 // Cult Variant
 /mob/living/simple_mob/creature/cult
 	mob_class = MOB_CLASS_DEMONIC
 
-	faction = "cult"
+	iff_factions = MOB_IFF_FACTION_SANGUINE_CULT
 
 	min_oxy = 0
 	max_oxy = 0
@@ -80,5 +84,5 @@
 	health = 160
 
 	harm_intent_damage = 5
-	melee_damage_lower = 13
-	melee_damage_upper = 25
+	legacy_melee_damage_lower = 13
+	legacy_melee_damage_upper = 25

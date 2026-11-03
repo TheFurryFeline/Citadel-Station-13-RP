@@ -5,78 +5,52 @@
 	icon_state = "beacon"
 	item_state = "beacon"
 	base_icon_state = "beacon"
+	belt_storage_class = BELT_CLASS_SMALL
 	var/code = "electronic"
 	var/functioning = TRUE
+	var/identifier
 	origin_tech = list(TECH_BLUESPACE = 1)
+	worth_intrinsic = 50
 
 GLOBAL_LIST_BOILERPLATE(all_beacons, /obj/item/radio/beacon)
-
 
 /obj/item/radio/beacon/Initialize(mapload)
 	. = ..()
 	update_icon()
-
+	identifier = rand(0,99999)
 
 /obj/item/radio/beacon/update_icon()
 	cut_overlays()
+	. = ..()
 	if(!functioning)
 		add_overlay("[base_icon_state]_malfunction")
 	else
 		add_overlay("[base_icon_state]_on")
 
-
 /obj/item/radio/beacon/hear_talk()
 	return
-
 
 /obj/item/radio/beacon/send_hear()
 	return null
 
-
-/obj/item/radio/beacon/emp_act(severity)
-	if(functioning && severity >= 1)
-		fry()
-	..()
-
-
-/obj/item/radio/beacon/emag_act(remaining_charges, user, emag_source)
-	if(functioning)
-		fry()
-
-
-/obj/item/radio/beacon/verb/alter_signal(newcode as text)
+/obj/item/radio/beacon/verb/alter_signal(t as text)
 	set name = "Alter Beacon's Signal"
-	set category = "Object"
+	set category = VERB_CATEGORY_OBJECT
 	set src in usr
-	var/mob/user = usr
-	if(!user.incapacitated())
-		code = newcode
-		add_fingerprint(user)
 
-
-/obj/item/radio/beacon/proc/fry()
-	functioning = FALSE
-	visible_message(SPAN_WARNING("\The [src] pops and cracks, and a thin wisp of dark smoke rises from the casing."))
-	update_icon()
-	for(var/obj/machinery/computer/teleporter/T in machines)
-		if(T.target == src)
-			T.lost_target()
-
+	if(CHECK_MOBILITY(usr, MOBILITY_CAN_MOVE))
+		src.code = t
+	if(!( src.code ))
+		src.code = "beacon"
+	src.add_fingerprint(usr)
 
 /obj/item/radio/beacon/anchored
 	desc = "A beacon used by a teleporter. This one appears to be bolted to the ground."
 	anchored = TRUE
-	w_class = ITEMSIZE_HUGE
-	//randpixel = 0
+	w_class = WEIGHT_CLASS_HUGE
+	hides_underfloor = OBJ_UNDERFLOOR_UNLESS_PLACED_ONTOP
 
 	var/repair_fail_chance = 35
-
-
-/obj/item/radio/beacon/anchored/Initialize(mapload)
-	. = ..()
-	var/turf/T = get_turf(src)
-	hide(hides_under_flooring() && !T.is_plating())
-
 
 /obj/item/radio/beacon/anchored/attackby(obj/item/I, mob/living/user)
 	..()
@@ -98,21 +72,22 @@ GLOBAL_LIST_BOILERPLATE(all_beacons, /obj/item/radio/beacon)
 		else
 			to_chat(user, SPAN_WARNING("You can't work on \the [src] until its been opened up."))
 
+// Probably a better way of doing this, I'm lazy.
+/obj/item/radio/beacon/bacon/proc/digest_delay()
+	spawn(600)
+		qdel(src)
 
-/obj/item/radio/beacon/bacon //Probably a better way of doing this, I'm lazy.
-	proc/digest_delay()
-		spawn(600)
-			qdel(src)
 
-
-// SINGULO BEACON SPAWNER
-
+/// SINGULO BEACON SPAWNER
 /obj/item/radio/beacon/syndicate
 	name = "suspicious beacon"
 	desc = "A label on it reads: <i>Activate to have a singularity beacon teleported to your location</i>."
 	origin_tech = list(TECH_BLUESPACE = 1, TECH_ILLEGAL = 7)
 
-/obj/item/radio/beacon/syndicate/attack_self(mob/user as mob)
+/obj/item/radio/beacon/syndicate/attack_self(mob/user, datum/event_args/actor/actor)
+	. = ..()
+	if(.)
+		return
 	if(user)
 		to_chat(user, SPAN_NOTICE("Locked In"))
 		new /obj/machinery/power/singularity_beacon/syndicate(user.loc)

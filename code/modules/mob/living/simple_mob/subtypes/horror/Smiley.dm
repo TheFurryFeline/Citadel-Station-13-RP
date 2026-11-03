@@ -12,7 +12,6 @@
 	icon_living = "Smiley"
 	icon_dead = "s_head"
 	icon_rest = "Smiley"
-	faction = "horror"
 	icon = 'icons/mob/horror_show/GHPS.dmi'
 	icon_gib = "generic_gib"
 	catalogue_data = list(/datum/category_item/catalogue/fauna/horror/Smiley)
@@ -22,8 +21,8 @@
 	maxHealth = 175
 	health = 175
 
-	melee_damage_lower = 25
-	melee_damage_upper = 35
+	legacy_melee_damage_lower = 25
+	legacy_melee_damage_upper = 35
 	grab_resist = 100
 
 	response_help = "pets the"
@@ -34,32 +33,36 @@
 
 
 	say_list_type = /datum/say_list/Smiley
-	ai_holder_type = /datum/ai_holder/simple_mob/horror
+	ai_holder_type = /datum/ai_holder/polaris/simple_mob/horror
 
 	meat_amount = 5
 	meat_type = /obj/item/reagent_containers/food/snacks/meat/human
 	bone_amount = 10
 	hide_amount = 5
 
+/mob/living/simple_mob/horror/Smiley/Initialize(mapload)
+	. = ..()
+	AddComponent(/datum/component/horror_aura/weak)
+
 /mob/living/simple_mob/horror/Smiley/death()
 	playsound(src, 'sound/h_sounds/lynx.ogg', 50, 1)
 	..()
 
-/mob/living/simple_mob/horror/Helix/bullet_act()
-    playsound(src, 'sound/h_sounds/holla.ogg', 50, 1)
-    ..()
+/mob/living/simple_mob/horror/Helix/on_bullet_act(obj/projectile/proj, impact_flags, list/bullet_act_args)
+	. = ..()
+	playsound(src, 'sound/h_sounds/holla.ogg', 50, 1)
 
-/mob/living/simple_mob/horror/Helix/attack_hand()
-    playsound(src, 'sound/h_sounds/holla.ogg', 50, 1)
-    ..()
+/mob/living/simple_mob/horror/Helix/attack_hand(mob/user, datum/event_args/actor/clickchain/e_args)
+	playsound(src, 'sound/h_sounds/holla.ogg', 50, 1)
+	..()
 
-/mob/living/simple_mob/horror/Helix/hitby()
-    playsound(src, 'sound/h_sounds/holla.ogg', 50, 1)
-    ..()
+/mob/living/simple_mob/horror/Helix/throw_impacted(atom/movable/AM, datum/thrownthing/TT)
+	. = ..()
+	playsound(src, 'sound/h_sounds/holla.ogg', 50, 1)
 
 /mob/living/simple_mob/horror/Helix/attackby()
-    playsound(src, 'sound/h_sounds/holla.ogg', 50, 1)
-    ..()
+	playsound(src, 'sound/h_sounds/holla.ogg', 50, 1)
+	..()
 
 /datum/say_list/Smiley
 	speak = list("Uuurrgh?","Aauuugghh...", "AAARRRGH!")

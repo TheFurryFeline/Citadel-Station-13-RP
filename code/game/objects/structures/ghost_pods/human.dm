@@ -5,7 +5,7 @@
 	desc = "This is a pod which appears to contain a body."
 	description_info = "This contains a body, which may wake at any time. The external controls\
 	seem to be malfunctioning."
-	icon = 'icons/obj/Cryogenic2.dmi'
+	icon = 'icons/obj/medical/cryogenic2.dmi'
 	icon_state = "sleeper_1"
 	icon_state_opened = "sleeper_0"
 	density = TRUE
@@ -43,11 +43,11 @@
 
 	H.adjustCloneLoss(rand(1,5))
 	if(M.mind)
-		M.mind.transfer_to(H)
+		M.mind.transfer(H)
 	to_chat(M, "<span class='notice'>You are a [occupant_type]!</span>")
 	if(make_antag)
 		to_chat(M, "<span class='warning'>Your intent may not be completely beneficial.</span>")
-	H.ckey = M.ckey
+	M.transfer_client_to(H)
 	visible_message("<span class='warning'>As \the [src] opens, the pipes on \the [src] surge, before it grows dark.</span>")
 	log_and_message_admins("successfully opened \a [src] and became a [occupant_type].")
 
@@ -132,7 +132,7 @@
 	desc = "This is a pod which appears to contain a body."
 	description_info = "This contains a body, which may wake at any time. The external controls\
 	seem to be functioning, though the warning lights that flash give no solace.."
-	icon = 'icons/obj/Cryogenic2.dmi'
+	icon = 'icons/obj/medical/cryogenic2.dmi'
 	icon_state = "sleeper_1"
 	icon_state_opened = "sleeper_0"
 	density = TRUE
@@ -169,11 +169,11 @@
 
 	H.adjustCloneLoss(rand(1,5))
 	if(M.mind)
-		M.mind.transfer_to(H)
+		M.mind.transfer(H)
 	to_chat(M, "<span class='notice'>You are a [occupant_type]!</span>")
 	if(make_antag)
 		to_chat(M, "<span class='warning'>Your intent may not be completely beneficial.</span>")
-	H.ckey = M.ckey
+	M.transfer_client_to(H)
 	visible_message("<span class='warning'>As \the [src] opens, the pipes on \the [src] surge, before it grows dark.</span>")
 	log_and_message_admins("successfully opened \a [src] and got a [occupant_type].")
 

@@ -13,6 +13,7 @@
 	desc = "How are you examining what which cannot be seen?"
 	icon = 'icons/effects/effects.dmi'
 	invisibility = 0
+	atom_flags = ATOM_NONWORLD
 	var/time_to_die = 10 SECONDS // Afer which, it will delete itself.
 
 /obj/effect/temporary_effect/Initialize(mapload)
@@ -38,16 +39,6 @@
 	. = ..()
 	animate(src, alpha = 0, time = time_to_die - 1)
 
-/obj/effect/temporary_effect/shuttle_landing
-	name = "shuttle landing"
-	desc = "You better move if you don't want to go splat!"
-	icon_state = "shuttle_warning_still"
-	time_to_die = 4.9 SECONDS
-
-/obj/effect/temporary_effect/shuttle_landing/Initialize(mapload)
-	flick("shuttle_warning", src) // flick() forces the animation to always begin at the start.
-	. = ..()
-
 // The manifestation of Zeus's might. Or just a really unlucky day.
 // This is purely a visual effect, this isn't the part of the code that hurts things.
 /obj/effect/temporary_effect/lightning_strike
@@ -71,7 +62,7 @@
 	icon = 'icons/effects/alphacolors.dmi'
 	icon_state = "white"
 	plane = LIGHTING_PLANE
-	layer = LIGHTING_LAYER
+	layer = LIGHTING_LAYER_MAIN
 	blend_mode = BLEND_ADD
 
 /obj/effect/dummy/lighting_obj
@@ -95,3 +86,26 @@
 	. = ..()
 	if(!ismob(loc))
 		return INITIALIZE_HINT_QDEL
+
+/obj/effect/mark
+	var/mark = ""
+	icon = 'icons/misc/mark.dmi'
+	icon_state = "blank"
+	anchored = TRUE
+	layer = 99
+	mouse_opacity = MOUSE_OPACITY_TRANSPARENT
+
+/obj/effect/beam
+	name = "beam"
+	density = FALSE
+	var/def_zone
+	pass_flags = ATOM_PASS_TABLE
+
+/obj/effect/begin
+	name = "begin"
+	icon = 'icons/obj/stationobjs.dmi'
+	icon_state = "begin"
+	anchored = TRUE
+
+/obj/effect/spawner
+	name = "object spawner"

@@ -1,5 +1,5 @@
 /datum/holiday/xmas
-	name = CHRISTMAS
+	name = HOLIDAY_CHRISTMAS
 	desc = "Christmas is a very old holiday that originated in Earth, Sol.  It was a \
 					religious holiday for the Christian religion, which would later form Unitarianism.  Nowdays, the holiday is celebrated \
 					generally by giving gifts, symbolic decoration, and reuniting with one's family.  It also features a mythical fat \
@@ -15,7 +15,7 @@
 // 	return "Have a merry Christmas!"
 
 // /datum/holiday/xmas/celebrate()
-// 	SSticker.OnRoundstart(CALLBACK(src, .proc/roundstart_celebrate))
+// 	SSticker.OnRoundstart(CALLBACK(src, PROC_REF(roundstart_celebrate)))
 
 // /datum/holiday/xmas/proc/roundstart_celebrate()
 // 	for(var/obj/machinery/computer/security/telescreen/entertainment/Monitor in GLOB.machines)

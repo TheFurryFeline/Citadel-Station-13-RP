@@ -30,12 +30,12 @@
 
 	taser_kill = 0 //It -is- the taser.
 
-	base_attack_cooldown = 10
+	base_attack_cooldown = 15
 	projectilesound = 'sound/weapons/taser2.ogg'
-	projectiletype = /obj/item/projectile/beam/stun/electric_spider
+	projectiletype = /obj/projectile/beam/stun/electric_spider
 
-	melee_damage_lower = 10
-	melee_damage_upper = 25
+	legacy_melee_damage_lower = 10
+	legacy_melee_damage_upper = 25
 
 	poison_chance = 15
 	poison_per_bite = 3
@@ -43,20 +43,30 @@
 
 	shock_resist = 0.75
 
+	exotic_type = /obj/item/reagent_containers/glass/venomgland/spider/stimm
+
 	player_msg = "You can fire a taser-like ranged attack by clicking on an enemy or tile at a distance."
 
-	ai_holder_type = /datum/ai_holder/simple_mob/ranged/electric_spider
+	ai_holder_type = /datum/ai_holder/polaris/simple_mob/ranged/electric_spider
 
-/obj/item/projectile/beam/stun/electric_spider
+/obj/projectile/beam/stun/electric_spider
 	name = "stun beam"
-	agony = 20
+	damage_inflict_agony = 20
 
 // The electric spider's AI.
-/datum/ai_holder/simple_mob/ranged/electric_spider
+/datum/ai_holder/polaris/simple_mob/ranged/electric_spider
 
-/datum/ai_holder/simple_mob/ranged/electric_spider/max_range(atom/movable/AM)
+/datum/ai_holder/polaris/simple_mob/ranged/electric_spider/max_range(atom/movable/AM)
 	if(isliving(AM))
 		var/mob/living/L = AM
 		if(L.incapacitated(INCAPACITATION_DISABLED) || L.stat == UNCONSCIOUS) // If our target is stunned, go in for the kill.
 			return 1
 	return ..() // Do ranged if possible otherwise.
+
+/obj/item/reagent_containers/glass/venomgland/spider/stimm
+	name = "Energizing Venom Gland"
+	desc = "A sac full of venom. It makes your fingers twitch holding it."
+
+/obj/item/reagent_containers/glass/venomgland/spider/stimm/Initialize(mapload)
+	. = ..()
+	reagents.add_reagent("stimm", 15)

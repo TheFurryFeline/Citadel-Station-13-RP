@@ -5,9 +5,9 @@
 	if(!(. = ..()))
 		return
 
-//	setClickCooldown(get_attack_speed())
+//	setClickCooldownLegacy(get_attack_speed_legacy())
 
-	if(has_hands && istype(A,/obj) && a_intent != INTENT_HARM)
+	if(has_hands() && istype(A,/obj) && a_intent != INTENT_HARM)
 		var/obj/O = A
 		return O.attack_hand(src)
 
@@ -20,26 +20,26 @@
 			if(can_special_attack(A) && special_attack_target(A))
 				return
 
-			else if(melee_damage_upper == 0 && istype(A,/mob/living))
+			else if(legacy_melee_damage_upper == 0 && istype(A,/mob/living))
 				custom_emote(1,"[pick(friendly)] \the [A]!")
 
 			else
 				attack_target(A)
 
 		if(INTENT_GRAB)
-			if(has_hands)
-				A.attack_hand(src)
+			if(has_hands())
+				A.attack_hand(src, default_clickchain_event_args(A))
 			else
 				attack_target(A)
 
 		if(INTENT_DISARM)
-			if(has_hands)
-				A.attack_hand(src)
+			if(has_hands())
+				A.attack_hand(src, default_clickchain_event_args(A))
 			else
 				attack_target(A)
 
 /mob/living/simple_mob/RangedAttack(var/atom/A)
-//	setClickCooldown(get_attack_speed())
+//	setClickCooldownLegacy(get_attack_speed_legacy())
 
 	if(can_special_attack(A) && special_attack_target(A))
 		return

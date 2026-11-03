@@ -1,4 +1,5 @@
 /client
+
 	/// Amount of keydowns in the last keysend checking interval
 	var/client_keysend_amount = 0
 	/// World tick time where client_keysend_amount will reset
@@ -15,6 +16,9 @@
 /client/verb/keyDown(_key as text)
 	set instant = TRUE
 	set hidden = TRUE
+
+	if(!preferences.initialized)
+		return
 
 	client_keysend_amount += 1
 
@@ -71,14 +75,15 @@
 		else
 			full_key = "[AltMod][CtrlMod][ShiftMod][_key]"
 	var/keycount = 0
-	for(var/kb_name in prefs.key_bindings[full_key])
+	for(var/kb_name in preferences?.keybindings[full_key])
 		keycount++
 		var/datum/keybinding/kb = GLOB.keybindings_by_name[kb_name]
 		if(kb.can_use(src) && kb.down(src) && keycount >= MAX_COMMANDS_PER_KEY)
 			break
 
-	holder?.key_down(_key, src)
-	mob.focus?.key_down(_key, src)
+	if(mob.key_intercept?.key_down(_key, src))
+		return
+	mob.key_focus?.key_down(_key, src)
 
 /// Keyup's all keys held down.
 /client/proc/ForceAllKeysUp()
@@ -132,25 +137,28 @@
 
 	// We don't do full key for release, because for mod keys you
 	// can hold different keys and releasing any should be handled by the key binding specifically
-	for (var/kb_name in prefs.key_bindings[_key])
+	for (var/kb_name in preferences?.keybindings?[_key])
 		var/datum/keybinding/kb = GLOB.keybindings_by_name[kb_name]
 		if(kb.can_use(src) && kb.up(src))
 			break
-	holder?.key_up(_key, src)
-	mob.focus?.key_up(_key, src)
+
+	if(mob.key_intercept?.key_up(_key, src))
+		return
+	mob.key_focus?.key_up(_key, src)
 
 // Called every game tick
 /client/keyLoop()
-	holder?.keyLoop(src)
-	mob.focus?.keyLoop(src)
+	if(mob.key_intercept?.keyLoop(src))
+		return
+	mob.key_focus?.keyLoop(src)
 
-/client/proc/update_movement_keys(datum/preferences/direct_prefs)
-	var/datum/preferences/D = prefs || direct_prefs
-	if(!D?.key_bindings)
+/client/proc/update_movement_keys(datum/game_preferences/direct_prefs)
+	var/datum/game_preferences/D = preferences || direct_prefs
+	if(!D?.keybindings)
 		return
 	movement_keys = list()
-	for(var/key in D.key_bindings)
-		for(var/kb_name in D.key_bindings[key])
+	for(var/key in D.keybindings)
+		for(var/kb_name in D.keybindings[key])
 			switch(kb_name)
 				if("North")
 					movement_keys[key] = NORTH
@@ -160,3 +168,24 @@
 					movement_keys[key] = WEST
 				if("South")
 					movement_keys[key] = SOUTH
+
+/**
+ * Returns a list of human-readable (usually) keys.
+ */
+/client/proc/get_keys_for_keybind(datum/keybinding/binding_or_path) as /list
+	if(!preferences?.initialized)
+		return list()
+	var/bind_id = ispath(binding_or_path) ? binding_or_path::name : binding_or_path.name
+	. = list()
+	for(var/key in preferences.keybindings)
+		if(bind_id in preferences.keybindings[key])
+			. += key
+
+/**
+ * Returns a string that can be interpolated in tgui-chat to allow a quick click to rebind keys
+ *
+ * todo: for now, this just returns a string without the keybind UI open link.
+ */
+/client/proc/print_keys_for_keybind_with_prefs_link(datum/keybinding/binding_or_path, append) as text
+	var/list/keys = get_keys_for_keybind(binding_or_path)
+	return length(keys) ? "<b>([english_list(keys)])</b>[append]" : "<b>(Unbound)</b>[append]"

@@ -1,7 +1,7 @@
 /obj/machinery/computer/aifixer
 	name = "\improper AI system integrity restorer"
 	desc = "Used with intelliCards containing nonfunctional AIs to restore them to working order."
-	req_one_access = list(access_robotics, access_heads)
+	req_one_access = list(ACCESS_SCIENCE_ROBOTICS, ACCESS_COMMAND_BRIDGE)
 	circuit = /obj/item/circuitboard/aifixer
 	icon_keyboard = "tech_key"
 	icon_screen = "ai-fixer"
@@ -17,13 +17,13 @@
 /obj/machinery/computer/aifixer/attackby(obj/item/I, mob/living/user)
 	if(I.is_screwdriver())
 		if(occupier)
-			if(stat & (NOPOWER|BROKEN))
+			if(machine_stat & (NOPOWER|BROKEN))
 				to_chat(user, SPAN_WARNING("The screws on [name]'s screen won't budge."))
 			else
 				to_chat(user, SPAN_WARNING("The screws on [name]'s screen won't budge and it emits a warning beep."))
 			return
 	if(istype(I, /obj/item/aicard))
-		if(stat & (NOPOWER|BROKEN))
+		if(machine_stat & (NOPOWER|BROKEN))
 			to_chat(user, SPAN_WARNING("This terminal isn't functioning right now."))
 			return
 		if(restoring)
@@ -48,8 +48,8 @@
 			to_chat(user, SPAN_NOTICE("There is no AI loaded onto this computer, and no AI loaded onto [I]. What exactly are you trying to do here?"))
 	return ..()
 
-/obj/machinery/computer/aifixer/attack_hand(mob/user)
-	if(stat & (NOPOWER|BROKEN))
+/obj/machinery/computer/aifixer/attack_hand(mob/user, datum/event_args/actor/clickchain/e_args)
+	if(machine_stat & (NOPOWER|BROKEN))
 		return
 	ui_interact(user)
 
@@ -59,7 +59,7 @@
 		ui = new(user, src, "AiRestorer", name)
 		ui.open()
 
-/obj/machinery/computer/aifixer/ui_data(mob/user)
+/obj/machinery/computer/aifixer/ui_data(mob/user, datum/tgui/ui)
 	var/list/data = list()
 
 	data["ejectable"] = FALSE
@@ -80,7 +80,7 @@
 
 	return data
 
-/obj/machinery/computer/aifixer/ui_act(action, params)
+/obj/machinery/computer/aifixer/ui_act(action, list/params, datum/tgui/ui, datum/ui_state/state, datum/event_args/actor/actor)
 	if(..())
 		return TRUE
 	if(!occupier)
@@ -88,7 +88,7 @@
 
 	switch(action)
 		if("PRG_beginReconstruction")
-			if(occupier?.health < 100)
+			if((occupier?.health < 100) || (occupier?.stat == DEAD))
 				to_chat(usr, "<span class='notice'>Reconstruction in progress. This will take several minutes.</span>")
 				playsound(src, 'sound/machines/terminal_prompt_confirm.ogg', 25, FALSE)
 				restoring = TRUE
@@ -115,18 +115,19 @@
 			if(oldstat != occupier.stat)
 				update_icon()
 
-/obj/machinery/computer/aifixer/update_icon()
-	. = ..()
-	if(stat & (NOPOWER|BROKEN))
+/obj/machinery/computer/aifixer/make_legacy_overlays()
+	var/list/to_add_overlays = list()
+	if(machine_stat & (NOPOWER|BROKEN))
 		return
 
 	if(restoring)
-		. += "ai-fixer-on"
+		to_add_overlays += "ai-fixer-on"
 	if (occupier)
 		switch (occupier.stat)
 			if (CONSCIOUS)
-				. += "ai-fixer-full"
+				to_add_overlays += "ai-fixer-full"
 			if (UNCONSCIOUS)
-				. += "ai-fixer-404"
+				to_add_overlays += "ai-fixer-404"
 	else
-		. += "ai-fixer-empty"
+		to_add_overlays += "ai-fixer-empty"
+	add_overlay(to_add_overlays)

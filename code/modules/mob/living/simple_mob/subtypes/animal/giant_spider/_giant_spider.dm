@@ -69,12 +69,13 @@
 	icon_dead = "guard_dead"
 	has_eye_glow = TRUE
 
-	faction = "spiders"
+	iff_factions = MOB_IFF_FACTION_SPIDER
+
 	maxHealth = 200
 	health = 200
 	randomized = TRUE
-	pass_flags = PASSTABLE
-	movement_cooldown = 10
+	pass_flags = ATOM_PASS_TABLE
+	movement_base_speed = 10 / 10
 	movement_sound = 'sound/effects/spider_loop.ogg'
 	poison_resist = 0.5
 	taser_kill = 0 //These seem like they won't be bothered by a taser
@@ -85,8 +86,8 @@
 	response_disarm = "gently pushes aside"
 	response_harm   = "punches"
 
-	melee_damage_lower = 18
-	melee_damage_upper = 30
+	legacy_melee_damage_lower = 18
+	legacy_melee_damage_upper = 30
 	attack_sharp = 1
 	attack_edge = 1
 	attack_sound = 'sound/weapons/bite.ogg'
@@ -100,15 +101,17 @@
 	meat_amount = 3
 	meat_type = /obj/item/reagent_containers/food/snacks/xenomeat/spidermeat
 
+	hide_amount = 1
+	hide_type = /obj/item/stack/material/chitin //This used to be loot now its just the hide.
+
+	exotic_amount = 1 //Spiders now drop their venom glands for reagent harvesting.
+	exotic_type = /obj/item/reagent_containers/glass/venomgland/spider/s_toxin
+
 	say_list_type = /datum/say_list/spider
 
 	var/poison_type = "spidertoxin"	// The reagent that gets injected when it attacks.
 	var/poison_chance = 10			// Chance for injection to occur.
 	var/poison_per_bite = 5			// Amount added per injection.
-
-	butchery_loot = list(\
-		/obj/item/stack/material/chitin = 1\
-		)
 
 /mob/living/simple_mob/animal/giant_spider/apply_melee_effects(var/atom/A)
 	if(isliving(A))
@@ -121,15 +124,15 @@
 // Does actual poison injection, after all checks passed.
 /mob/living/simple_mob/animal/giant_spider/proc/inject_poison(mob/living/L, target_zone)
 	if(prob(poison_chance))
-		to_chat(L, "<span class='warning'>You feel a tiny prick.</span>")
+		L.custom_pain(SPAN_WARNING("You feel a tiny prick."), 1, TRUE)
 		L.reagents.add_reagent(poison_type, poison_per_bite)
 
 /mob/living/simple_mob/animal/giant_spider/proc/make_spiderling()
 	adjust_scale(icon_scale_x * 0.7, icon_scale_y * 0.7)
 	maxHealth = round(maxHealth * 0.5)
 	health = round(health * 0.5)
-	melee_damage_lower *= 0.7
-	melee_damage_upper *= 0.7
+	legacy_melee_damage_lower *= 0.7
+	legacy_melee_damage_upper *= 0.7
 
 	response_harm = "kicks"
 
@@ -137,3 +140,23 @@
 
 	if(poison_per_bite)
 		poison_per_bite *= 1.3
+
+//New Spider Exotic Drop: Poison Glands, for more reagents
+
+/obj/item/reagent_containers/glass/venomgland/spider
+	name = "Spider Venom Gland"
+	desc = "A sac full of venom cut from a spider. This one seems depleted."
+	icon_state = "venomgland"
+	w_class = WEIGHT_CLASS_SMALL //These are not space effecient, as such they are meatn primarily to act as containers for spawning reagents.
+	slot_flags = SLOT_BELT
+	amount_per_transfer_from_this = 5
+	possible_transfer_amounts = list(5)
+	volume = 15
+
+/obj/item/reagent_containers/glass/venomgland/spider/s_toxin
+	name = "Spider Venom Gland"
+	desc = "A sac full of venom cut from a spider. This one looks rather average."
+
+/obj/item/reagent_containers/glass/venomgland/spider/s_toxin/Initialize(mapload)
+	. = ..()
+	reagents.add_reagent("spidertoxin", 15)

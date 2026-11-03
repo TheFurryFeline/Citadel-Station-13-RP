@@ -12,7 +12,6 @@
 	icon_living = "Eddy"
 	icon_dead = "e_head"
 	icon_rest = "Eddy"
-	faction = "horror"
 	icon = 'icons/mob/horror_show/GHPS.dmi'
 	icon_gib = "generic_gib"
 	catalogue_data = list(/datum/category_item/catalogue/fauna/horror/Eddy)
@@ -22,8 +21,8 @@
 	maxHealth = 175
 	health = 175
 
-	melee_damage_lower = 25
-	melee_damage_upper = 35
+	legacy_melee_damage_lower = 25
+	legacy_melee_damage_upper = 35
 	grab_resist = 100
 
 	response_help = "pets the"
@@ -34,31 +33,35 @@
 
 
 	say_list_type = /datum/say_list/Eddy
-	ai_holder_type = /datum/ai_holder/simple_mob/horror
+	ai_holder_type = /datum/ai_holder/polaris/simple_mob/horror
 
 	bone_amount = 1
 	hide_amount = 1
 	exotic_amount = 5
 
+/mob/living/simple_mob/horror/Eddy/Initialize(mapload)
+	. = ..()
+	AddComponent(/datum/component/horror_aura/weak)
+
 /mob/living/simple_mob/horror/Eddy/death()
 	playsound(src, 'sound/h_sounds/headcrab.ogg', 50, 1)
 	..()
 
-/mob/living/simple_mob/horror/Eddy/bullet_act()
-    playsound(src, 'sound/h_sounds/holla.ogg', 50, 1)
-    ..()
+/mob/living/simple_mob/horror/Eddy/on_bullet_act(obj/projectile/proj, impact_flags, list/bullet_act_args)
+	. = ..()
+	playsound(src, 'sound/h_sounds/holla.ogg', 50, 1)
 
-/mob/living/simple_mob/horror/Eddy/attack_hand()
-    playsound(src, 'sound/h_sounds/holla.ogg', 50, 1)
-    ..()
+/mob/living/simple_mob/horror/Eddy/attack_hand(mob/user, datum/event_args/actor/clickchain/e_args)
+	playsound(src, 'sound/h_sounds/holla.ogg', 50, 1)
+	..()
 
-/mob/living/simple_mob/horror/Eddy/hitby()
-    playsound(src, 'sound/h_sounds/holla.ogg', 50, 1)
-    ..()
+/mob/living/simple_mob/horror/Eddy/throw_impacted(atom/movable/AM, datum/thrownthing/TT)
+	. = ..()
+	playsound(src, 'sound/h_sounds/holla.ogg', 50, 1)
 
 /mob/living/simple_mob/horror/Eddy/attackby()
-    playsound(src, 'sound/h_sounds/holla.ogg', 50, 1)
-    ..()
+	playsound(src, 'sound/h_sounds/holla.ogg', 50, 1)
+	..()
 
 /datum/say_list/Eddy
 	speak = list("Uuurrgh?","Aauuugghh...", "AAARRRGH!")

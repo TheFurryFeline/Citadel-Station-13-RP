@@ -14,7 +14,7 @@
 
 /obj/machinery/biogenerator
 	name = "biogenerator"
-	desc = "Converts plants into biomass, which can be used for fertilizer and sort-of-synthetic products."
+	desc = "Converts plants into biomass, which can be used for fertilizer and sort-of-synthetic products.\n <span class='notice'>\[Accepts Upgrades\]</span>"
 	icon = 'icons/obj/biogenerator.dmi'
 	icon_state = "biogen"
 	base_icon_state = "biogen"
@@ -56,13 +56,11 @@
 
 /obj/machinery/biogenerator/Initialize(mapload, newdir)
 	. = ..()
-	var/datum/reagents/R = new/datum/reagents(1000)
+	var/datum/reagent_holder/R = new/datum/reagent_holder(1000)
 	reagents = R
 	R.my_atom = src
 
 	beaker = new /obj/item/reagent_containers/glass/bottle(src)
-	default_apply_parts()
-	RefreshParts()
 
 	item_list = list()
 	item_list["Food Items"] = list(
@@ -98,15 +96,85 @@
 		BIOGEN_ITEM("Leather Satchel", /obj/item/storage/backpack/satchel, 1, 400),
 		BIOGEN_ITEM("Cash Bag", /obj/item/storage/bag/cash, 1, 400),
 		BIOGEN_ITEM("Chemistry Bag", /obj/item/storage/bag/chemistry, 1, 400),
+		BIOGEN_ITEM("Xenobiology Bag", /obj/item/storage/bag/xenobio, 1, 400),
 		BIOGEN_ITEM("Workboots", /obj/item/clothing/shoes/boots/workboots, 1, 400),
 		BIOGEN_ITEM("Leather Chaps", /obj/item/clothing/under/pants/chaps, 1, 400),
 		BIOGEN_ITEM("Leather Coat", /obj/item/clothing/suit/leathercoat, 1, 500),
 		BIOGEN_ITEM("Leather Jacket", /obj/item/clothing/suit/storage/toggle/brown_jacket, 1, 500),
 		BIOGEN_ITEM("Winter Coat", /obj/item/clothing/suit/storage/hooded/wintercoat, 1, 500),
+		BIOGEN_ITEM("Winter Boots", /obj/item/clothing/shoes/boots/winter, 1, 250),
 		BIOGEN_ITEM("4 Algae Sheets", /obj/item/stack/material/algae, 4, 400),
+		BIOGEN_ITEM("50 Algae Sheets", /obj/item/stack/material/algae, 50, 5000),
 	)
 
-/obj/machinery/biogenerator/ui_static_data(mob/user)
+/*
+ * Insert a new beaker into the biogenerator, replacing/swapping our current beaker if there is one.
+ *
+ * user - the mob inserting the beaker
+ * inserted_beaker - the beaker we're inserting into the biogen
+ */
+/obj/machinery/biogenerator/proc/insert_beaker(mob/living/user, obj/item/reagent_containers/glass/inserted_beaker)
+	if(!can_interact(user))
+		return
+	if(!user.attempt_insert_item_for_installation(inserted_beaker, src))
+		return
+
+	if(beaker)
+		to_chat(user, SPAN_NOTICE("You swap out [beaker] in [src] for [inserted_beaker]."))
+		eject_beaker(user, silent = TRUE)
+	else
+		to_chat(user, SPAN_NOTICE("You add [inserted_beaker] to [src]."))
+
+	beaker = inserted_beaker
+	update_appearance()
+	SStgui.update_uis(src)
+
+/*
+ * Eject the current stored beaker either into the user's hands or onto the ground.
+ *
+ * user - the mob ejecting the beaker
+ * silent - whether to give a message to the user that the beaker was ejected.
+ */
+/obj/machinery/biogenerator/proc/eject_beaker(mob/living/user, silent = FALSE)
+	if(!beaker)
+		return
+
+	if(!can_interact(user))
+		return
+
+	if(user.put_in_hands(beaker))
+		if(!silent)
+			to_chat(user, SPAN_NOTICE("You eject [beaker] from [src]."))
+	else
+		if(!silent)
+			to_chat(user, SPAN_NOTICE("You eject [beaker] from [src] onto the ground."))
+		beaker.forceMove(drop_location())
+
+	beaker = null
+	update_appearance()
+
+/obj/machinery/biogenerator/ui_status(mob/user, datum/ui_state/state)
+	if(machine_stat & BROKEN || panel_open)
+		return UI_CLOSE
+	return ..()
+
+/obj/machinery/biogenerator/ui_interact(mob/user, datum/tgui/ui)
+	ui = SStgui.try_update_ui(user, src, ui)
+	if(!ui)
+		ui = new(user, src, "Biogenerator", name)
+		ui.open()
+
+/obj/machinery/biogenerator/ui_data(mob/user, datum/tgui/ui)
+	var/list/data = ..()
+
+	data["build_eff"] = build_eff
+	data["points"] = points
+	data["processing"] = processing
+	data["beaker"] = !!beaker
+
+	return data
+
+/obj/machinery/biogenerator/ui_static_data(mob/user, datum/tgui/ui)
 	var/list/static_data[0]
 
 	// Available items - in static data because we don't wanna compute this list every time! It hardly changes.
@@ -120,40 +188,20 @@
 
 	return static_data
 
-/obj/machinery/biogenerator/ui_data(mob/user)
-	var/list/data = ..()
-
-	data["build_eff"] = build_eff
-	data["points"] = points
-	data["processing"] = processing
-	data["beaker"] = !!beaker
-
-	return data
-
-/obj/machinery/biogenerator/ui_interact(mob/user, datum/tgui/ui = null)
-	// Open the window
-	ui = SStgui.try_update_ui(user, src, ui)
-	if(!ui)
-		ui = new(user, src, "Biogenerator", name)
-		ui.open()
-
-/obj/machinery/biogenerator/ui_act(action, params)
-	if(..())
+/obj/machinery/biogenerator/ui_act(action, list/params, datum/tgui/ui, datum/ui_state/state, datum/event_args/actor/actor)
+	. = ..()
+	if(.)
 		return
 
-	. = TRUE
 	switch(action)
 		if("activate")
-			INVOKE_ASYNC(src, .proc/activate)
+			INVOKE_ASYNC(src, PROC_REF(activate))
 			return TRUE
 		if("detach")
-			if(beaker)
-				beaker.forceMove(loc)
-				beaker = null
-				update_icon()
+			eject_beaker(usr)
 			return TRUE
 		if("purchase")
-			var/category = params["cat"] // meow
+			var/category = params["cat"]
 			var/name = params["name"]
 
 			if(!(category in item_list) || !(name in item_list[category])) // Not trying something that's not in the list, are you?
@@ -170,7 +218,7 @@
 				if(cost > points)
 					to_chat(usr, SPAN_DANGER("Insufficient biomass."))
 					return
-				var/amt_to_actually_dispense = round(min(beaker.reagents.get_free_space(), br.reagent_amt))
+				var/amt_to_actually_dispense = round(min(beaker.reagents.available_volume(), br.reagent_amt))
 				if(amt_to_actually_dispense <= 0)
 					to_chat(usr, SPAN_DANGER("The loaded beaker is full!"))
 					return
@@ -186,8 +234,7 @@
 
 			points -= cost
 			if(ispath(bi.equipment_path, /obj/item/stack))
-				var/obj/item/stack/S = new bi.equipment_path(loc)
-				S.amount = bi.equipment_amt
+				new bi.equipment_path(loc, bi.equipment_amt)
 				playsound(src, 'sound/machines/vending/vending_drop.ogg', 100, 1)
 				return TRUE
 
@@ -199,16 +246,17 @@
 			return FALSE
 
 /obj/machinery/biogenerator/on_reagent_change() //When the reagents change, change the icon as well.
-	update_icon()
+	update_appearance()
 
 /obj/machinery/biogenerator/update_icon()
 	cut_overlays()
+	. = ..()
 	if(beaker)
 		add_overlay("[base_icon_state]-standby")
 		if(processing)
 			add_overlay("[base_icon_state]-work")
 
-/obj/machinery/biogenerator/attackby(var/obj/item/O as obj, var/mob/user as mob)
+/obj/machinery/biogenerator/attackby(obj/item/O, mob/user)
 	if(default_deconstruction_screwdriver(user, O))
 		return
 	if(default_deconstruction_crowbar(user, O))
@@ -218,13 +266,7 @@
 	if(default_unfasten_wrench(user, O, 40))
 		return
 	if(istype(O, /obj/item/reagent_containers/glass))
-		if(beaker)
-			to_chat(user, SPAN_NOTICE("\The [src] is already loaded."))
-		else
-			user.remove_from_mob(O)
-			O.loc = src
-			beaker = FALSE
-			updateUsrDialog()
+		insert_beaker(user, O)
 	else if(processing)
 		to_chat(user, SPAN_NOTICE("\The [src] is currently processing."))
 	else if(istype(O, /obj/item/storage/bag))
@@ -235,7 +277,8 @@
 			to_chat(user, SPAN_NOTICE("\The [src] is already full! Activate it."))
 		else
 			for(var/obj/item/reagent_containers/food/snacks/grown/G in O.contents)
-				G.loc = src
+				O.obj_storage.remove(G)
+				G.forceMove(src)
 				i++
 				if(i >= 10)
 					to_chat(user, SPAN_NOTICE("You fill \the [src] to its capacity."))
@@ -253,19 +296,15 @@
 		if(i >= 10)
 			to_chat(user, SPAN_NOTICE("\The [src] is full! Activate it."))
 		else
-			user.remove_from_mob(O)
-			O.loc = src
+			if(!user.attempt_insert_item_for_installation(O, src))
+				return
 			to_chat(user, SPAN_NOTICE("You put \the [O] in \the [src]"))
-	update_icon()
-	return
-
-/obj/machinery/biogenerator/attack_hand(mob/user as mob)
-	ui_interact(user)
+	update_appearance()
 
 /obj/machinery/biogenerator/proc/activate()
 	if(usr.stat)
 		return
-	if(stat) //NOPOWER etc
+	if(machine_stat) //NOPOWER etc
 		return
 	if(processing)
 		to_chat(usr, SPAN_NOTICE("The biogenerator is in the process of working."))
@@ -279,14 +318,14 @@
 		qdel(I)
 	if(S)
 		processing = TRUE
-		update_icon()
-		playsound(src.loc, 'sound/machines/blender.ogg', 40, 1)
+		update_appearance()
+		playsound(src.loc, 'sound/machines/blender.ogg', 40, TRUE)
 		use_power(S * 30)
 		sleep((S + 15) / eat_eff)
 		processing = FALSE
 		SStgui.update_uis(src)
-		playsound(src.loc, 'sound/machines/biogenerator_end.ogg', 40, 1)
-		update_icon()
+		playsound(src.loc, 'sound/machines/biogenerator_end.ogg', 40, TRUE)
+		update_appearance()
 	else
 		to_chat(usr, SPAN_WARNING("Error: No growns inside. Please insert growns."))
 	return

@@ -1,316 +1,417 @@
-//replaces our stun baton code with /tg/station's code
+// todo: /obj/item/stun_baton?
 /obj/item/melee/baton
 	name = "stunbaton"
 	desc = "A stun baton for incapacitating people with."
+	w_class = WEIGHT_CLASS_BULKY
 	icon = 'icons/obj/weapons.dmi'
 	icon_state = "stunbaton"
 	item_state = "baton"
+	rad_flags = RAD_BLOCK_CONTENTS
 	slot_flags = SLOT_BELT
-	force = 15
-	sharp = 0
-	edge = 0
-	throwforce = 7
-	flags = NOCONDUCT
-	w_class = ITEMSIZE_NORMAL
+	damage_force = 15
+	throw_force = 7
+	atom_flags = NOCONDUCT
+	w_class = WEIGHT_CLASS_NORMAL
+	belt_storage_class = BELT_CLASS_LARGE
 	drop_sound = 'sound/items/drop/metalweapon.ogg'
 	pickup_sound = 'sound/items/pickup/metalweapon.ogg'
 	origin_tech = list(TECH_COMBAT = 2)
 	attack_verb = list("beaten")
-	var/lightcolor = "#FF6A00"
-	var/stunforce = 0
-	var/agonyforce = 60
-	var/status = 0		//whether the thing is on or not
-	var/obj/item/cell/bcell = null
-	var/hitcost = 240
-	var/use_external_power = FALSE //only used to determine if it's a cyborg baton
+	worth_intrinsic = 75
+
+	/// Starting cell type
+	var/cell_type
+	var/cell_accept = CELL_TYPE_SMALL | CELL_TYPE_WEAPON
+
+	/// Shock stun power
+	var/stun_power = 45
+	/// Electrocute act flags
+	var/stun_electrocute_flags = ELECTROCUTE_ACT_FLAG_DO_NOT_STUN
+	/// Sound for the stun
+	var/stun_sound = 'sound/weapons/Egloves.ogg'
+
+	/// Charge cost per hit in cell units
+	var/charge_cost = POWER_CELL_CAPACITY_WEAPON / 16
+
+	/// Are we on?
+	var/active = FALSE
+	/// Glow color when on
+	var/active_color = "#FF6A00"
+
+	// todo: use item mounts
+	var/legacy_use_external_power = FALSE
 
 /obj/item/melee/baton/Initialize(mapload)
 	. = ..()
+	init_cell_slot_easy_tool(cell_type, cell_accept)
 	update_icon()
 
-/obj/item/melee/baton/get_cell()
-	return bcell
+/obj/item/melee/baton/object_cell_slot_mutable(mob/user, datum/object_system/cell_slot/slot)
+	return ..() && !legacy_use_external_power
 
-/obj/item/melee/baton/suicide_act(mob/user)
-	var/datum/gender/TU = gender_datums[user.get_visible_gender()]
-	user.visible_message("<span class='suicide'>\The [user] is putting the live [name] in [TU.his] mouth! It looks like [TU.he] [TU.is] trying to commit suicide.</span>")
-	return (FIRELOSS)
+/**
+ * Turn off if we're out of charge
+ */
+/obj/item/melee/baton/proc/update_charge()
+	if(check_charge(charge_cost))
+		return TRUE
+	deactivate()
+	return FALSE
 
-/obj/item/melee/baton/MouseDrop(obj/over_object as obj)
-	if(!canremove)
-		return
+/obj/item/melee/baton/proc/check_charge(amount)
+	if(legacy_use_external_power)
+		var/mob/living/silicon/robot/robot = loc
+		if(!istype(robot))
+			return FALSE
+		return robot.cell?.charge >= amount
+	if(amount > obj_cell_slot.cell?.charge)
+		return FALSE
+	return TRUE
 
-	if (ishuman(usr) || issmall(usr)) //so monkeys can take off their backpacks -- Urist
+/**
+ * Try to use charge for a hit
+ */
+/obj/item/melee/baton/proc/use_charge(amount)
+	if(legacy_use_external_power)
+		var/mob/living/silicon/robot/robot = loc
+		if(!istype(robot))
+			return FALSE
+		return robot.cell?.checked_use(amount)
+	return obj_cell_slot.cell?.checked_use(amount)
 
-		if (istype(usr.loc,/obj/mecha)) // stops inventory actions in a mech. why?
-			return
-
-		if (!( istype(over_object, /atom/movable/screen) ))
-			return ..()
-
-		//makes sure that the thing is equipped, so that we can't drag it into our hand from miles away.
-		//there's got to be a better way of doing this.
-		if (!(src.loc == usr) || (src.loc && src.loc.loc == usr))
-			return
-
-		if (( usr.restrained() ) || ( usr.stat ))
-			return
-
-		if ((src.loc == usr) && !(istype(over_object, /atom/movable/screen)) && !usr.unEquip(src))
-			return
-
-		switch(over_object.name)
-			if("r_hand")
-				usr.u_equip(src)
-				usr.put_in_r_hand(src)
-			if("l_hand")
-				usr.u_equip(src)
-				usr.put_in_l_hand(src)
-		src.add_fingerprint(usr)
-
-/obj/item/melee/baton/loaded/Initialize(mapload)
+/obj/item/melee/baton/attack_self(mob/user, datum/event_args/actor/actor)
 	. = ..()
-	bcell = new/obj/item/cell/device/weapon(src)
+	if(.)
+		return
+	if(user_clickchain_toggle_active(actor))
+		return CLICKCHAIN_DID_SOMETHING
+
+/obj/item/melee/baton/proc/activate(silent, force)
+	if(active)
+		return TRUE
+	if(!force && !check_charge(charge_cost))
+		return FALSE
+	active = TRUE
+	if(!silent)
+		playsound(src, /datum/soundbyte/sparks, 75, TRUE)
+	update_icon()
+	return TRUE
+
+/obj/item/melee/baton/proc/deactivate(silent)
+	if(!active)
+		return TRUE
+	active = FALSE
+	if(!silent)
+		playsound(src, /datum/soundbyte/sparks, 75, TRUE)
+	update_icon()
+	return TRUE
+
+/obj/item/melee/baton/proc/user_clickchain_toggle_active(datum/event_args/actor/actor)
+	if(!update_charge())
+		actor.chat_feedback(
+			SPAN_WARNING("[src] is out of charge, or lacks a power source."),
+			target = src,
+		)
+		return TRUE
+	if(!active)
+		if(activate())
+			actor.chat_feedback(
+				SPAN_WARNING("[src] is now on."),
+				target = src,
+			)
+	else
+		if(deactivate())
+			actor.chat_feedback(
+				SPAN_NOTICE("[src] is now off."),
+				target = src,
+			)
+	return TRUE
+
+/obj/item/melee/baton/melee_override(atom/target, mob/user, intent, zone, efficiency, datum/event_args/actor/actor)
+	var/harm_penalty = intent == INTENT_HARM ? 0.5 : 1
+	attempt_powered_melee_impact(target, user, actor, zone, harm_penalty)
+	if(intent != INTENT_HARM)
+		return TRUE
+	return ..()
+
+/**
+ * Basically [powered_melee_impact()] but checks for charge.
+ *
+ * @return TRUE if handled, FALSE otherwise
+ */
+/obj/item/melee/baton/proc/attempt_powered_melee_impact(atom/target, mob/attacker, datum/event_args/actor/actor, use_target_zone, efficiency = 1)
+	SHOULD_NOT_OVERRIDE(TRUE)
+	if(!active || !use_charge(charge_cost))
+		update_charge()
+		var/obj/item/organ/external/affecting
+		if(iscarbon(target))
+			var/mob/living/carbon/carbon_target = target
+			affecting = carbon_target.get_bodypart_for_zone(use_target_zone)
+		attacker?.visible_message(
+			SPAN_WARNING("[target] has been prodded [affecting ? "in \the [affecting]" : ""] with [src] by [attacker]. Luckily it was off."),
+		)
+		return TRUE
+	powered_melee_impact(target, attacker, actor, use_target_zone, efficiency)
+	update_charge()
+	return TRUE
+
+/**
+ * Does not affect the normal hit, this only performs the stun.
+ *
+ * Calls [apply_powered_melee_impact()]. That's the one you can override.
+ *
+ * @params
+ * * target - what to hit
+ * * attacker - (optional) attacking user
+ * * clickchain - (optional) clickchain data
+ * * use_target_zone - (optional) target that zone
+ */
+/obj/item/melee/baton/proc/powered_melee_impact(atom/target, mob/attacker, datum/event_args/actor/actor, use_target_zone, efficiency = 1)
+	SHOULD_NOT_OVERRIDE(TRUE)
+	actor?.data[ACTOR_DATA_STUNBATON_LOG] = "[efficiency]x[stun_power] f-[stun_electrocute_flags] z-[use_target_zone]"
+	apply_powered_melee_impact(target, attacker, actor, use_target_zone, efficiency)
+
+/**
+ * Does not affect the normal hit, this only performs the stun.
+ *
+ * Should be only called from [powered_melee_impact()]
+ *
+ * @params
+ * * target - what to hit
+ * * attacker - (optional) attacking user
+ * * clickchain - (optional) clickchain data
+ * * use_target_zone - (optional) target that zone
+ */
+/obj/item/melee/baton/proc/apply_powered_melee_impact(atom/target, mob/attacker, datum/event_args/actor/actor, use_target_zone, efficiency)
+	PROTECTED_PROC(TRUE)
+	var/obj/item/organ/external/affecting
+	if(iscarbon(target))
+		var/mob/living/carbon/carbon_target = target
+		affecting = carbon_target.get_bodypart_for_zone(use_target_zone)
+	attacker?.visible_message(
+		SPAN_DANGER("[target] has been prodded [affecting ? "in \the [affecting]" : ""] with [src] by [attacker]."),
+	)
+	playsound(src, stun_sound, 75, TRUE)
+	target.electrocute(
+		DYNAMIC_CELL_UNITS_TO_KJ(charge_cost) * efficiency,
+		0,
+		stun_power * efficiency,
+		stun_electrocute_flags,
+		use_target_zone || BP_TORSO,
+		src,
+	)
+
+/obj/item/melee/baton/object_cell_slot_removed(obj/item/cell/cell, datum/object_system/cell_slot/slot)
+	. = ..()
 	update_icon()
 
-/obj/item/melee/baton/proc/deductcharge(var/chrgdeductamt)
-	if(status == 1)		//Only deducts charge when it's on
-		if(bcell)
-			if(bcell.checked_use(chrgdeductamt))
-				return 1
-			else
-				return 0
-	return null
-
-/obj/item/melee/baton/proc/powercheck(var/chrgdeductamt)
-	if(bcell)
-		if(bcell.charge < chrgdeductamt)
-			status = 0
-			update_icon()
+/obj/item/melee/baton/object_cell_slot_inserted(obj/item/cell/cell, datum/object_system/cell_slot/slot)
+	. = ..()
+	update_icon()
 
 /obj/item/melee/baton/update_icon()
-	if(status)
-		icon_state = "[initial(name)]_active"
-	else if(!bcell)
-		icon_state = "[initial(name)]_nocell"
+	. = ..()
+	if(active)
+		icon_state = "[initial(icon_state)]_active"
+	else if(!obj_cell_slot?.cell)
+		icon_state = "[initial(icon_state)]_nocell"
 	else
-		icon_state = "[initial(name)]"
+		icon_state = "[initial(icon_state)]"
 
-	if(icon_state == "[initial(name)]_active")
-		set_light(2, 1, lightcolor)
+	if(icon_state == "[initial(icon_state)]_active")
+		set_light(2, 1, active_color)
 	else
 		set_light(0)
 
-/obj/item/melee/baton/examine(mob/user)
+/obj/item/melee/baton/examine(mob/user, dist)
 	. = ..()
-	if(bcell)
-		. += "<span class='notice'>The baton is [round(bcell.percent())]% charged.</span>"
-	if(!bcell)
-		. += "<span class='warning'>The baton does not have a power source installed.</span>"
-
-/obj/item/melee/baton/attackby(obj/item/W, mob/user)
-	if(use_external_power)
-		return
-	if(istype(W, /obj/item/cell))
-		if(istype(W, /obj/item/cell/device))
-			if(!bcell)
-				user.drop_item()
-				W.loc = src
-				bcell = W
-				to_chat(user, "<span class='notice'>You install a cell in [src].</span>")
-				update_icon()
-			else
-				to_chat(user, "<span class='notice'>[src] already has a cell.</span>")
-		else
-			to_chat(user, "<span class='notice'>This cell is not fitted for [src].</span>")
-
-/obj/item/melee/baton/attack_hand(mob/user as mob)
-	if(user.get_inactive_hand() == src)
-		if(bcell)
-			bcell.update_icon()
-			user.put_in_hands(bcell)
-			bcell = null
-			to_chat(user, "<span class='notice'>You remove the cell from the [src].</span>")
-			status = 0
-			update_icon()
-			return
-		..()
+	if(obj_cell_slot?.cell)
+		. += SPAN_NOTICE("[src] is [obj_cell_slot.cell.percent()]% charged.")
 	else
-		return ..()
+		. += SPAN_NOTICE("[src] does not have a power source installed.")
 
-/obj/item/melee/baton/attack_self(mob/user)
-	if(use_external_power)
-		//try to find our power cell
-		var/mob/living/silicon/robot/R = loc
-		if (istype(R))
-			bcell = R.cell
-	if(bcell && bcell.charge > hitcost)
-		status = !status
-		to_chat(user, "<span class='notice'>[src] is now [status ? "on" : "off"].</span>")
-		playsound(loc, "sparks", 75, 1, -1)
-		update_icon()
-	else
-		status = 0
-		if(!bcell)
-			to_chat(user, "<span class='warning'>[src] does not have a power source!</span>")
-		else
-			to_chat(user, "<span class='warning'>[src] is out of charge.</span>")
-	add_fingerprint(user)
-
-/obj/item/melee/baton/attack(mob/M, mob/user)
-	if(status && (CLUMSY in user.mutations) && prob(50))
-		to_chat(user, "<span class='danger'>You accidentally hit yourself with the [src]!</span>")
-		user.Weaken(30)
-		deductcharge(hitcost)
-		return
-	deductcharge(hitcost)
-	return ..()
-
-/obj/item/melee/baton/apply_hit_effect(mob/living/target, mob/living/user, var/hit_zone)
-	if(isrobot(target))
-		return ..()
-
-	var/agony = agonyforce
-	var/stun = stunforce
-	var/obj/item/organ/external/affecting = null
-	if(ishuman(target))
-		var/mob/living/carbon/human/H = target
-		affecting = H.get_organ(hit_zone)
-
-	if(user.a_intent == INTENT_HARM)
-		. = ..()
-		//whacking someone causes a much poorer electrical contact than deliberately prodding them.
-		agony *= 0.5
-		stun *= 0.5
-	else if(!status)
-		if(affecting)
-			target.visible_message("<span class='warning'>[target] has been prodded in the [affecting.name] with [src] by [user]. Luckily it was off.</span>")
-		else
-			target.visible_message("<span class='warning'>[target] has been prodded with [src] by [user]. Luckily it was off.</span>")
-	else
-		if(affecting)
-			target.visible_message("<span class='danger'>[target] has been prodded in the [affecting.name] with [src] by [user]!</span>")
-		else
-			target.visible_message("<span class='danger'>[target] has been prodded with [src] by [user]!</span>")
-		playsound(loc, 'sound/weapons/Egloves.ogg', 50, 1, -1)
-
-	//stun effects
-	if(status)
-		target.stun_effect_act(stun, agony, hit_zone, src)
-		msg_admin_attack("[key_name(user)] stunned [key_name(target)] with the [src].")
-
-		if(ishuman(target))
-			var/mob/living/carbon/human/H = target
-			H.forcesay(hit_appends)
-	powercheck(hitcost)
-
-/obj/item/melee/baton/emp_act(severity)
-	if(bcell)
-		bcell.emp_act(severity)	//let's not duplicate code everywhere if we don't have to please.
-	..()
+/obj/item/melee/baton/loaded
+	cell_type = /obj/item/cell/basic/tier_1/weapon
 
 //secborg stun baton module
 /obj/item/melee/baton/robot
-	hitcost = 500
-	use_external_power = TRUE
+	charge_cost = POWER_CELL_CAPACITY_WEAPON / 10
+	legacy_use_external_power = TRUE
 
 //Makeshift stun baton. Replacement for stun gloves.
 /obj/item/melee/baton/cattleprod
 	name = "stunprod"
 	desc = "An improvised stun baton."
-	icon_state = "stunprod_nocell"
+	icon_state = "stunprod"
 	item_state = "prod"
-	force = 3
-	throwforce = 5
-	stunforce = 0
-	agonyforce = 60	//same force as a stunbaton, but uses way more charge.
-	hitcost = 2500
+	damage_force = 3
+	throw_force = 5
+	stun_power = 60	//same force as a stunbaton, but uses way more charge.
+	charge_cost = 4000
 	attack_verb = list("poked")
-	slot_flags = null
+	slot_flags = SLOT_BACK
+	cell_accept = CELL_TYPE_MEDIUM | CELL_TYPE_SMALL | CELL_TYPE_WEAPON
 
 /obj/item/melee/baton/cattleprod/attackby(obj/item/W, mob/user)
-	if(istype(W, /obj/item/cell))
-		if(!istype(W, /obj/item/cell/device))
-			if(!bcell)
-				user.drop_item()
-				W.loc = src
-				bcell = W
-				to_chat(user, "<span class='notice'>You install a cell in [src].</span>")
-				update_icon()
-			else
-				to_chat(user, "<span class='notice'>[src] already has a cell.</span>")
-		else
-			to_chat(user, "<span class='notice'>This cell is not fitted for [src].</span>")
-	if(istype(W, /obj/item/ore/bluespace_crystal))
-		if(!bcell)
-			var/obj/item/ore/bluespace_crystal/BSC = W
+	if(istype(W, /obj/item/bluespace_crystal))
+		if(!obj_cell_slot?.cell)
+			var/obj/item/bluespace_crystal/BSC = W
 			var/obj/item/melee/baton/cattleprod/teleprod/S = new /obj/item/melee/baton/cattleprod/teleprod
 			qdel(src)
 			qdel(BSC)
-			user.put_in_hands(S)
+			user.put_in_hands_or_drop(S)
 			to_chat(user, "<span class='notice'>You place the bluespace crystal firmly into the igniter.</span>")
 		else
 			user.visible_message("<span class='warning'>You can't put the crystal onto the stunprod while it has a power cell installed!</span>")
-	else
-		return ..()
-
-/obj/item/melee/baton/get_description_interaction()
-	var/list/results = list()
-
-	if(bcell)
-		results += "[desc_panel_image("offhand")]to remove the weapon cell."
-	else
-		results += "[desc_panel_image("weapon cell")]to add a new weapon cell."
-
-	results += ..()
-
-	return results
 
 /obj/item/melee/baton/cattleprod/teleprod
-	name = "telebaton"
-	desc = "An ."
-	icon_state = "stunprod_nocell"
+	name = "teleprod"
+	desc = "An improvised stun baton with a bluespace crystal attached to the tip."
+	icon_state = "teleprod"
 	item_state = "prod"
-	force = 3
-	throwforce = 5
-	stunforce = 0
-	agonyforce = 60	//same force as a stunbaton, but uses way more charge.
-	hitcost = 2500
+	damage_force = 3
+	throw_force = 5
+	stun_power = 60	//same force as a stunbaton, but uses way more charge.
+	charge_cost = 4000
 	attack_verb = list("poked")
 	slot_flags = null
 
-/obj/item/melee/baton/cattleprod/teleprod/apply_hit_effect(mob/living/L, mob/living/carbon/user, shoving = FALSE)//handles making things teleport when hit
-	. = ..()
-	if(!. || L.anchored)
-		return
-	do_teleport(L, get_turf(L), 15)
-
-/obj/item/melee/baton/cattleprod/attackby(obj/item/I, mob/user, params)//handles sticking a crystal onto a stunprod to make a teleprod
-
+/obj/item/melee/baton/cattleprod/teleprod/apply_powered_melee_impact(atom/target, mob/attacker, datum/event_args/actor/actor, use_target_zone, efficiency)
+	..()
+	do_teleport(target, get_turf(target), 15)
 
 // Rare version of a baton that causes lesser lifeforms to really hate the user and attack them.
 /obj/item/melee/baton/shocker
 	name = "shocker"
-	desc = "A device that appears to arc electricity into a target to incapacitate or otherwise hurt them, similar to a stun baton.  It looks inefficent."
+	desc = "A device that appears to arc electricity into a target to incapacitate or otherwise hurt them, similar to a stun baton.  It looks inefficient."
 	description_info = "Hitting a lesser lifeform with this while it is on will compel them to attack you above other nearby targets.  Otherwise \
 	it works like a regular stun baton, just less effectively."
 	icon_state = "shocker"
-	force = 10
-	throwforce = 5
-	agonyforce = 25 // Less efficent than a regular baton.
+	damage_force = 10
+	throw_force = 5
+	stun_power = 40
 	attack_verb = list("poked")
 
-/obj/item/melee/baton/shocker/apply_hit_effect(mob/living/target, mob/living/user, var/hit_zone)
-	..(target, user, hit_zone)
-	if(status && target.has_AI())
-		target.taunt(user)
+/obj/item/melee/baton/shocker/apply_powered_melee_impact(atom/target, mob/attacker, datum/event_args/actor/actor, use_target_zone, efficiency)
+	..()
+	if(!isliving(target))
+		return
+	var/mob/living/L = target
+	if(active && L.has_polaris_AI())
+		L.taunt(attacker)
 
 // Borg version, for the lost module.
 /obj/item/melee/baton/shocker/robot
-	use_external_power = TRUE
+	legacy_use_external_power = TRUE
 
 /obj/item/melee/baton/stunsword
 	name = "stunsword"
 	desc = "Not actually sharp, this sword is functionally identical to its baton counterpart."
 	icon_state = "stunsword"
 	item_state = "baton"
+
+/obj/item/melee/baton/stunlance
+	name = "stun lance"
+	desc = "Designed by Nanotrasen for mounted expeditions, the stun lance is useful for running down and incapacitating wildlife for study. Its efficacy on fugitives is tacitly implied."
+	icon_state = "stunlance"
+	w_class = WEIGHT_CLASS_NORMAL
+	reach = 2
+
+/obj/item/melee/baton/stunlance/Initialize(mapload)
+	. = ..()
+	AddComponent(/datum/component/jousting)
+
+/obj/item/melee/baton/loaded/mini
+	name = "Personal Defense Baton"
+	desc = "A smaller, more potent version of a hand-held tazer, one zap and the target is sure to be on the ground, and the <b>integrated</b> cell empty. Standard issue to Command staff, indentured sex workers and anyone else who might get mobbed by dissatisfied clientele. Do not lick."
+	icon_state = "mini_baton"
+	item_state = "mini_baton"
+	w_class = WEIGHT_CLASS_SMALL
+	damage_force = 5
+	throw_force = 2
+	stun_power = 120
+	stun_electrocute_flags = NONE
+	charge_cost = POWER_CELL_CAPACITY_WEAPON / 2
+	stun_sound = 'sound/effects/lightningshock.ogg'
+
+/obj/item/melee/baton/loaded/mini/object_cell_slot_mutable(mob/user, datum/object_system/cell_slot/slot)
+	return FALSE
+
+/obj/item/melee/baton/electrostaff
+	name = "riot suppression electrostaff"
+	desc = "A large quarterstaff with electrodes mounted at the end. Presumably for riot control. Presumably."
+	icon = 'icons/items/electrostaff.dmi'
+	icon_state = "electrostaff"
+	base_icon_state = "electrostaff"
+	slot_flags = SLOT_BACK
+	// TODO: get rid of legacy override for this.
+	item_icons = null
+	melee_click_cd_multiply = 0.75
+	worn_state = "electrostaff"
+	worn_render_flags = WORN_RENDER_SLOT_ONE_FOR_ALL
+	stun_power = 40
+	stun_sound = 'sound/effects/lightningshock.ogg'
+	// TODO: either do active parry instead or rework this to not be
+	//       able to parry at 100% everything
+	// TODO: just add a small active parry frame as a test
+	passive_parry = /datum/passive_parry{
+		parry_chance_melee = 35;
+		parry_chance_touch = 40;
+		parry_frame_efficiency = 0.7
+	}
+
+	var/wielded_damage_force = 15
+	var/wielded_damage_tier = 3
+	var/unwielded_damage_force = 7.5
+	var/unwielded_damage_tier = 3
+
+	damage_force = 7.5
+	damage_tier = 3
+
+	// :trol:
+	cell_type = /obj/item/cell/infinite/weapon
+
+/obj/item/melee/baton/electrostaff/Initialize(mapload)
+	. = ..()
+	AddComponent(/datum/component/wielding)
+
+/obj/item/melee/baton/electrostaff/object_cell_slot_mutable(mob/user, datum/object_system/cell_slot/slot)
+	return FALSE
+
+/obj/item/melee/baton/electrostaff/update_icon()
+	. = ..()
+	if(!(item_flags & ITEM_MULTIHAND_WIELDED))
+		icon_state = inhand_state = base_icon_state
+		return
+	var/use_state = "[base_icon_state]-wield"
+	if(active)
+		use_state = "[use_state]-blue"
+	icon_state = inhand_state = use_state
+	update_worn_icon()
+
+/obj/item/melee/baton/electrostaff/on_wield(mob/user, hands)
+	..()
+	damage_force = wielded_damage_force
+	damage_tier = wielded_damage_tier
+
+/obj/item/melee/baton/electrostaff/on_unwield(mob/user, hands)
+	// TODO: ..() updates icon. can we skip it?
+	..()
+	deactivate()
+	damage_force = unwielded_damage_force
+	damage_tier = unwielded_damage_tier
+
+/obj/item/melee/baton/electrostaff/user_clickchain_toggle_active(datum/event_args/actor/actor)
+	if(!active && !(item_flags & ITEM_MULTIHAND_WIELDED))
+		actor.chat_feedback(
+			SPAN_WARNING("[src] needs to be wielded with both hands to be activated."),
+			target = src,
+		)
+		return TRUE
+	return ..()
+
+/obj/item/melee/baton/electrostaff/activate(silent, force)
+	// we have no icon for it so don't allow it in literally any case
+	if(!(item_flags & ITEM_MULTIHAND_WIELDED))
+		return FALSE
+	return ..()

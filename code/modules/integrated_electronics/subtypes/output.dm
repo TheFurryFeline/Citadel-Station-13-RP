@@ -19,7 +19,7 @@
 	..()
 	stuff_to_display = null
 
-/obj/item/integrated_circuit/output/screen/any_examine(mob/user)
+/obj/item/integrated_circuit/output/screen/any_examine(mob/user, dist)
 	to_chat(user, "There is a little screen labeled '[name]', which displays [!isnull(stuff_to_display) ? "'[stuff_to_display]'" : "nothing"].")
 
 /obj/item/integrated_circuit/output/screen/do_work()
@@ -80,10 +80,18 @@
 /obj/item/integrated_circuit/output/light/proc/update_lighting()
 	if(light_toggled)
 		if(assembly)
-			assembly.set_light(l_range = light_brightness, l_power = light_strength, l_color = light_rgb)
+			if(istype(assembly,/obj/item/electronic_assembly/clothing))
+				var/obj/item/electronic_assembly/clothing/assembly_c = assembly
+				assembly_c.clothing.set_light(l_range = light_brightness, l_power = light_strength, l_color = light_rgb)
+			else
+				assembly.set_light(l_range = light_brightness, l_power = light_strength, l_color = light_rgb)
 	else
 		if(assembly)
-			assembly.set_light(0)
+			if(istype(assembly,/obj/item/electronic_assembly/clothing))
+				var/obj/item/electronic_assembly/clothing/assembly_c = assembly
+				assembly_c.clothing.set_light(0)
+			else
+				assembly.set_light(0)
 	power_draw_idle = light_toggled ? light_brightness * light_brightness : 0 // Should be the same draw as regular lights.
 
 /obj/item/integrated_circuit/output/light/power_fail() // Turns off the flashlight if there's no power left.
@@ -120,11 +128,11 @@
 
 /obj/item/integrated_circuit/output/text_to_speech
 	name = "text-to-speech circuit"
-	desc = "A miniature speaker is attached to this component. It is able to transpose any valid text to speech."
+	desc = "A miniature speaker is attached to this component.  It is able to transpose any valid text to speech."
 	extended_desc = "This will emit an audible message to anyone who can hear the assembly."
 	icon_state = "speaker"
 	complexity = 12
-	cooldown_per_use = 4 SECONDS
+	cooldown_per_use = 1 SECONDS
 	inputs = list("text" = IC_PINTYPE_STRING)
 	outputs = list()
 	activators = list("to speech" = IC_PINTYPE_PULSE_IN)
@@ -139,9 +147,9 @@
 
 /obj/item/integrated_circuit/output/text_to_speech/advanced
 	name = "advanced text-to-speech circuit"
-	desc = "A miniature speaker is attached to this component. It is able to transpose any valid text to speech, matching a scanned target's voice."
+	desc = "A miniature speaker is attached to this component.  It is able to transpose any valid text to speech, matching a scanned target's voice."
 	complexity = 15
-	cooldown_per_use = 6 SECONDS
+	cooldown_per_use = 1 SECONDS
 	inputs = list("text" = IC_PINTYPE_STRING, "mimic target" = IC_PINTYPE_REF)
 	power_draw_per_use = 100
 
@@ -169,23 +177,25 @@
 	desc = "A miniature speaker is attached to this component."
 	icon_state = "speaker"
 	complexity = 8
-	cooldown_per_use = 4 SECONDS
+	cooldown_per_use = 1 SECONDS //The cooldown is adjusted by sound length
+	var/cooldown_after_use = 1 SECONDS //Extra cooldown added to the sound length
 	inputs = list(
 		"sound ID" = IC_PINTYPE_STRING,
 		"volume" = IC_PINTYPE_NUMBER,
 		"frequency" = IC_PINTYPE_BOOLEAN
 	)
-	outputs = list()
-	activators = list("play sound" = IC_PINTYPE_PULSE_IN)
+	outputs = list("cooldown duration" = IC_PINTYPE_NUMBER)
+	activators = list("play sound" = IC_PINTYPE_PULSE_IN, "on played" = IC_PINTYPE_PULSE_OUT)
 	power_draw_per_use = 20
 	var/list/sounds = list()
+	var/list/durations = list() //Audacity works decently well to finding out deciseconds
 
 /obj/item/integrated_circuit/output/sound/Initialize(mapload)
 	. = ..()
 	extended_desc = list()
-	extended_desc += "The first input pin determines which sound is used. The choices are; "
+	extended_desc += "The first input pin determines which sound is used.  The choices are; "
 	extended_desc += jointext(sounds, ", ")
-	extended_desc += ". The second pin determines the volume of sound that is played"
+	extended_desc += ".  The second pin determines the volume of sound that is played"
 	extended_desc += ", and the third determines if the frequency of the sound will vary with each activation."
 	extended_desc = jointext(extended_desc, null)
 
@@ -197,8 +207,13 @@
 		var/selected_sound = sounds[ID]
 		if(!selected_sound)
 			return
-		vol = between(0, vol, 100)
+		var/selected_cooldown = durations[ID]
+		vol = clamp( vol, 0,  100)
 		playsound(get_turf(src), selected_sound, vol, freq, -1)
+		cooldown_per_use = selected_cooldown + cooldown_after_use
+		set_pin_data(IC_OUTPUT, 1, cooldown_per_use)
+		push_data()
+		activate_pin(2)
 
 /obj/item/integrated_circuit/output/sound/beeper
 	name = "beeper circuit"
@@ -215,6 +230,16 @@
 		"synth no"		= 'sound/machines/synth_no.ogg',
 		"warning buzz"	= 'sound/machines/warning-buzzer.ogg'
 		)
+	durations = list(
+		"beep"			= 3,
+		"chime"			= 4,
+		"buzz sigh"		= 3,
+		"buzz twice"	= 6,
+		"ping"			= 5,
+		"synth yes"		= 4,
+		"synth no"		= 4,
+		"warning buzz"	= 35
+		)
 	spawn_flags = IC_SPAWN_DEFAULT|IC_SPAWN_RESEARCH
 
 /obj/item/integrated_circuit/output/sound/beepsky
@@ -229,6 +254,16 @@
 		"insult"		= 'sound/voice/binsult.ogg',
 		"radio"			= 'sound/voice/bradio.ogg',
 		"secure day"	= 'sound/voice/bsecureday.ogg',
+		)
+	durations = list(
+		"creep"			= 16,
+		"criminal"		= 11,
+		"freeze"		= 10,
+		"god"			= 30,
+		"i am the law"	= 22,
+		"insult"		= 141, //Yeah it is that long
+		"radio"			= 18,
+		"secure day"	= 12,
 		)
 	spawn_flags = IC_SPAWN_RESEARCH
 	origin_tech = list(TECH_ENGINEERING = 2, TECH_DATA = 2, TECH_ILLEGAL = 1)
@@ -253,15 +288,92 @@
 		"apple"			= 'sound/voice/medibot/mapple.ogg',
 		"no"			= 'sound/voice/medibot/mno.ogg',
 		)
+	durations = list(
+		"surgeon"		= 39,
+		"radar"			= 16,
+		"feel better"	= 14,
+		"patched up"	= 11,
+		"injured"		= 21,
+		"insult"		= 155,
+		"coming"		= 20,
+		"help"			= 13,
+		"live"			= 15,
+		"lost"			= 45,
+		"flies"			= 50,
+		"catch"			= 38,
+		"delicious"		= 7,
+		"apple"			= 23,
+		"no"			= 16,
+		)
 	spawn_flags = IC_SPAWN_RESEARCH
 	origin_tech = list(TECH_ENGINEERING = 2, TECH_DATA = 2, TECH_BIO = 1)
+
+/obj/item/integrated_circuit/output/sound/hev
+	name = "HEV sound circuit"
+	desc = "Takes a sound name as an input, and will play said sound when pulsed. This circuit is similar to those used in some old RIG suit"
+	cooldown_after_use = 5
+	sounds = list(
+		"bio_warn"						= 'sound/voice/Hevsounds/biohazard_detected.wav',
+		"chem_warn" 					= 'sound/voice/Hevsounds/chemical_detected.wav',
+		"rad_warn" 						= 'sound/voice/Hevsounds/radiation_detected.wav',
+		"near_death"					= 'sound/voice/Hevsounds/near_death.wav',
+		"seek_medic"					= 'sound/voice/Hevsounds/seek_medic.wav',
+		"shock_damage"					= 'sound/voice/Hevsounds/shock_damage.wav',
+		"blood_loss"					= 'sound/voice/Hevsounds/blood_loss.wav',
+		"blood_plasma"					= 'sound/voice/Hevsounds/blood_plasma.wav',
+		"blood_toxins"					= 'sound/voice/Hevsounds/blood_toxins.wav',
+		"health_critical"				= 'sound/voice/Hevsounds/health_critical.wav',
+		"health_dropping"				= 'sound/voice/Hevsounds/health_dropping.wav',
+		"health_dropping2"				= 'sound/voice/Hevsounds/health_dropping2.wav',
+		"minor_fracture"				= 'sound/voice/Hevsounds/minor_fracture.wav',
+		"minor_lacerations"				= 'sound/voice/Hevsounds/minor_lacerations.wav',
+		"major_fracture"				= 'sound/voice/Hevsounds/major_fracture.wav',
+		"major_lacerations"				= 'sound/voice/Hevsounds/major_lacerations.wav',
+		"wound_sterilized"				= 'sound/voice/Hevsounds/wound_sterilized.wav',
+		"administering_medical"			= 'sound/voice/Hevsounds/administering_medical.wav',
+		"adrenaline_shot"				= 'sound/voice/Hevsounds/adrenaline_shot.wav',
+		"automedic_on"					= 'sound/voice/Hevsounds/automedic_on.wav',
+		"antitoxin_shot"				= 'sound/voice/Hevsounds/antitoxin_shot.wav',
+		"heat_damage"					= 'sound/voice/Hevsounds/heat_damage.wav',
+		"morphine_shot"					= 'sound/voice/Hevsounds/morphine_shot.wav',
+		"innsuficient_medical"			= 'sound/voice/Hevsounds/innsuficient_medical.wav',
+		"internal_bleeding"				= 'sound/voice/Hevsounds/internal_bleeding.wav'
+		)
+	durations = list(
+		"bio_warn"						= 31,
+		"chem_warn" 					= 38,
+		"rad_warn" 						= 45,
+		"near_death"					= 36,
+		"seek_medic"					= 25,
+		"shock_damage"					= 23,
+		"blood_loss"					= 22,
+		"blood_plasma"					= 26,
+		"blood_toxins"					= 38,
+		"health_critical"				= 32,
+		"health_dropping"				= 35,
+		"health_dropping2"				= 29,
+		"minor_fracture"				= 24,
+		"minor_lacerations"				= 29,
+		"major_fracture"				= 24,
+		"major_lacerations"				= 30,
+		"wound_sterilized"				= 20,
+		"administering_medical"			= 31,
+		"adrenaline_shot"				= 20,
+		"automedic_on"					= 35,
+		"antitoxin_shot"				= 22,
+		"heat_damage"					= 30,
+		"morphine_shot"					= 20,
+		"innsuficient_medical"			= 45,
+		"internal_bleeding"				= 24
+		)
+	spawn_flags = IC_SPAWN_RESEARCH
 
 /obj/item/integrated_circuit/output/video_camera
 	name = "video camera circuit"
 	desc = "This small camera allows a remote viewer to see what it sees."
 	extended_desc = "The camera is linked to the Research camera network."
 	icon_state = "video_camera"
-	w_class = ITEMSIZE_SMALL
+	w_class = WEIGHT_CLASS_SMALL
 	complexity = 10
 	inputs = list(
 		"camera name" = IC_PINTYPE_STRING,
@@ -323,7 +435,7 @@
 /obj/item/integrated_circuit/output/led/power_fail()
 	set_pin_data(IC_INPUT, 1, FALSE)
 
-/obj/item/integrated_circuit/output/led/any_examine(mob/user)
+/obj/item/integrated_circuit/output/led/any_examine(mob/user, dist)
 	var/text_output = list()
 	var/initial_name = initial(name)
 
@@ -382,7 +494,7 @@
 	The assembly must be able to see the object to make a holographic copy of it.<br>\
 	Scaling is capped between -2 and 2.<br>\
 	The rotation pin uses degrees.<br>\
-	Imitated object cannot be changed while projecting. Position, \
+	Imitated object cannot be changed while projecting.  Position, \
 	scale, and rotation can be updated without restarting by pulsing the update hologram pin."
 	complexity = 40
 	icon_state = "holo_projector"
@@ -411,7 +523,7 @@
 	spawn_flags = IC_SPAWN_DEFAULT|IC_SPAWN_RESEARCH
 	var/obj/effect/overlay/holographic/hologram = null // Reference to the hologram effect, and also used to see if component is active.
 	var/icon/holo_base = null // Uncolored holographic icon.
-//	var/datum/beam/holo_beam = null // A visual effect, to make it easy to know where a hologram is coming from.
+//	var/datum/beam_legacy/holo_beam = null // A visual effect, to make it easy to know where a hologram is coming from.
 	// It is commented out due to picking up the assembly killing the beam.
 
 /obj/item/integrated_circuit/output/holographic_projector/Destroy()
@@ -445,7 +557,7 @@
 	if(!isnum(holo_scale) || !isnum(holo_rotation) )
 		return FALSE // Invalid.
 
-	hologram.adjust_scale(between(-2, holo_scale, 2) )
+	hologram.adjust_scale(clamp( holo_scale, -2,  2) )
 	hologram.adjust_rotation(holo_rotation)
 	update_hologram_position()
 
@@ -458,8 +570,8 @@
 	if(!isnum(holo_x) || !isnum(holo_y) )
 		return FALSE
 
-	holo_x = between(-7, holo_x, 7)
-	holo_y = between(-7, holo_y, 7)
+	holo_x = clamp( holo_x, -7,  7)
+	holo_y = clamp( holo_y, -7,  7)
 
 	var/turf/T = get_turf(src)
 	if(T)
@@ -478,13 +590,18 @@
 
 	if(istype(AM) && assembly)
 		if(AM in view(get_turf(src))) // It must be able to 'see' the object it will copy.
+			var/list/output = get_flat_icon_with_offsets(AM)
+			if(isnull(output))
+				return FALSE
 			hologram = new(src)
-			var/icon/holo_icon = getHologramIcon(getFlatIcon(AM))
+			var/icon/holo_icon = getHologramIcon(output[1])
 		//	holo_icon.GrayScale() // So it looks better colored.
 			if(holo_color) // The color pin should ensure that it is a valid hex.
 				holo_icon.ColorTone(holo_color)
 			hologram.icon = holo_icon
 			hologram.name = "[AM.name] (Hologram)"
+			hologram.pixel_x = output[2]
+			hologram.pixel_y = output[3]
 			update_hologram()
 
 	//		holo_beam = assembly.Beam(hologram, icon_state = "holo_beam", time = INFINITY, maxdistance = world.view)
@@ -506,7 +623,8 @@
 	if(hologram)
 		update_hologram()
 
-/obj/item/integrated_circuit/output/holographic_projector/on_loc_moved(atom/oldloc)
+/obj/item/integrated_circuit/output/holographic_projector/ext_moved(atom/oldloc, dir)
+	. = ..()
 	if(hologram)
 		update_hologram_position()
 

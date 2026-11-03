@@ -12,24 +12,27 @@ LINEN BINS
 	slot_flags = SLOT_BACK
 	plane = MOB_PLANE
 	layer = BELOW_MOB_LAYER
-	throwforce = 1
+	throw_force = 1
 	throw_speed = 1
 	throw_range = 2
-	w_class = ITEMSIZE_SMALL
+	w_class = WEIGHT_CLASS_SMALL
 	drop_sound = 'sound/items/drop/backpack.ogg'
 	pickup_sound = 'sound/items/pickup/backpack.ogg'
 
-/obj/item/bedsheet/attack_self(mob/user as mob)
-	user.drop_item()
+/obj/item/bedsheet/attack_self(mob/user, datum/event_args/actor/actor)
+	. = ..()
+	if(.)
+		return
+	if(!user.drop_item_to_ground(src))
+		return
 	if(layer == initial(layer))
 		layer = ABOVE_MOB_LAYER
 	else
-		reset_plane_and_layer()
+		set_base_layer(initial(layer))
 	add_fingerprint(user)
-	return
 
 /obj/item/bedsheet/attackby(obj/item/I, mob/user)
-	if(is_sharp(I))
+	if(is_sharp(I) || I.tool_check(TOOL_WIRECUTTER))
 		user.visible_message("<span class='notice'>\The [user] begins cutting up [src] with [I].</span>", "<span class='notice'>You begin cutting up [src] with [I].</span>")
 		if(do_after(user, 50))
 			to_chat(user, "<span class='notice'>You cut [src] into pieces!</span>")
@@ -173,12 +176,13 @@ LINEN BINS
 	icon = 'icons/obj/structures.dmi'
 	icon_state = "linenbin-full"
 	anchored = 1
+	var/initial_amount = 20
 	var/amount = 20
 	var/list/sheets = list()
 	var/obj/item/hidden = null
 
 
-/obj/structure/bedsheetbin/examine(mob/user)
+/obj/structure/bedsheetbin/examine(mob/user, dist)
 	. = ..()
 
 	if(amount < 1)
@@ -190,27 +194,29 @@ LINEN BINS
 	. += "There are [amount] bed sheets in the bin."
 
 
-/obj/structure/bedsheetbin/update_icon()
-	switch(amount)
-		if(0)				icon_state = "linenbin-empty"
-		if(1 to amount / 2)	icon_state = "linenbin-half"
-		else				icon_state = "linenbin-full"
-
+/obj/structure/bedsheetbin/update_icon_state()
+	. = ..()
+	if(!amount)
+		icon_state = "linenbin-empty"
+	else if(amount < (initial_amount / 2))
+		icon_state = "linenbin-half"
+	else
+		icon_state = "linenbin-full"
 
 /obj/structure/bedsheetbin/attackby(obj/item/I as obj, mob/user as mob)
 	if(istype(I, /obj/item/bedsheet))
-		user.drop_item()
-		I.loc = src
+		if(!user.attempt_insert_item_for_installation(I, src))
+			return
 		sheets.Add(I)
 		amount++
 		to_chat(user, "<span class='notice'>You put [I] in [src].</span>")
-	else if(amount && !hidden && I.w_class < ITEMSIZE_LARGE)	//make sure there's sheets to hide it among, make sure nothing else is hidden in there.
-		user.drop_item()
-		I.loc = src
+	else if(amount && !hidden && I.w_class < WEIGHT_CLASS_BULKY)	//make sure there's sheets to hide it among, make sure nothing else is hidden in there.
+		if(!user.attempt_insert_item_for_installation(I, src))
+			return
 		hidden = I
 		to_chat(user, "<span class='notice'>You hide [I] among the sheets.</span>")
 
-/obj/structure/bedsheetbin/attack_hand(mob/user as mob)
+/obj/structure/bedsheetbin/attack_hand(mob/user, datum/event_args/actor/clickchain/e_args)
 	if(amount >= 1)
 		amount--
 
@@ -222,15 +228,15 @@ LINEN BINS
 		else
 			B = new /obj/item/bedsheet(loc)
 
-		B.loc = user.loc
+		B.forceMove(user.drop_location())
 		user.put_in_hands(B)
 		to_chat(user, "<span class='notice'>You take [B] out of [src].</span>")
 
 		if(hidden)
-			hidden.loc = user.loc
+			hidden.forceMove(user.drop_location())
 			to_chat(user, "<span class='notice'>[hidden] falls out of [B]!</span>")
 			hidden = null
-
+		update_icon()
 
 	add_fingerprint(user)
 

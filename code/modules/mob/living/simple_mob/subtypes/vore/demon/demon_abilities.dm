@@ -12,20 +12,18 @@
 		to_chat(src,"<span class='warning'>You can't do a shift while actively shifting!</span>")
 		return FALSE
 
-	if(!(locate(/obj/effect/decal/cleanable/blood) in src.loc))
+	if(!(locate(/obj/effect/debris/cleanable/blood) in src.loc))
 		to_chat(src,"<span class='warning'>You need blood to shift between realities!</span>")
 		return FALSE
 
 	forceMove(T)
-	var/original_canmove = canmove
-	SetStunned(0)
-	SetWeakened(0)
+	set_stunned(0)
+	set_paralyzed(0)
 	if(buckled)
 		buckled.unbuckle_mob()
 	if(pulledby)
 		pulledby.stop_pulling()
 	stop_pulling()
-	canmove = FALSE
 	is_shifting = TRUE
 
 	//Shifting in
@@ -36,20 +34,19 @@
 			var/obj/belly/B = belly
 			B.escapable = initial(B.escapable)
 
-		overlays.Cut()
+		cut_overlays()
 		alpha = initial(alpha)
 		invisibility = initial(invisibility)
 		see_invisible = initial(see_invisible)
 		incorporeal_move = initial(incorporeal_move)
 		density = initial(density)
-		force_max_speed = initial(force_max_speed)
+		remove_movespeed_modifier(/datum/movespeed_modifier/forced_speedup/vore_demon_jaunt)
 
 		//Cosmetics mostly
 		flick("phasein",src)
 		custom_emote(1,"phases in!")
 		sleep(30) //The duration of the TP animation
 		is_shifting = FALSE
-		canmove = original_canmove
 
 		//Potential phase-in vore
 		if(can_be_drop_pred) //Toggleable in vore panel
@@ -69,7 +66,7 @@
 		//Affect nearby lights
 		var/destroy_lights = 0
 
-		for(var/obj/machinery/light/L in machines)
+		for(var/obj/machinery/light/L in GLOB.machines)
 			if(L.z != z || get_dist(src,L) > 10)
 				continue
 
@@ -93,7 +90,7 @@
 			var/obj/belly/B = belly
 			B.escapable = FALSE
 
-		overlays.Cut()
+		cut_overlays()
 		flick("phaseout",src)
 		sleep(30)
 		invisibility = INVISIBILITY_LEVEL_TWO
@@ -102,10 +99,9 @@
 		alpha = 127
 
 		is_shifting = FALSE
-		canmove = original_canmove
 		incorporeal_move = TRUE
 		density = FALSE
-		force_max_speed = TRUE
+		add_movespeed_modifier(/datum/movespeed_modifier/forced_speedup/vore_demon_jaunt)
 
 /mob/living/simple_mob/vore/demon/verb/phase_shift()
 	set name = "Phase Shift"
@@ -129,15 +125,13 @@
 
 	shift_state = AB_SHIFT_ACTIVE
 	forceMove(T)
-	var/original_canmove = canmove
-	SetStunned(0)
-	SetWeakened(0)
+	set_stunned(0)
+	set_paralyzed(0)
 	if(buckled)
 		buckled.unbuckle_mob()
 	if(pulledby)
 		pulledby.stop_pulling()
 	stop_pulling()
-	canmove = FALSE
 	is_shifting = TRUE
 
 	shifted_out = TRUE
@@ -149,7 +143,7 @@
 		var/obj/belly/B = belly
 		B.escapable = FALSE
 
-	overlays.Cut()
+	cut_overlays()
 	flick("phaseout",src)
 	sleep(30)
 	invisibility = INVISIBILITY_LEVEL_TWO
@@ -158,10 +152,9 @@
 	alpha = 127
 
 	is_shifting = FALSE
-	canmove = original_canmove
 	incorporeal_move = TRUE
 	density = FALSE
-	force_max_speed = TRUE
+	add_movespeed_modifier(/datum/movespeed_modifier/forced_speedup/vore_demon_jaunt)
 
 	spawn(300)
 		shifted_out = FALSE
@@ -170,15 +163,13 @@
 			var/obj/belly/B = belly
 			B.escapable = initial(B.escapable)
 
-		overlays.Cut()
+		cut_overlays()
 		alpha = initial(alpha)
 		invisibility = initial(invisibility)
 		see_invisible = initial(see_invisible)
 		incorporeal_move = initial(incorporeal_move)
 		density = initial(density)
-		force_max_speed = initial(force_max_speed)
-		original_canmove = canmove
-		canmove = FALSE
+		remove_movespeed_modifier(/datum/movespeed_modifier/forced_speedup/vore_demon_jaunt)
 		is_shifting = TRUE
 
 		//Cosmetics mostly
@@ -186,7 +177,6 @@
 		custom_emote(1,"phases in!")
 		sleep(30) //The duration of the TP animation
 		is_shifting = FALSE
-		canmove = original_canmove
 
 		var/turf/NT = get_turf(src)
 

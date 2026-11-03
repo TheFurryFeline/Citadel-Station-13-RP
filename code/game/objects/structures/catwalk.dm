@@ -2,28 +2,37 @@
 /obj/structure/catwalk
 	name = "catwalk"
 	desc = "Cats really don't like these things."
-	plane = DECAL_PLANE
-	layer = ABOVE_UTILITY
+	plane = TURF_PLANE
+	layer = CATWALK_LAYER
 	icon = 'icons/turf/catwalks.dmi'
 	icon_state = "catwalk"
-	density = 0
-	var/health = 100
-	var/maxhealth = 100
+	density = FALSE
+	anchored = TRUE
+	rad_flags = RAD_NO_CONTAMINATE
+
+	// smoothing_flags = SMOOTH_BITMASK
+	smoothing_groups = (SMOOTH_GROUP_CATWALK + SMOOTH_GROUP_LATTICE + SMOOTH_GROUP_OPEN_FLOOR)
+	canSmoothWith = (SMOOTH_GROUP_CATWALK)
+
+	integrity = 200
+	integrity_max = 200
+
 	var/obj/item/stack/tile/plated_tile = null
 	var/static/plating_color = list(
 		/obj/item/stack/tile/floor = "#858a8f",
 		/obj/item/stack/tile/floor/dark = "#4f4f4f",
-		/obj/item/stack/tile/floor/white = "#e8e8e8")
-	anchored = 1.0
+		/obj/item/stack/tile/floor/white = "#e8e8e8",
+	)
 
 /obj/structure/catwalk/Initialize(mapload)
 	. = ..()
+	if(istype(loc, /turf/simulated/floor/water))
+		layer = ABOVE_TURF_LAYER
 	for(var/obj/structure/catwalk/O in range(1))
 		O.update_icon()
 	for(var/obj/structure/catwalk/C in get_turf(src))
 		if(C != src)
-			warning("Duplicate [type] in [loc] ([x], [y], [z])")
-			return INITIALIZE_HINT_QDEL
+			CRASH("Duplicate catwalk set to spawn at X [audit_loc()]. Please delete the duplicate catwalk.")
 	update_icon()
 
 /obj/structure/catwalk/Destroy()
@@ -60,17 +69,6 @@
 
 	icon_state = "catwalk[connectdir]-[diagonalconnect]"
 
-
-/obj/structure/catwalk/ex_act(severity)
-	switch(severity)
-		if(1.0)
-			qdel(src)
-		if(2.0)
-			qdel(src)
-		if(3.0)
-			qdel(src)
-	return
-
 /obj/structure/catwalk/attackby(obj/item/C as obj, mob/user as mob)
 	if(istype(C, /obj/item/weldingtool))
 		var/obj/item/weldingtool/WT = C
@@ -82,34 +80,32 @@
 				new /obj/structure/lattice(src.loc)
 				qdel(src)
 	if(C.is_screwdriver())
-		if(health < maxhealth)
+		if(integrity < integrity_max)
 			to_chat(user, "<span class='notice'>You begin repairing \the [src.name] with \the [C.name].</span>")
 			if(do_after(user, 20, src))
-				health = maxhealth
-	else
-		take_damage(C.force)
-		user.setClickCooldown(user.get_attack_speed(C))
+				set_integrity(integrity_max)
 	return ..()
 
 /obj/structure/catwalk/Crossed()
 	. = ..()
-	if(isliving(usr) && !usr.is_incorporeal())
+	if(isliving(usr) && !usr.is_incorporeal() && !usr.is_avoiding_ground())
 		playsound(src, pick('sound/effects/footstep/catwalk1.ogg', 'sound/effects/footstep/catwalk2.ogg', 'sound/effects/footstep/catwalk3.ogg', 'sound/effects/footstep/catwalk4.ogg', 'sound/effects/footstep/catwalk5.ogg'), 25, 1)
 
 /obj/structure/catwalk/CheckExit(atom/movable/O, turf/target)
-	if(O.checkpass(PASSGRILLE))
-		return 1
+	if(O.check_pass_flags(ATOM_PASS_GRILLE))
+		return TRUE
 	if(target && target.z < src.z)
-		return 0
-	return 1
+		return FALSE
+	return TRUE
 
-/obj/structure/catwalk/take_damage(amount)
-	health -= amount
-	if(health <= 0)
-		visible_message("<span class='warning'>\The [src] breaks down!</span>")
-		playsound(loc, 'sound/effects/grillehit.ogg', 50, 1)
-		new /obj/item/stack/rods(get_turf(src))
-		Destroy()
+/obj/structure/catwalk/prevent_z_fall(atom/movable/victim, levels = 0, fall_flags)
+	return fall_flags | FALL_BLOCKED
+
+/obj/structure/catwalk/z_pass_in(atom/movable/AM, dir, turf/old_loc)
+	return dir == UP
+
+/obj/structure/catwalk/z_pass_out(atom/movable/AM, dir, turf/new_loc)
+	return dir == UP
 
 /obj/effect/catwalk_plated
 	name = "plated catwalk spawner"
@@ -118,8 +114,8 @@
 	density = 1
 	anchored = 1.0
 	var/activated = FALSE
-	plane = DECAL_PLANE
-	layer = ABOVE_UTILITY
+	plane = TURF_PLANE
+	layer = CATWALK_LAYER
 	var/tile = /obj/item/stack/tile/floor
 	var/platecolor = "#858a8f"
 
@@ -127,21 +123,12 @@
 	. = ..()
 	activate()
 
-/obj/effect/catwalk_plated/attack_hand()
-	attack_generic()
-
-/obj/effect/catwalk_plated/attack_ghost()
-	. = ..()
-	attack_generic()
-
-/obj/effect/catwalk_plated/attack_generic()
-	activate()
-
 /obj/effect/catwalk_plated/proc/activate()
-	if(activated) return
+	if(activated)
+		return
 
 	if(locate(/obj/structure/catwalk) in loc)
-		warning("Frame Spawner: A catwalk already exists at [loc.x]-[loc.y]-[loc.z]")
+		CRASH("Frame spawner: A catwalk already exists at [audit_loc()]. Please remove the duplicate catwalk.")
 	else
 		var/obj/structure/catwalk/C = new /obj/structure/catwalk(loc)
 		C.plated_tile = tile
@@ -169,8 +156,8 @@
 /obj/structure/catwalk/plank
 	name = "plank bridge"
 	desc = "Some flimsy wooden planks, generally set across a hazardous area."
-	plane = DECAL_PLANE
-	layer = ABOVE_UTILITY
+	plane = TURF_PLANE
+	layer = CATWALK_LAYER
 	icon = 'icons/turf/catwalks.dmi'
 	icon_state = "plank"
 	density = 0
@@ -178,29 +165,66 @@
 
 /obj/structure/catwalk/plank/Crossed()
 	. = ..()
-	switch(rand(1,100))
-		if(1 to 5)
-			qdel(src)
-			visible_message("<span class='danger'>The planks splinter and disintegrate beneath the weight!</span>")
-		if(6 to 50)
-			take_damage(rand(10,20))
-			visible_message("<span class='danger'>The planks creak and groan as they're crossed.</span>")
-		if(51 to 100)
-			return
+	if(isliving(usr) && !usr.is_incorporeal() && !usr.is_avoiding_ground())
+		switch(rand(1,100))
+			if(1 to 5)
+				qdel(src)
+				visible_message("<span class='danger'>The planks splinter and disintegrate beneath the weight!</span>")
+			if(6 to 50)
+				inflict_atom_damage(
+					rand(10, 20),
+					damage_flag = ARMOR_MELEE,
+				)
+				visible_message("<span class='danger'>The planks creak and groan as they're crossed.</span>")
+			if(51 to 100)
+				return
 
-/obj/structure/catwalk/plank/take_damage(amount)
-	health -= amount
-	update_icon()
-	if(health <= 0)
-		visible_message("<span class='warning'>\The [src] breaks down!</span>")
-		Destroy()
-
-/obj/structure/catwalk/plank/update_icon()
-	if(health > 75)
+/obj/structure/catwalk/plank/update_icon_state()
+	var/perc = percent_integrity()
+	if(perc >= 0.75)
 		icon_state = "[initial(icon_state)]"
-	if(health < 75)
+	else if(perc >= 0.5)
 		icon_state = "[initial(icon_state)]_scuffed"
-	if(health < 50)
+	else if(perc >= 0.25)
 		icon_state = "[initial(icon_state)]_rickety"
-	if(health < 25)
+	else
 		icon_state = "[initial(icon_state)]_dangerous"
+	return ..()
+
+//Ashlander Catwalks, for bridges?
+/obj/structure/catwalk/ashlander
+	name = "sandstone bridge"
+	desc = "Sandstone tiles, bound together by hardy sinew and anchored to a blessed bone frame."
+	plane = TURF_PLANE
+	layer = CATWALK_LAYER
+	icon = 'icons/turf/catwalks.dmi'
+	icon_state = "ashlanderwalk"
+	density = 0
+	anchored = 1.0
+
+/obj/structure/catwalk/ashlander/update_icon()
+	var/connectdir = 0
+	for(var/direction in GLOB.cardinal)
+		if(locate(/obj/structure/catwalk/ashlander, get_step(src, direction)))
+			connectdir |= direction
+
+	//Check the diagonal connections for corners, where you have, for example, connections both north and east. In this case it checks for a north-east connection to determine whether to add a corner marker or not.
+	var/diagonalconnect = 0 //1 = NE; 2 = SE; 4 = NW; 8 = SW
+	//NORTHEAST
+	if(connectdir & NORTH && connectdir & EAST)
+		if(locate(/obj/structure/catwalk/ashlander, get_step(src, NORTHEAST)))
+			diagonalconnect |= 1
+	//SOUTHEAST
+	if(connectdir & SOUTH && connectdir & EAST)
+		if(locate(/obj/structure/catwalk/ashlander, get_step(src, SOUTHEAST)))
+			diagonalconnect |= 2
+	//NORTHWEST
+	if(connectdir & NORTH && connectdir & WEST)
+		if(locate(/obj/structure/catwalk/ashlander, get_step(src, NORTHWEST)))
+			diagonalconnect |= 4
+	//SOUTHWEST
+	if(connectdir & SOUTH && connectdir & WEST)
+		if(locate(/obj/structure/catwalk/ashlander, get_step(src, SOUTHWEST)))
+			diagonalconnect |= 8
+
+	icon_state = "lavaland[connectdir]-[diagonalconnect]"

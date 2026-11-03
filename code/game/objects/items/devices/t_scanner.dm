@@ -7,9 +7,11 @@
 	icon_state = "t-ray0"
 	item_state = "t-ray"
 	slot_flags = SLOT_BELT
-	w_class = ITEMSIZE_SMALL
-	matter = list(MAT_STEEL = 150)
+	w_class = WEIGHT_CLASS_SMALL
+	materials_base = list(MAT_STEEL = 150)
 	origin_tech = list(TECH_MAGNET = 1, TECH_ENGINEERING = 1)
+	suit_storage_class = SUIT_STORAGE_CLASS_SOFTWEAR | SUIT_STORAGE_CLASS_HARDWEAR
+	belt_storage_class = BELT_CLASS_SMALL
 
 	var/scan_range = 1
 
@@ -21,12 +23,16 @@
 	var/global/list/overlay_cache = list() //cache recent overlays
 
 /obj/item/t_scanner/update_icon()
+	. = ..()
 	icon_state = "t-ray[on]"
 
 /obj/item/t_scanner/AltClick()
 	set_active(!on)
 
-/obj/item/t_scanner/attack_self(mob/user)
+/obj/item/t_scanner/attack_self(mob/user, datum/event_args/actor/actor)
+	. = ..()
+	if(.)
+		return
 	set_active(!on)
 
 /obj/item/t_scanner/proc/set_active(var/active)
@@ -85,16 +91,17 @@
 	if(scanned in overlay_cache)
 		. = overlay_cache[scanned]
 	else
-		var/image/I = image(loc = scanned, icon = scanned.icon, icon_state = scanned.icon_state, layer = HUD_LAYER)
+		var/image/I = image(loc = scanned, icon = scanned.icon, icon_state = scanned.icon_state, layer = ABOVE_LIGHTING_LAYER_MAIN)
+		I.plane = ABOVE_LIGHTING_PLANE
 
 		//Pipes are special
 		if(istype(scanned, /obj/machinery/atmospherics/pipe))
 			var/obj/machinery/atmospherics/pipe/P = scanned
 			I.color = P.pipe_color
-			I.overlays += P.overlays
+			I.copy_overlays(P)
 
 		I.alpha = 128
-		I.mouse_opacity = 0
+		I.mouse_opacity = MOUSE_OPACITY_TRANSPARENT
 		. = I
 
 	// Add it to cache, cutting old entries if the list is too long
@@ -106,14 +113,18 @@
 	. = list()
 
 	var/turf/center = get_turf(src.loc)
-	if(!center) return
+	if(!center)
+		return
 
+	// the reason we don't just obj in range is because some things
+	// will INVISIBILITY_ABSTRACt while hiding underfloor,
+	// so normal range won't pick it up
 	for(var/turf/T in range(scan_range, center))
-		if(!!T.is_plating())
+		if(!T.hides_underfloor_objects())
 			continue
 
 		for(var/obj/O in T.contents)
-			if(O.level != 1)
+			if(!O.is_hidden_underfloor())
 				continue
 			if(!O.invisibility)
 				continue //if it's already visible don't need an overlay for it
@@ -133,21 +144,21 @@
 
 	user_client = new_client
 
-/obj/item/t_scanner/dropped(mob/user)
+/obj/item/t_scanner/dropped(mob/user, atom_flags, atom/newLoc)
 	. = ..()
 	set_user_client(null)
 
 /obj/item/t_scanner/upgraded
 	name = "Upgraded T-ray Scanner"
 	desc = "An upgraded version of the terahertz-ray emitter and scanner used to detect underfloor objects such as cables and pipes."
-	matter = list(MAT_STEEL = 500, PHORON = 150)
+	materials_base = list(MAT_STEEL = 500, PHORON = 150)
 	origin_tech = list(TECH_MAGNET = 4, TECH_ENGINEERING = 5)
 	scan_range = 3
 
 /obj/item/t_scanner/advanced
 	name = "Advanced T-ray Scanner"
 	desc = "An advanced version of the terahertz-ray emitter and scanner used to detect underfloor objects such as cables and pipes."
-	matter = list(MAT_STEEL = 1500, PHORON = 200, SILVER = 250)
+	materials_base = list(MAT_STEEL = 1500, PHORON = 200, SILVER = 250)
 	origin_tech = list(TECH_MAGNET = 7, TECH_ENGINEERING = 7, TECH_MATERIAL = 6)
 	scan_range = 7
 

@@ -3,17 +3,20 @@
 	icon = 'icons/obj/device.dmi'
 	icon_state = "pinoff"
 	slot_flags = SLOT_BELT
-	w_class = ITEMSIZE_SMALL
+	w_class = WEIGHT_CLASS_SMALL
 	item_state = "electronic"
 	throw_speed = 4
 	throw_range = 20
-	matter = list(MAT_STEEL = 500)
+	materials_base = list(MAT_STEEL = 500)
 	preserve_item = 1
 	var/obj/item/disk/nuclear/the_disk = null
 	var/active = 0
 
 
-/obj/item/pinpointer/attack_self()
+/obj/item/pinpointer/attack_self(mob/user, datum/event_args/actor/actor)
+	. = ..()
+	if(.)
+		return
 	if(!active)
 		active = 1
 		workdisk()
@@ -43,9 +46,9 @@
 			icon_state = "pinonfar"
 	spawn(5) .()
 
-/obj/item/pinpointer/examine(mob/user)
+/obj/item/pinpointer/examine(mob/user, dist)
 	. = ..()
-	for(var/obj/machinery/nuclearbomb/bomb in machines)
+	for(var/obj/machinery/nuclearbomb/bomb in GLOB.machines)
 		if(bomb.timing)
 			. += "<span class = 'danger'>Extreme danger.  Arming signal detected.   Time remaining: [bomb.timeleft]</span>"
 
@@ -61,7 +64,10 @@
 	var/turf/location = null
 	var/obj/target = null
 
-/obj/item/pinpointer/advpinpointer/attack_self()
+/obj/item/pinpointer/advpinpointer/attack_self(mob/user, datum/event_args/actor/actor)
+	. = ..()
+	if(.)
+		return
 	if(!active)
 		active = 1
 		if(mode == 0)
@@ -113,7 +119,7 @@
 	spawn(5) .()
 
 /obj/item/pinpointer/advpinpointer/verb/toggle_mode()
-	set category = "Object"
+	set category = VERB_CATEGORY_OBJECT
 	set name = "Toggle Pinpointer Mode"
 	set src in view(1)
 
@@ -183,7 +189,10 @@
 	var/mode = 0	//Mode 0 locates disk, mode 1 locates the shuttle
 	var/obj/machinery/computer/shuttle_control/multi/syndicate/home = null
 
-/obj/item/pinpointer/nukeop/attack_self(mob/user as mob)
+/obj/item/pinpointer/nukeop/attack_self(mob/user, datum/event_args/actor/actor)
+	. = ..()
+	if(.)
+		return
 	if(!active)
 		active = 1
 		if(!mode)
@@ -269,7 +278,10 @@
 	var/shuttle_comp_id = null
 	var/obj/machinery/computer/shuttle_control/our_shuttle = null
 
-/obj/item/pinpointer/shuttle/attack_self(mob/user as mob)
+/obj/item/pinpointer/shuttle/attack_self(mob/user, datum/event_args/actor/actor)
+	. = ..()
+	if(.)
+		return
 	if(!active)
 		active = TRUE
 		find_shuttle()
@@ -284,7 +296,7 @@
 		return
 
 	if(!our_shuttle)
-		for(var/obj/machinery/computer/shuttle_control/S in machines)
+		for(var/obj/machinery/computer/shuttle_control/S in GLOB.machines)
 			if(S.shuttle_tag == shuttle_comp_id) // Shuttle tags are used so that it will work if the computer path changes, as it does on the southern cross map.
 				our_shuttle = S
 				break

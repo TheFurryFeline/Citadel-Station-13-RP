@@ -1,5 +1,5 @@
 //TODO: Convert this over for languages.
-/mob/living/carbon/brain/say(var/message, var/datum/language/speaking = null, var/verb="says", var/alt_name="", var/whispering = 0)
+/mob/living/carbon/brain/say(var/message, var/datum/prototype/language/speaking = null, var/verb="says", var/alt_name="", var/whispering = 0)
 	if (silent)
 		return
 
@@ -9,6 +9,8 @@
 		return //Certain objects can speak, like MMIs. Most others cannot. -Q
 	else
 		speaking = parse_language(message)
+		if(speaking == -1)
+			return
 		if(speaking)
 			message = copytext(message, 2+length(speaking.key))
 		verb = "says"
@@ -27,7 +29,7 @@
 			else
 				message = Gibberish(message, (emp_damage*6))//scrambles the message, gets worse when emp_damage is higher
 
-		if(speaking && speaking.flags & HIVEMIND)
+		if(speaking && speaking.language_flags & LANGUAGE_HIVEMIND)
 			speaking.broadcast(src,trim(message))
 			return
 

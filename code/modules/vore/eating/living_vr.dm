@@ -4,32 +4,24 @@
 	var/devourable = TRUE				// Can the mob be devoured at all?
 	var/feeding = TRUE					// Can the mob be vorishly force fed or fed to others?
 	var/digest_leave_remains = FALSE	// Will this mob leave bones/skull/etc after the melty demise?
-	var/allowmobvore = TRUE				// Will simplemobs attempt to eat the mob?
-	var/showvoreprefs = TRUE			// Determines if the mechanical vore preferences button will be displayed on the mob or not.
 	var/obj/belly/vore_selected			// Default to no vore capability.
 	var/list/vore_organs = list()		// List of vore containers inside a mob
 	var/absorbed = FALSE				// If a mob is absorbed into another
 	var/weight = 137					// Weight for mobs for weightgain system
-	var/weight_gain = 1 				// How fast you gain weight
-	var/weight_loss = 0.5 				// How fast you lose weight
-	var/vore_egg_type = "egg" 				// Default egg type.
 	var/feral = 0 						// How feral the mob is, if at all. Does nothing for non xenochimera at the moment.
 	var/revive_ready = REVIVING_READY	// Only used for creatures that have the xenochimera regen ability, so far.
-	var/metabolism = 0.0015
 	var/vore_taste = null				// What the character tastes like
 	var/vore_smell = null				// What the character smells like
 	var/no_vore = FALSE					// If the character/mob can vore.
 	var/openpanel = FALSE				// Is the vore panel open?
-	var/noisy = FALSE					// Toggle audible hunger.
+	//var/noisy = FALSE					// Toggle audible hunger.
 	var/absorbing_prey = 0 				// Determines if the person is using the succubus drain or not. See station_special_abilities_vr.
 	var/drain_finalized = 0				// Determines if the succubus drain will be KO'd/absorbed. Can be toggled on at any time.
 	var/fuzzy = 1						// Preference toggle for sharp/fuzzy icon.
-	var/tail_alt = 0					// Tail layer toggle.
 	var/permit_healbelly = TRUE
 	var/can_be_drop_prey = FALSE
 	var/can_be_drop_pred = TRUE			// Mobs are pred by default.
 	var/next_preyloop					// For Fancy sound internal loop
-	var/adminbus_trash = FALSE			// For abusing trash eater for event shenanigans.
 	var/bitten = 0
 	var/painmsg = 1
 	/// pending refactor - allow size gun on us?
@@ -41,27 +33,10 @@
 	/// Following the above - allow stripper gun on us?
 	var/permit_stripped
 
-//
-// Hook for generic creation of stuff on new creatures
-//
-/hook/living_new/proc/vore_setup(mob/living/M)
-	M.verbs += /mob/living/proc/escapeOOC
-	M.verbs += /mob/living/proc/lick
-	M.verbs += /mob/living/proc/smell
-	M.verbs += /mob/living/proc/switch_scaling
-	if(M.no_vore) //If the mob isn't supposed to have a stomach, let's not give it an insidepanel so it can make one for itself, or a stomach.
-		return TRUE
-	M.verbs += /mob/living/proc/insidePanel
-
-	//Tries to load prefs if a client is present otherwise gives freebie stomach
-	spawn(2 SECONDS)
-		if(M)
-			M.init_vore()
-
-	//return TRUE to hook-caller
-	return TRUE
-
 /mob/living/proc/init_vore()
+	// FUCK YOU FUCK YOU WHY DOESNT THIS CHECK FOR GC??
+	if(QDELING(src))
+		CRASH("vore just tried to have a vore moment")
 	//Something else made organs, meanwhile.
 	if(LAZYLEN(vore_organs))
 		return TRUE
@@ -87,15 +62,6 @@
 		return TRUE
 
 //
-// Hide vore organs in contents
-//
-///mob/living/view_variables_filter_contents(list/L)
-//	. = ..()
-//	var/len_before = L.len
-//	L -= vore_organs
-//	. += len_before - L.len
-//
-//
 // Handle being clicked, perhaps with something to devour
 //
 /mob/living/proc/vore_attackby(obj/item/I,mob/user)
@@ -118,7 +84,7 @@
 					qdel(G)
 					return TRUE
 				else
-					log_debug("[attacker] attempted to feed [G.affecting] to [user] ([user.type]) but it failed.")
+					log_debug(SPAN_DEBUG("[attacker] attempted to feed [G.affecting] to [user] ([user.type]) but it failed."))
 
 			///// If user clicked on their grabbed target
 			else if((src == G.affecting) && (attacker.a_intent == INTENT_GRAB) && (attacker.zone_sel.selecting == BP_TORSO) && (is_vore_predator(G.affecting)))
@@ -129,7 +95,7 @@
 					qdel(G)
 					return TRUE
 				else
-					log_debug("[attacker] attempted to feed [user] to [G.affecting] ([G.affecting.type]) but it failed.")
+					log_debug(SPAN_DEBUG("[attacker] attempted to feed [user] to [G.affecting] ([G.affecting.type]) but it failed."))
 
 			///// If user clicked on anyone else but their grabbed target
 			else if((src != G.affecting) && (src != G.assailant) && (is_vore_predator(src)))
@@ -147,7 +113,7 @@
 					qdel(G)
 					return TRUE
 				else
-					log_debug("[attacker] attempted to feed [G.affecting] to [src] ([src.type]) but it failed.")
+					log_debug(SPAN_DEBUG("[attacker] attempted to feed [G.affecting] to [src] ([src.type]) but it failed."))
 
 	//Handle case: /obj/item/holder
 	else if(istype(I,/obj/item/holder))
@@ -163,7 +129,7 @@
 						H.held_mob = null
 			return TRUE //return TRUE to exit upper procs
 		else
-			log_debug("[attacker] attempted to feed [H.contents] to [src] ([src.type]) but it failed.")
+			log_debug(SPAN_DEBUG("[attacker] attempted to feed [H.contents] to [src] ([src.type]) but it failed."))
 
 	//Handle case: /obj/item/radio/beacon
 	else if(istype(I,/obj/item/radio/beacon))
@@ -173,27 +139,12 @@
 			if(!istype(B))
 				return TRUE
 			visible_message("<span class='warning'>[user] is trying to stuff a beacon into [src]'s [lowertext(B.name)]!</span>","<span class='warning'>[user] is trying to stuff a beacon into you!</span>")
-			if(do_after(user,30,src))
-				user.drop_item()
-				I.forceMove(B)
+			if(do_after(user, 30, src))
+				if(!user.attempt_insert_item_for_installation(I, B))
+					return
 				return TRUE
 			else
 				return TRUE //You don't get to hit someone 'later'
-
-	return FALSE
-
-//
-// Our custom resist catches for /mob/living
-//
-/mob/living/proc/vore_process_resist()
-
-	//Are we resisting from inside a belly?
-	if(isbelly(loc))
-		var/obj/belly/B = loc
-		B.relay_resist(src)
-		return TRUE //resist() on living does this TRUE thing.
-
-	//Other overridden resists go here
 
 	return FALSE
 
@@ -231,7 +182,6 @@
 	P.devourable = src.devourable
 	P.feeding = src.feeding
 	P.digest_leave_remains = src.digest_leave_remains
-	P.allowmobvore = src.allowmobvore
 	P.vore_taste = src.vore_taste
 	P.vore_smell = src.vore_smell
 	P.permit_healbelly = src.permit_healbelly
@@ -245,7 +195,7 @@
 	var/list/serialized = list()
 	for(var/belly in src.vore_organs)
 		var/obj/belly/B = belly
-		serialized += list(B.serialize()) //Can't add a list as an object to another list in Byond. Thanks.
+		serialized += list(B.serialize_vr()) //Can't add a list as an object to another list in Byond. Thanks.
 
 	P.belly_prefs = serialized
 
@@ -265,7 +215,6 @@
 	devourable = P.devourable
 	feeding = P.feeding
 	digest_leave_remains = P.digest_leave_remains
-	allowmobvore = P.allowmobvore
 	vore_taste = P.vore_taste
 	vore_smell = P.vore_smell
 	permit_healbelly = P.permit_healbelly
@@ -332,7 +281,7 @@
 //
 /mob/living/proc/lick(var/mob/living/tasted in living_mobs(1))
 	set name = "Lick"
-	set category = "IC"
+	set category = VERB_CATEGORY_IC
 	set desc = "Lick someone nearby!"
 	set popup_menu = FALSE // Stop licking by accident!
 
@@ -342,7 +291,7 @@
 	if(!canClick() || incapacitated(INCAPACITATION_ALL))
 		return
 
-	setClickCooldown(DEFAULT_ATTACK_COOLDOWN)
+	setClickCooldownLegacy(DEFAULT_ATTACK_COOLDOWN)
 
 	visible_message("<span class='warning'>[src] licks [tasted]!</span>","<span class='notice'>You lick [tasted]. They taste rather like [tasted.get_taste_message()].</span>","<b>Slurp!</b>")
 
@@ -363,15 +312,15 @@
 
 	if(ishuman(src))
 		var/mob/living/carbon/human/H = src
-		if(H.touching.reagent_list.len) // Just the first one otherwise I'll go insane.
-			var/datum/reagent/R = H.touching.reagent_list[1]
+		if(H.touching.total_volume) // Just the first one otherwise I'll go insane.
+			var/datum/reagent/R = H.touching.get_majority_reagent_datum()
 			taste_message += " You also get the flavor of [R.taste_description] from something on them"
 	return taste_message
 
 // This is just the above proc but switched about.
 /mob/living/proc/smell(mob/living/smelled in living_mobs(1))
 	set name = "Smell"
-	set category = "IC"
+	set category = VERB_CATEGORY_IC
 	set desc = "Smell someone nearby!"
 	set popup_menu = FALSE
 
@@ -380,7 +329,7 @@
 	if(!canClick() || incapacitated(INCAPACITATION_ALL))
 		return
 
-	setClickCooldown(DEFAULT_ATTACK_COOLDOWN)
+	setClickCooldownLegacy(DEFAULT_ATTACK_COOLDOWN)
 	visible_message("<span class='warning'>[src] smells [smelled]!</span>","<span class='notice'>You smell [smelled]. They smell like [smelled.get_smell_message()].</span>","<b>Sniff!</b>")
 
 /mob/living/proc/get_smell_message(allow_generic = 1)
@@ -399,7 +348,6 @@
 
 	return smell_message
 
-
 //
 // OOC Escape code for pref-breaking or AFK preds
 //
@@ -410,24 +358,19 @@
 	//You're in a belly!
 	if(isbelly(loc))
 		var/obj/belly/B = loc
-		var/confirm = alert(src, "You're in a mob. Don't use this as a trick to get out of hostile animals. This is for escaping from preference-breaking and if you're otherwise unable to escape from endo (pred AFK for a long time).", "Confirmation", "Okay", "Cancel")
-		if(!confirm == "Okay" || loc != B)
-			return
 		//Actual escaping
 		absorbed = 0	//Make sure we're not absorbed
 		muffled = 0		//Removes Muffling
 		forceMove(get_turf(src)) //Just move me up to the turf, let's not cascade through bellies, there's been a problem, let's just leave.
-		for(var/mob/living/simple_mob/SA in range(10))
-			SA.prey_excludes[src] = world.time
 		log_and_message_admins("[key_name(src)] used the OOC escape button to get out of [key_name(B.owner)] ([B.owner ? "<a href='?_src_=holder;adminplayerobservecoodjump=1;X=[B.owner.x];Y=[B.owner.y];Z=[B.owner.z]'>JMP</a>" : "null"])")
 
 		if(!ishuman(B.owner))
 			B.owner.update_icons()
 
 	//You're in a dogborg!
-	else if(istype(loc, /obj/item/dogborg/sleeper))
+	else if(istype(loc, /obj/item/robot_builtin/dog_sleeper))
 		var/mob/living/silicon/pred = loc.loc //Thing holding the belly!
-		var/obj/item/dogborg/sleeper/belly = loc //The belly!
+		var/obj/item/robot_builtin/dog_sleeper/belly = loc //The belly!
 
 		var/confirm = alert(src, "You're in a dogborg sleeper. This is for escaping from preference-breaking or if your predator disconnects/AFKs. If your preferences were being broken, please admin-help as well.", "Confirmation", "Okay", "Cancel")
 		if(!confirm == "Okay" || loc != belly)
@@ -437,10 +380,10 @@
 		belly.go_out(src) //Just force-ejects from the borg as if they'd clicked the eject button.
 
 	//You're in an AI hologram!
-	else if(istype(loc, /obj/effect/overlay/aiholo))
-		var/obj/effect/overlay/aiholo/holo = loc
-		holo.drop_prey() //Easiest way
-		log_and_message_admins("[key_name(src)] used the OOC escape button to get out of [key_name(holo.master)] (AI HOLO) ([holo ? "<a href='?_src_=holder;adminplayerobservecoodjump=1;X=[holo.x];Y=[holo.y];Z=[holo.z]'>JMP</a>" : "null"])")
+	else if(istype(loc, /obj/effect/overlay/hologram/holopad/ai))
+		var/obj/effect/overlay/hologram/holopad/ai/holo = loc
+		holo.drop_vored()
+		log_and_message_admins("[key_name(src)] used the OOC escape button to get out of [key_name(holo.owner)] (AI HOLO) ([holo ? "<a href='?_src_=holder;adminplayerobservecoodjump=1;X=[holo.x];Y=[holo.y];Z=[holo.z]'>JMP</a>" : "null"])")
 
 	//Don't appear to be in a vore situation
 	else
@@ -473,9 +416,11 @@
 // Master vore proc that actually does vore procedures
 //
 /mob/living/proc/perform_the_nom(var/mob/living/user, var/mob/living/prey, var/mob/living/pred, var/obj/belly/belly, var/delay)
+	if(!prey.devourable)
+		return
 	//Sanity
 	if(!user || !prey || !pred || !istype(belly) || !(belly in pred.vore_organs))
-		log_debug("[user] attempted to feed [prey] to [pred], via [lowertext(belly.name)] but it went wrong.")
+		log_debug(SPAN_DEBUG("[user] attempted to feed [prey] to [pred], via [lowertext(belly.name)] but it went wrong."))
 		return
 
 	// The belly selected at the time of noms
@@ -491,11 +436,11 @@
 
 	// Prepare messages
 	if(user == pred) //Feeding someone to yourself
-		attempt_msg = text("<span class='warning'>[] is attempting to [] [] into their []!</span>",pred,lowertext(belly.vore_verb),prey,lowertext(belly.name))
-		success_msg = text("<span class='warning'>[] manages to [] [] into their []!</span>",pred,lowertext(belly.vore_verb),prey,lowertext(belly.name))
+		attempt_msg = SPAN_WARNING("[pred] is attempting to [lowertext(belly.vore_verb)] [prey] into their [lowertext(belly.name)]!")
+		success_msg = SPAN_WARNING("[pred] manages to [lowertext(belly.vore_verb)] [prey] into their [lowertext(belly.name)]!")
 	else //Feeding someone to another person
-		attempt_msg = text("<span class='warning'>[] is attempting to make [] [] [] into their []!</span>",user,pred,lowertext(belly.vore_verb),prey,lowertext(belly.name))
-		success_msg = text("<span class='warning'>[] manages to make [] [] [] into their []!</span>",user,pred,lowertext(belly.vore_verb),prey,lowertext(belly.name))
+		attempt_msg = SPAN_WARNING("[user] is attempting to make [pred] [lowertext(belly.vore_verb)] [prey] into their [lowertext(belly.name)]!")
+		success_msg = SPAN_WARNING("[user] manages to make [pred] [lowertext(belly.vore_verb)] [prey] into their [lowertext(belly.name)]!")
 
 	// Announce that we start the attempt!
 	user.visible_message(attempt_msg)
@@ -544,15 +489,17 @@
 
 // This is about 0.896m^3 of atmosphere
 /datum/gas_mixture/belly_air
-    volume = 2500
-    temperature = 293.150
-    total_moles = 104
+	volume = 2500
+	temperature = 293.150
+	total_moles = 104
 
 /datum/gas_mixture/belly_air/New()
-    . = ..()
-    gas = list(
-        /datum/gas/oxygen = 21,
-        /datum/gas/nitrogen = 79)
+	. = ..()
+	gas = list(
+		GAS_ID_OXYGEN = 21,
+		GAS_ID_NITROGEN = 79,
+	)
+	update_values()
 
 // Procs for micros stuffed into boots and the like to escape from them
 /mob/living/proc/escape_clothes(obj/item/clothing/C)
@@ -635,7 +582,7 @@
 		to_chat(src,"<span class='warning'>You either don't have a belly selected, or don't have a belly!</span>")
 		return
 
-	var/obj/item/I = get_active_hand()
+	var/obj/item/I = get_active_held_item()
 	if(!I)
 		to_chat(src, "<span class='notice'>You are not holding anything.</span>")
 		return
@@ -644,7 +591,7 @@
 		to_chat(src, "<span class='warning'>You are not allowed to eat this.</span>")
 		return
 
-	if(is_type_in_list(I,edible_trash) || adminbus_trash)
+	if(is_type_in_list(I,edible_trash))
 		if(I.hidden_uplink)
 			to_chat(src, "<span class='warning'>You really should not be eating this.</span>")
 			message_admins("[key_name(src)] has attempted to ingest an uplink item. ([src ? "<a href='?_src_=holder;adminplayerobservecoodjump=1;X=[src.x];Y=[src.y];Z=[src.z]'>JMP</a>" : "null"])")
@@ -669,7 +616,6 @@
 						return
 					visible_message("<span class='warning'>[src] successfully makes [P] disappear!</span>")
 			to_chat(src, "<span class='notice'>You can taste the sweet flavor of delicious technology.</span>")
-			drop_item()
 			I.forceMove(vore_selected)
 			updateVRPanel()
 			return
@@ -678,12 +624,22 @@
 			if(S.holding)
 				to_chat(src, "<span class='warning'>There's something inside!</span>")
 				return
+		if(istype(I,/obj/item/reagent_containers/hypospray/autoinjector))
+			var/obj/item/reagent_containers/hypospray/autoinjector/A = I
+			if(A.reagents?.total_volume)
+				if(istype(src,/mob/living/carbon/human)) //in case other mobs besides humans have trashcan trait
+					to_chat(src, "<span class='warning'>[A] gets injected into you as you try to consume it!</span>")
+					A.do_injection(src,src) //a rather strange way of injecting yourself, don't you think?
+				else
+					to_chat(src, "<span class='warning'>You probably shouldn't eat this.</span>")
+					return
 
-		drop_item()
-		I.forceMove(vore_selected)
+		if(!attempt_insert_item_for_installation(I, vore_selected))
+			return
+
 		updateVRPanel()
 
-		log_admin("VORE: [src] used Eat Trash to swallow [I].")
+		log_admin("LOG: [src] used Eat Trash to swallow [I].")
 
 		if(istype(I,/obj/item/flashlight/flare) || istype(I,/obj/item/flame/match) || istype(I,/obj/item/storage/box/matches))
 			to_chat(src, "<span class='notice'>You can taste the flavor of spicy cardboard.</span>")
@@ -726,6 +682,19 @@
 				to_chat(src, "<span class='notice'>You can taste the flavor of garbage and leftovers. Delicious?</span>")
 			else
 				to_chat(src, "<span class='notice'>You can taste the flavor of gluttonous waste of food.</span>")
+		else if(istype(I,/obj/item/material/kitchen/utensil))
+			var/obj/item/material/kitchen/utensil/U = I
+			var/S = "You can taste the flavor of "
+
+			if(istype(U,/obj/item/material/kitchen/utensil/fork))
+				S += "stabbing pains."
+			else
+				S += "the last scoop."
+			to_chat(src, "<span class='notice'>[S]</span>")
+		else if(istype(I,/obj/item/reagent_containers/hypospray/autoinjector))
+			to_chat(src, "<span class='notice'>You can taste the flavor of several tiny pricks.</span>")
+		else if(istype(I,/obj/item/skub))
+			to_chat(src, "<span class='notice'>You can taste the flavor of skub.</span>")
 		//TFF 10/7/19 - Add custom flavour for collars for trash can trait.
 		else if (istype(I,/obj/item/clothing/accessory/collar))
 			visible_message("<span class='warning'>[src] demonstrates their voracious capabilities by swallowing [I] whole!</span>")
@@ -738,18 +707,22 @@
 
 /mob/living/proc/switch_scaling()
 	set name = "Switch scaling mode"
-	set category = "Preferences"
+	set category = "OOC"
 	set desc = "Switch sharp/fuzzy scaling for current mob."
 	appearance_flags ^= PIXEL_SCALE
 
-/mob/living/examine(mob/user)
+/mob/living/examine(mob/user, dist)
 	. = ..()
-	if(showvoreprefs)
-		. += "<span class='deptradio'><a href='?src=\ref[src];vore_prefs=1'>\[Mechanical Vore Preferences\]</a></span>"
+
+	if(print_flavor_text())
+		. += "\n[print_flavor_text()]"
+
+	. += attempt_vr(src,"examine_bellies",args)
 
 /mob/living/Topic(href, href_list)	//Can't find any instances of Topic() being overridden by /mob/living in polaris' base code, even though /mob/living/carbon/human's Topic() has a ..() call
 	if(href_list["vore_prefs"])
 		display_voreprefs(usr)
+		return TRUE
 	return ..()
 
 /mob/living/proc/display_voreprefs(mob/user)	//Called by Topic() calls on instances of /mob/living (and subtypes) containing vore_prefs as an argument
@@ -765,7 +738,6 @@
 	dispvoreprefs += "<b>Devourable:</b> [devourable ? "Enabled" : "Disabled"]<br>"
 	dispvoreprefs += "<b>Feedable:</b> [feeding ? "Enabled" : "Disabled"]<br>"
 	dispvoreprefs += "<b>Leaves Remains:</b> [digest_leave_remains ? "Enabled" : "Disabled"]<br>"
-	dispvoreprefs += "<b>Mob Vore:</b> [allowmobvore ? "Enabled" : "Disabled"]<br>"
 	dispvoreprefs += "<b>Healbelly permission:</b> [permit_healbelly ? "Allowed" : "Disallowed"]<br>"
 	dispvoreprefs += "<b>Spontaneous vore prey:</b> [can_be_drop_prey ? "Enabled" : "Disabled"]<br>"
 	dispvoreprefs += "<b>Spontaneous vore pred:</b> [can_be_drop_pred ? "Enabled" : "Disabled"]<br>"

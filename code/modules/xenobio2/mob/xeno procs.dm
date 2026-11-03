@@ -40,8 +40,8 @@ Divergence proc, used in mutation to make unique datums.
 	else
 		speak_chance = 0
 
-	melee_damage_lower = traitdat.get_trait(TRAIT_XENO_STRENGTH) - traitdat.get_trait(TRAIT_XENO_STR_RANGE)
-	melee_damage_upper = traitdat.traits[TRAIT_XENO_STRENGTH] + traitdat.get_trait(TRAIT_XENO_STR_RANGE)
+	legacy_melee_damage_lower = traitdat.get_trait(TRAIT_XENO_STRENGTH) - traitdat.get_trait(TRAIT_XENO_STR_RANGE)
+	legacy_melee_damage_upper = traitdat.traits[TRAIT_XENO_STRENGTH] + traitdat.get_trait(TRAIT_XENO_STR_RANGE)
 
 
 
@@ -52,9 +52,9 @@ Divergence proc, used in mutation to make unique datums.
 			return
 
 		//Let's handle some chemical smoke, for scientific smoke bomb purposes.
-		for(var/obj/effect/smoke/chem/smoke in view(1, src))
+		for(var/obj/effect/particle_effect/smoke/chem/smoke in view(1, src))
 			if(smoke.reagents.total_volume)
-				smoke.reagents.trans_to_mob(src, 10, CHEM_BLOOD, copy = 1)
+				smoke.reagents.trans_to_mob(src, 10, CHEM_INJECT, copy = 1)
 
 		reagents.trans_to_obj(temp_chem_holder, min(reagents.total_volume,rand(1,4)))
 		var/reagent_total
@@ -112,7 +112,7 @@ Divergence proc, used in mutation to make unique datums.
 /mob/living/simple_mob/xeno/proc/RandomizeTraits()
 	return
 
-/mob/living/simple_mob/xeno/hear_say(var/message, var/verb = "says", var/datum/language/language, var/alt_name = "",var/italics = 0, var/mob/speaker = null)
+/mob/living/simple_mob/xeno/hear_say(var/message, var/verb = "says", var/datum/prototype/language/language, var/alt_name = "",var/italics = 0, var/mob/speaker = null)
 	if(traitdat.traits[TRAIT_XENO_CANLEARN])
 		/*
 		Until this gets sorted out to a functioning point, or waiting on Psi's saycode update.
@@ -123,7 +123,7 @@ Divergence proc, used in mutation to make unique datums.
 			var/complete_message = ",[language.key] [message]"
 			if(!(complete_message in speak))
 				speech_buffer.Add(complete_message)
-				log_debug("Added '[complete_message]'.")
+				log_debug(SPAN_DEBUGINFO("Added '[complete_message]'."))
 		else
 		*/
 		if(!(message in speak))
@@ -136,16 +136,16 @@ Divergence proc, used in mutation to make unique datums.
 			var/chosen = pick(speech_buffer)
 			speak.Add(chosen)
 		/*	Uncoment for logging of speech list.
-			log_debug("Added [chosen] to speak list.")
-		log_debug("Speechlist cut.") */
+			log_debug(SPAN_DEBUGINFO("Added [chosen] to speak list."))
+		log_debug(SPAN_DEBUGINFO("Speechlist cut.")) */
 		speech_buffer.Cut()
 //
 /mob/living/simple_mob/xeno/proc/BuildReagentLists()
 	return
 
-/mob/living/simple_mob/xeno/bullet_act(var/obj/item/projectile/P)
+/mob/living/simple_mob/xeno/on_bullet_act(obj/projectile/proj, impact_flags, list/bullet_act_args)
 	//Shamelessly stolen from ablative armor.
-	if((traitdat.traits[TRAIT_XENO_CHROMATIC]) && istype(P, /obj/item/projectile/beam))
+	if((traitdat.traits[TRAIT_XENO_CHROMATIC]) && istype(P, /obj/projectile/beam))
 		visible_message("<span class='danger'>)\The beam reflects off of the [src]!</span>")
 		// Find a turf near or on the original location to bounce to
 		var/new_x = P.starting.x + pick(0, -1, 1, -2, 2)

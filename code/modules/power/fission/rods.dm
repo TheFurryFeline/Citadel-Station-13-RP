@@ -1,4 +1,4 @@
-#define ROD_RADIATION_MULTIPLIER 1.5
+#define ROD_RADIATION_MULTIPLIER 15
 #define ROD_TEMPERATURE_CUTOFF 10000
 #define ROD_EXPOSED_POWER 0.1
 
@@ -7,9 +7,11 @@
 	desc = "A nuclear rod."
 	icon = 'icons/obj/machines/power/fission.dmi'
 	icon_state = "rod"
+	worn_render_flags = WORN_RENDER_INHAND_NO_RENDER | WORN_RENDER_SLOT_NO_RENDER
 	var/gasefficiency = 0.05
 	var/insertion = 0
-	var/integrity = 100
+	integrity = 100
+	integrity_max = 100
 	var/life = 100
 	var/lifespan = 3600
 	var/reflective = 1
@@ -41,8 +43,8 @@
 			if(integrity == 0)
 				insertion_multiplier = 1
 			var/power = (tick_life(0, insertion_multiplier) / REACTOR_RADS_TO_MJ)
-			add_thermal_energy(power)
-			SSradiation.radiate(src, max(power * ROD_RADIATION_MULTIPLIER, 0))
+			adjust_thermal_energy(power)
+			radiation_pulse(src, max(power * ROD_RADIATION_MULTIPLIER, 0))
 
 /obj/item/fuelrod/proc/equalize(var/E, var/efficiency)
 	var/our_heatcap = heat_capacity()
@@ -54,9 +56,9 @@
 		if(our_heatcap + share_heatcap)
 			var/new_temperature = ((temperature * our_heatcap) + (sharer.temperature * share_heatcap)) / (our_heatcap + share_heatcap)
 			temperature += (new_temperature - temperature) * efficiency // Add efficiency here, since there's no gas.remove for non-gas objects.
-			temperature = between(0, temperature, ROD_TEMPERATURE_CUTOFF)
+			temperature = clamp( temperature, 0,  ROD_TEMPERATURE_CUTOFF)
 			sharer.temperature += (new_temperature - sharer.temperature) * efficiency
-			sharer.temperature = between(0, sharer.temperature, ROD_TEMPERATURE_CUTOFF)
+			sharer.temperature = clamp( sharer.temperature, 0,  ROD_TEMPERATURE_CUTOFF)
 	else if(istype(E, /datum/gas_mixture))
 		var/datum/gas_mixture/env = E
 		var/datum/gas_mixture/sharer = env.remove(efficiency * env.total_moles)
@@ -65,9 +67,9 @@
 		if(our_heatcap + share_heatcap)
 			var/new_temperature = ((temperature * our_heatcap) + (sharer.temperature * share_heatcap)) / (our_heatcap + share_heatcap)
 			temperature += (new_temperature - temperature) * efficiency
-			temperature = between(0, temperature, ROD_TEMPERATURE_CUTOFF)
+			temperature = clamp( temperature, 0,  ROD_TEMPERATURE_CUTOFF)
 			sharer.temperature += (new_temperature - sharer.temperature)
-			sharer.temperature = between(0, sharer.temperature, ROD_TEMPERATURE_CUTOFF)
+			sharer.temperature = clamp( sharer.temperature, 0,  ROD_TEMPERATURE_CUTOFF)
 		env.merge(sharer)
 
 	var/integrity_lost = integrity
@@ -78,7 +80,7 @@
 	if(integrity == 0 && integrity_lost > 0) // Meltdown time.
 		meltdown()
 
-/obj/item/fuelrod/add_thermal_energy(var/thermal_energy)
+/obj/item/fuelrod/adjust_thermal_energy(var/thermal_energy)
 	if(mass < 1)
 		return 0
 
@@ -103,7 +105,7 @@
 	else if(life > 0)
 		if(decay_heat > 0 || apply_heat)
 			life = max(0, life - ((1 / lifespan) * applied_insertion * 100))
-		if(life == 0 && health > 0)
+		if(life == 0 && integrity > 0)
 			name = "depleted [name]"
 		else if(decay_heat > 0)
 			return ((decay_heat * (mass / molar_mass)) / lifespan) * (min(life, 100) / 100) * applied_insertion
@@ -113,7 +115,7 @@
 	var/applied_insertion = 1
 	if(istype(loc, /obj/machinery/power/fission) && icon_state != "rod_melt")
 		applied_insertion = insertion
-	return between(0, applied_insertion, 1)
+	return clamp( applied_insertion, 0,  1)
 
 /obj/item/fuelrod/proc/is_melted()
 	return (icon_state == "rod_melt") ? 1 : 0

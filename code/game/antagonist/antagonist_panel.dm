@@ -17,7 +17,7 @@
 /datum/antagonist/proc/get_extra_panel_options()
 	return
 
-/datum/antagonist/proc/get_check_antag_output(var/datum/admins/caller)
+/datum/antagonist/proc/get_check_antag_output(datum/admins/admin_caller)
 
 	if(!current_antagonists || !current_antagonists.len)
 		return ""
@@ -27,13 +27,13 @@
 		var/mob/M = player.current
 		dat += "<tr>"
 		if(M)
-			dat += "<td><a href='?src=\ref[src];adminplayeropts=\ref[M]'>[M.real_name]/([player.key])</a>"
+			dat += "<td><a href='?src=\ref[src];adminplayeropts=\ref[M]'>[M.real_name]/([player.ckey])</a>"
 			if(!M.client)      dat += " <i>(logged out)</i>"
 			if(M.stat == DEAD) dat += " <b><font color=red>(DEAD)</font></b>"
 			dat += "</td>"
-			dat += "<td>\[<A HREF='?src=\ref[caller];adminplayeropts=\ref[M]'>PP</A>]\[<A href='?src=\ref[caller];priv_msg=\ref[M]'>PM</A>\]\[<A href='?src=\ref[caller];traitor=\ref[M]'>TP</A>\]</td>"
+			dat += "<td>\[<A HREF='?src=\ref[admin_caller];adminplayeropts=\ref[M]'>PP</A>]\[<A href='?src=\ref[admin_caller];priv_msg=\ref[M]'>PM</A>\]\[<A href='?src=\ref[admin_caller];traitor=\ref[M]'>TP</A>\]</td>"
 		else
-			dat += "<td>[player.key] <i>Mob not found!</i></td>"
+			dat += "<td>[player.ckey] <i>Mob not found!</i></td>"
 		dat += "</tr>"
 	dat += "</table>"
 
@@ -57,5 +57,5 @@
 	return dat
 
 //Overridden elsewhere.
-/datum/antagonist/proc/get_additional_check_antag_output(var/datum/admins/caller)
+/datum/antagonist/proc/get_additional_check_antag_output(datum/admins/admin_caller)
 	return ""

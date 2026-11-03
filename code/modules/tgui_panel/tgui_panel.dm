@@ -12,15 +12,19 @@
 	var/datum/tgui_window/window
 	var/broken = FALSE
 	var/initialized_at
+	/// Each client notifies on protected playback, so this prevents spamming admins.
+	var/static/admins_warned = FALSE
 
-/datum/tgui_panel/New(client/client)
+/datum/tgui_panel/New(client/client, id)
 	src.client = client
-	window = new(client, "browseroutput")
-	window.subscribe(src, .proc/on_message)
+	window = new(client, id)
+	window.subscribe(src, PROC_REF(on_message))
 
-/datum/tgui_panel/Del()
+/datum/tgui_panel/Destroy()
 	window.unsubscribe(src)
 	window.close()
+	client = null
+	window = null
 	return ..()
 
 /**
@@ -32,25 +36,43 @@
 	return !broken && window.is_ready()
 
 /**
- * public
+ * Initializes the chat panel.
  *
- * Initializes tgui panel.
+ * * This is asynchronous and will yield for an appropriate duration for the client's current state.
  */
-/datum/tgui_panel/proc/initialize(force = FALSE)
-	set waitfor = FALSE
-	// Minimal sleep to defer initialization to after client constructor
-	sleep(1)
+/datum/tgui_panel/proc/initialize()
+	if(!client.initialized)
+		// todo: this should be a timer, but current MC doesn't really support that until we have
+		//       MC init stages
+		spawn(1 SECONDS)
+			UNTIL(!client || client.initialized)
+			if(!client)
+				return
+			boot()
+	else
+		spawn(0)
+			boot()
+
+/**
+ * Boots the panel.
+ *
+ * * This is a blocking proc.
+ */
+/datum/tgui_panel/proc/boot()
+	PRIVATE_PROC(TRUE)
 	initialized_at = world.time
 	// Perform a clean initialization
-	window.initialize(inline_assets = list(
-		get_asset_datum(/datum/asset/simple/tgui_panel),
-	))
-	window.send_asset(get_asset_datum(/datum/asset/simple/namespaced/fontawesome))
-	window.send_asset(get_asset_datum(/datum/asset/simple/namespaced/tgfont))
-	window.send_asset(get_asset_datum(/datum/asset/spritesheet/chat))
+	window.initialize(
+		strict_mode = TRUE,
+		assets = list(/datum/asset_pack/simple/tgui_panel),
+	)
+	window.send_asset(/datum/asset_pack/simple/fontawesome)
+	window.send_asset(/datum/asset_pack/simple/tgfont)
+	window.send_asset(/datum/asset_pack/spritesheet/chat)
 	// Other setup
 	request_telemetry()
-	addtimer(CALLBACK(src, .proc/on_initialize_timed_out), 5 SECONDS)
+	addtimer(CALLBACK(src, PROC_REF(on_initialize_timed_out)), 5 SECONDS)
+	window.send_message("testTelemetryCommand")
 
 /**
  * private
@@ -59,7 +81,7 @@
  */
 /datum/tgui_panel/proc/on_initialize_timed_out()
 	// Currently does nothing but sending a message to old chat.
-	SEND_TEXT(client, "<span class=\"userdanger\">Failed to load fancy chat, click <a href='?src=[REF(src)];reload_tguipanel=1'>HERE</a> to attempt to reload it.</span>")
+	SEND_TEXT(client, SPAN_USERDANGER("Failed to load fancy chat, click <a href='byond://?src=[REF(src)];reload_tguipanel=1'>HERE</a> to attempt to reload it."))
 
 /**
  * private
@@ -83,9 +105,18 @@
 			),
 		))
 		return TRUE
+
 	if(type == "audio/setAdminMusicVolume")
 		client.admin_music_volume = payload["volume"]
 		return TRUE
+
+	if(type == "audio/protected")
+		if(!admins_warned)
+			message_admins(SPAN_NOTICE("Audio returned a protected playback error, likely due to being copyrighted."))
+			admins_warned = TRUE
+			addtimer(VARSET_CALLBACK(src, admins_warned, FALSE), 10 SECONDS)
+		return TRUE
+
 	if(type == "telemetry")
 		analyze_telemetry(payload)
 		return TRUE

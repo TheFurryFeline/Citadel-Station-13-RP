@@ -9,8 +9,8 @@
 	icon_living = "blobpod"
 	health = 30
 	maxHealth = 30
-	melee_damage_lower = 2
-	melee_damage_upper = 4
+	legacy_melee_damage_lower = 2
+	legacy_melee_damage_upper = 4
 	layer = MOB_LAYER + 0.2 // Over the blob.
 	attacktext = list("slams into")
 	attack_sound = 'sound/effects/slime_squish.ogg'
@@ -27,8 +27,8 @@
 	name = "fragile blob spore"
 	health = 15
 	maxHealth = 15
-	melee_damage_lower = 1
-	melee_damage_upper = 2
+	legacy_melee_damage_lower = 1
+	legacy_melee_damage_upper = 2
 
 /mob/living/simple_mob/hostile/blob/spore/Initialize(mapload, obj/structure/blob/factory/my_factory)
 	if(istype(my_factory))
@@ -61,16 +61,18 @@
 		set_light(0)
 
 	if(is_infesting)
-		overlays.Cut()
+		cut_overlays()
+		var/list/overlays_to_add = (infested.overlays ? infested.overlays : list())
 		icon = infested.icon
-		overlays = infested.overlays
 		var/mutable_appearance/blob_head_overlay = mutable_appearance('icons/mob/blob.dmi', "blob_head")
 		if(overmind)
 			blob_head_overlay.color = overmind.blob_type.complementary_color
 		color = initial(color)//looks better.
-		overlays += blob_head_overlay
+		overlays_to_add += blob_head_overlay
 
-/mob/living/simple_mob/hostile/blob/spore/Life()
+		add_overlay(overlays_to_add)
+
+/mob/living/simple_mob/hostile/blob/spore/Life(seconds, times_fired)
 	if(can_infest && !is_infesting && isturf(src.loc))
 		for(var/mob/living/carbon/human/H in view(src,1))
 			if(H.stat != DEAD) // We want zombies.
@@ -87,15 +89,14 @@
 	is_infesting = TRUE
 	if(H.wear_suit)
 		var/obj/item/clothing/suit/A = H.wear_suit
-		if(A.armor && A.armor["melee"])
-			maxHealth += A.armor["melee"] //That zombie's got armor, I want armor!
+		maxHealth += A.fetch_armor().get_mitigation(ARMOR_MELEE) * 100 //That zombie's got armor, I want armor!
 
 	maxHealth += 40
 	health = maxHealth
 	name = "Infested [H.real_name]" // Not using the Z word.
 	desc = "A parasitic organism attached to a deceased body, controlling it directly as if it were a puppet."
-	melee_damage_lower += 8  // 10 total.
-	melee_damage_upper += 11 // 15 total.
+	legacy_melee_damage_lower += 8  // 10 total.
+	legacy_melee_damage_upper += 11 // 15 total.
 	emote_see = list("shambles around", "twitches", "stares")
 	attacktext = list("claws")
 

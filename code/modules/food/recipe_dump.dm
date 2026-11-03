@@ -68,14 +68,14 @@
 	//Reagents can be resolved to nicer names as well
 	for(var/Rp in food_recipes)
 		for(var/rid in food_recipes[Rp]["Reagents"])
-			var/datum/reagent/Rd = SSchemistry.chemical_reagents[rid]
+			var/datum/reagent/Rd = SSchemistry.reagent_lookup[rid]
 			var/R_name = Rd.name
 			var/amt = food_recipes[Rp]["Reagents"][rid]
 			food_recipes[Rp]["Reagents"] -= rid
 			food_recipes[Rp]["Reagents"][R_name] = amt
 	for(var/Rp in drink_recipes)
 		for(var/rid in drink_recipes[Rp]["Reagents"])
-			var/datum/reagent/Rd = SSchemistry.chemical_reagents[rid]
+			var/datum/reagent/Rd = SSchemistry.reagent_lookup[rid]
 			var/R_name = Rd.name
 			var/amt = drink_recipes[Rp]["Reagents"][rid]
 			drink_recipes[Rp]["Reagents"] -= rid
@@ -104,8 +104,8 @@
 	for(var/Rp in drink_recipes)
 		drinks_to_paths["[drink_recipes[Rp]["Result"]] [Rp]"] = Rp
 
-	foods_to_paths = sortTim(foods_to_paths, /proc/cmp_text_asc, TRUE)
-	drinks_to_paths = sortTim(drinks_to_paths, /proc/cmp_text_asc, TRUE)
+	foods_to_paths = tim_sort(foods_to_paths, GLOBAL_PROC_REF(cmp_text_asc), TRUE)
+	drinks_to_paths = tim_sort(drinks_to_paths, GLOBAL_PROC_REF(cmp_text_asc), TRUE)
 
 	var/list/foods_newly_sorted = list()
 	var/list/drinks_newly_sorted = list()
@@ -131,7 +131,7 @@
 				<link rel='stylesheet' href='food.css' />\
 				</head>"
 
-	html += "<html><body><h3>Food Recipes (as of [time2text(world.realtime,"MMM DD, YYYY")])</h3><br>"
+	html += "<html><body><h3>Food Recipes (as of [time2text(world.realtime,"MMM DD, YYYY", NO_TIMEZONE)])</h3><br>"
 	html += "<table class='recipes'>"
 	html += "<tr><th>Icon</th><th>Name</th><th>Appliance</th><th>Ingredients</th></tr>"
 	for(var/Rp in food_recipes)
@@ -201,7 +201,7 @@
 			<link rel='stylesheet' href='drinks.css' />\
 			</head>"
 
-	html += "<html><body><h3>Drink Recipes (as of [time2text(world.realtime,"MMM DD, YYYY")])</h3><br>"
+	html += "<html><body><h3>Drink Recipes (as of [time2text(world.realtime,"MMM DD, YYYY", NO_TIMEZONE)])</h3><br>"
 	html += "<table class='recipes'>"
 	html += "<tr><th>Name</th><th>Ingredients</th></tr>"
 	for(var/Rp in drink_recipes)

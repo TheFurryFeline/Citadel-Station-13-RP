@@ -18,17 +18,39 @@
 
 	randomized = TRUE
 
-	movement_cooldown = 5
+	movement_base_speed = 10 / 5
 
 	harm_intent_damage = 5
-	melee_damage_lower = 5
-	melee_damage_upper = 12
+	legacy_melee_damage_lower = 5
+	legacy_melee_damage_upper = 12
 
 	minbodytemp = 200
 
-	ai_holder_type = /datum/ai_holder/simple_mob/melee/evasive
+	ai_holder_type = /datum/ai_holder/polaris/simple_mob/melee/evasive
 
 // Activate Noms!
 /mob/living/simple_mob/animal/wolf
-	vore_active = 1
-	vore_icons = SA_ICON_LIVING
+
+
+// Adds Phoron Wolf
+/mob/living/simple_mob/animal/wolf/phoron
+	iff_factions = MOB_IFF_FACTION_BIND_TO_LEVEL
+
+	movement_base_speed = 6.66
+
+	harm_intent_damage = 5
+	legacy_melee_damage_lower = 5
+	legacy_melee_damage_upper = 12
+
+	minbodytemp = 200
+
+// Lazy way of making sure wolves survive outside.
+	min_oxy = 0
+	max_oxy = 0
+	min_tox = 0
+	max_tox = 0
+	min_co2 = 0
+	max_co2 = 0
+	min_n2 = 0
+	max_n2 = 0
+

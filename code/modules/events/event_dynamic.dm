@@ -1,25 +1,3 @@
-
-/*
-/proc/start_events()
-	//changed to a while(1) loop since they are more efficient.
-	//Moved the spawn in here to allow it to be called with advance proc call if it crashes.
-	//and also to stop spawn copying variables from the game SSticker
-	spawn(3000)
-		while(1)
-			/*if(prob(50))//Every 120 seconds and prob 50 2-4 weak spacedusts will hit the station
-				spawn(1)
-					dust_swarm("weak")*/
-			if(!event)
-				//CARN: checks to see if random events are enabled.
-				if(config_legacy.allow_random_events)
-					hadevent = event()
-				else
-					Holiday_Random_Event()
-			else
-				event = 0
-			sleep(2400)
-			*/
-
 var/list/event_last_fired = list()
 
 //Always triggers an event when called, dynamically chooses events based on job population
@@ -50,10 +28,10 @@ var/list/event_last_fired = list()
 	//possibleEvents[/datum/event/mundane_news] = 300
 	possibleEvents[/datum/event/lore_news] = 300 // up this if the above ones get removed as they damn well should
 
-	possibleEvents[/datum/event/pda_spam] = max(min(25, player_list.len) * 4, 200)
-	possibleEvents[/datum/event/money_lotto] = max(min(5, player_list.len), 50)
+	possibleEvents[/datum/event/pda_spam] = max(min(25, GLOB.player_list.len) * 4, 200)
+	possibleEvents[/datum/event/money_lotto] = max(min(5, GLOB.player_list.len), 50)
 	if(account_hack_attempted)
-		possibleEvents[/datum/gm_action/money_hacker] = max(min(25, player_list.len) * 4, 200)
+		possibleEvents[/datum/gm_action/money_hacker] = max(min(25, GLOB.player_list.len) * 4, 200)
 
 
 	possibleEvents[/datum/event/carp_migration] = 20 + 10 * active_with_role["Engineer"]
@@ -102,7 +80,7 @@ var/list/event_last_fired = list()
 	for(var/V in possibleEvents)
 		debug_message += "[V]:[possibleEvents[V]]"
 	debug_message += "|||Picked:[picked_event]"
-	log_debug(debug_message)
+	log_debug(SPAN_DEBUG(debug_message))
 
 	if(!picked_event)
 		return
@@ -114,7 +92,7 @@ var/list/event_last_fired = list()
 	//moved this to proc/check_event()
 	/*var/chance = possibleEvents[picked_event]
 	var/base_chance = 0.4
-	switch(player_list.len)
+	switch(GLOB.player_list.len)
 		if(5 to 10)
 			base_chance = 0.6
 		if(11 to 15)
@@ -135,7 +113,7 @@ var/list/event_last_fired = list()
 	/*switch(picked_event)
 		if("Meteor")
 			command_alert("Meteors have been detected on collision course with the station.", "Meteor Alert")
-			for(var/mob/M in player_list)
+			for(var/mob/M in GLOB.player_list)
 				if(!istype(M,/mob/new_player))
 					SEND_SOUND(M, sound('sound/AI/meteors.ogg'))
 			spawn(100)
@@ -188,23 +166,11 @@ var/list/event_last_fired = list()
 	active_with_role["Janitor"] = 0
 	active_with_role["Gardener"] = 0
 
-	for(var/mob/M in player_list)
+	for(var/mob/M in GLOB.player_list)
 		if(!M.mind || !M.client || M.client.is_afk(10 MINUTES)) // longer than 10 minutes AFK counts them as inactive
 			continue
 
 		active_with_role["Any"]++
-
-		if(istype(M, /mob/living/silicon/robot))
-			var/mob/living/silicon/robot/R = M
-			if(R.module)
-				if(istype(R.module, /obj/item/robot_module/robot/engineering))
-					active_with_role["Engineer"]++
-				else if(istype(R.module, /obj/item/robot_module/robot/security))
-					active_with_role["Security"]++
-				else if(istype(R.module, /obj/item/robot_module/robot/medical))
-					active_with_role["Medical"]++
-				else if(istype(R.module, /obj/item/robot_module/robot/research))
-					active_with_role["Scientist"]++
 
 		if(M.mind.assigned_role in SSjob.get_job_titles_in_department(DEPARTMENT_ENGINEERING))
 			active_with_role["Engineer"]++

@@ -1,3 +1,5 @@
+GLOBAL_LIST_EMPTY(exonet_nodes)
+
 /obj/machinery/exonet_node
 	name = "exonet node"
 	desc = null // Gets written in New()
@@ -17,31 +19,28 @@
 	var/list/logs = list()
 
 	circuit = /obj/item/circuitboard/telecomms/exonet_node
-// Proc: New()
+
+// Proc: Initialize()
 // Parameters: None
-// Description: Adds components to the machine for deconstruction.
+// Description: Adds components to the machine for deconstruction. Also refreshes the descrition.
+/obj/machinery/exonet_node/Initialize(mapload)
+	. = ..()
+	GLOB.exonet_nodes += src
+
 /obj/machinery/exonet_node/map/Initialize(mapload, newdir)
 	. = ..()
+	desc = "This machine is one of many, many nodes inside [(LEGACY_MAP_DATUM).starsys_name]'s section of the Exonet, connecting the \
+	[(LEGACY_MAP_DATUM).station_short] to the rest of the system, at least electronically."
+	update_desc()
 
-	component_parts = list()
-	component_parts += new /obj/item/stock_parts/subspace/ansible(src)
-	component_parts += new /obj/item/stock_parts/subspace/sub_filter(src)
-	component_parts += new /obj/item/stock_parts/manipulator(src)
-	component_parts += new /obj/item/stock_parts/manipulator(src)
-	component_parts += new /obj/item/stock_parts/micro_laser(src)
-	component_parts += new /obj/item/stock_parts/subspace/crystal(src)
-	component_parts += new /obj/item/stock_parts/subspace/treatment(src)
-	component_parts += new /obj/item/stock_parts/subspace/treatment(src)
-	component_parts += new /obj/item/stack/cable_coil(src, 2)
-	RefreshParts()
-
-	desc = "This machine is one of many, many nodes inside [GLOB.using_map.starsys_name]'s section of the Exonet, connecting the [GLOB.using_map.station_short] to the rest of the system, at least \
-	electronically."
+/obj/machinery/exonet_node/Destroy()
+	. = ..()
+	GLOB.exonet_nodes -= src
 
 // Proc: update_icon()
 // Parameters: None
 // Description: Self explanatory.
-/obj/machinery/exonet_node/update_icon()
+/obj/machinery/exonet_node/update_icon_state()
 	if(on)
 		if(!allow_external_PDAs && !allow_external_communicators && !allow_external_newscasters)
 			icon_state = "[initial(icon_state)]_idle"
@@ -49,13 +48,14 @@
 			icon_state = initial(icon_state)
 	else
 		icon_state = "[initial(icon_state)]_off"
+	return ..()
 
 // Proc: update_power()
 // Parameters: None
 // Description: Sets the device on/off and adjusts power draw based on stat and toggle variables.
 /obj/machinery/exonet_node/proc/update_power()
 	if(toggle)
-		if(stat & (BROKEN|NOPOWER|EMPED))
+		if(machine_stat & (BROKEN|NOPOWER|EMPED))
 			on = 0
 			idle_power_usage = 0
 		else
@@ -70,11 +70,11 @@
 // Parameters: 1 (severity - how strong the EMP is, with lower numbers being stronger)
 // Description: Shuts off the machine for awhile if an EMP hits it.  Ion anomalies also call this to turn it off.
 /obj/machinery/exonet_node/emp_act(severity)
-	if(!(stat & EMPED))
-		stat |= EMPED
+	if(!(machine_stat & EMPED))
+		machine_stat |= EMPED
 		var/duration = (300 * 10)/severity
 		spawn(rand(duration - 20, duration + 20))
-			stat &= ~EMPED
+			machine_stat &= ~EMPED
 	update_icon()
 	..()
 
@@ -104,7 +104,7 @@
 // Proc: attack_hand()
 // Parameters: 1 (user - the person clicking on the machine)
 // Description: Opens the TGUI interface with ui_interact()
-/obj/machinery/exonet_node/attack_hand(mob/user)
+/obj/machinery/exonet_node/attack_hand(mob/user, datum/event_args/actor/clickchain/e_args)
 	ui_interact(user)
 
 // Proc: ui_interact()
@@ -119,7 +119,7 @@
 // Proc: ui_data()
 // Parameters: 1 (user - the person using the interface)
 // Description: Allows the user to turn the machine on or off, or open or close certain 'ports' for things like external PDA messages, newscasters, etc.
-/obj/machinery/exonet_node/ui_data(mob/user)
+/obj/machinery/exonet_node/ui_data(mob/user, datum/tgui/ui)
 	// this is the data which will be sent to the ui
 	var/list/data = list()
 
@@ -134,7 +134,7 @@
 // Proc: ui_act()
 // Parameters: 2 (standard ui_act arguments)
 // Description: Responds to button presses on the TGUI interface.
-/obj/machinery/exonet_node/ui_act(action, params)
+/obj/machinery/exonet_node/ui_act(action, list/params, datum/tgui/ui, datum/ui_state/state, datum/event_args/actor/actor)
 	if(..())
 		return TRUE
 
@@ -175,7 +175,7 @@
 // Parameters: None
 // Description: Helper proc to get a reference to an Exonet node.
 /proc/get_exonet_node(atom/host)
-	for(var/obj/machinery/exonet_node/E in machines)
+	for(var/obj/machinery/exonet_node/E in GLOB.exonet_nodes)
 		if(E.on && (!host || can_telecomm(host, E)))
 			return E
 

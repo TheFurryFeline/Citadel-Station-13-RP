@@ -4,7 +4,7 @@
     icon = 'icons/obj/items.dmi'    // Radios set their own icons, so have to re-set this here.
 
     icon_state = "headphones_off"
-    item_state_slots = list(slot_r_hand_str = "headphones", slot_l_hand_str = "headphones")
+    item_state_slots = list(SLOT_ID_RIGHT_HAND = "headphones", SLOT_ID_LEFT_HAND = "headphones")
     slot_flags = SLOT_EARS
     ear_protection = 0    // set to 0 for now, can change later
 
@@ -13,7 +13,7 @@
 // This is a clone of /obj/item/clothing/ears/earmuffs/headphones/verb/togglemusic()'s functionality.
 /obj/item/radio/headset/speak_n_rock/verb/togglemusic()
     set name = "Toggle Headphone Music"
-    set category = "Object"
+    set category = VERB_CATEGORY_OBJECT
     set src in usr
     if(!istype(usr, /mob/living) || usr.stat) return
 

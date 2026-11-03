@@ -30,7 +30,7 @@
 	icon_gib = "clown_gib"
 	catalogue_data = list(/datum/category_item/catalogue/fauna/clown)
 
-	faction = "clown"
+	iff_factions = MOB_IFF_FACTION_MERCENARY_GROUP("clown")
 
 	loot_list = list(/obj/item/bikehorn = 100)
 
@@ -39,8 +39,8 @@
 	response_harm = "hits"
 
 	harm_intent_damage = 8
-	melee_damage_lower = 10
-	melee_damage_upper = 10
+	legacy_melee_damage_lower = 10
+	legacy_melee_damage_upper = 10
 	attacktext = list("attacked")
 	attack_sound = 'sound/items/bikehorn.ogg'
 
@@ -54,9 +54,9 @@
 	name = "clown"
 	desc = "A denizen of clown planet. I wonder if that's a real gun."
 
-	ai_holder_type = /datum/ai_holder/simple_mob/ranged/kiting
+	ai_holder_type = /datum/ai_holder/polaris/simple_mob/ranged/kiting
 
-	projectiletype = /obj/item/projectile/bullet/honker
+	projectiletype = /obj/projectile/bullet/honker
 	projectilesound = 'sound/items/bikehorn.ogg'
 	needs_reload = FALSE
 
@@ -85,7 +85,7 @@
 	icon_gib = "clown_gib"
 	catalogue_data = list(/datum/category_item/catalogue/fauna/clown/commando)
 
-	movement_cooldown = 2
+	movement_base_speed = 10 / 2
 
 	status_flags = 0
 
@@ -94,21 +94,21 @@
 	response_harm = "wallops"
 
 	harm_intent_damage = 5
-	melee_damage_lower = 15		//Tac Knife damage
-	melee_damage_upper = 15
+	legacy_melee_damage_lower = 15		//Tac Knife damage
+	legacy_melee_damage_upper = 15
 	attack_sharp = 1
 	attack_edge = 1
 	attacktext = list("slashed", "stabbed")
-	armor = list(melee = 40, bullet = 40, laser = 60, energy = 35, bomb = 30, bio = 100, rad = 100)	// Same armor values as the vest they drop, plus simple mob immunities
+	armor_legacy_mob = list(melee = 40, bullet = 40, laser = 60, energy = 35, bomb = 30, bio = 100, rad = 100)	// Same armor values as the vest they drop, plus simple mob immunities
 
-	corpse = /atom/movable/landmark/mobcorpse/clown/clownop
+	corpse = /obj/spawner/corpse/clown/clownop
 	loot_list = list(/obj/item/melee/clownop = 100)	// Might as well give it the knife
 
-	ai_holder_type = /datum/ai_holder/simple_mob/merc
+	ai_holder_type = /datum/ai_holder/polaris/simple_mob/merc
 	say_list_type = /datum/say_list/clownop
 
 	// Grenade special attack vars
-	var/grenade_type = /obj/item/grenade/chem_grenade/lube_tactical
+	var/grenade_type = /obj/item/grenade/simple/chemical/premade/lube_tactical
 	var/grenade_timer = 50
 	special_attack_cooldown = 45 SECONDS
 	special_attack_min_range = 2
@@ -145,7 +145,7 @@
 	var/mob_count = 0				// Are there enough mobs to consider grenading?
 	var/turf/T = get_turf(A)
 	for(var/mob/M in range(T, 2))
-		if(M.faction == faction) 	// Don't grenade our friends
+		if(shares_iff_faction(M))
 			return FALSE
 		if(M in oview(src, special_attack_max_range))	// And lets check if we can actually see at least two people before we throw a grenade
 			if(!M.stat)			// Dead things don't warrant a grenade
@@ -160,11 +160,11 @@
 	set waitfor = FALSE
 	set_AI_busy(TRUE)
 
-	var/obj/item/grenade/G = new grenade_type(get_turf(src))
+	var/obj/item/grenade/simple/G = new grenade_type(get_turf(src))
 	if(istype(G))
-		G.throw_at(A, G.throw_range, G.throw_speed, src)
-		G.det_time = grenade_timer
-		G.activate(src)
+		G.throw_at_old(A, G.throw_range, G.throw_speed, src)
+		G.activation_detonate_delay = grenade_timer
+		G.activate_inhand(new /datum/event_args/actor(src))
 		special_attack_charges = max(special_attack_charges-1, 0)
 
 	set_AI_busy(FALSE)
@@ -184,14 +184,14 @@
 	desc = "A brightly adorned clown armed with a weird pistol."
 	icon_state = "clownop_ranged"
 	icon_living = "clownop_ranged"
-	projectiletype = /obj/item/projectile/bullet/honker/lethal
+	projectiletype = /obj/projectile/bullet/honker/lethal
 	projectilesound = 'sound/items/bikehorn.ogg'
 	needs_reload = TRUE
 	reload_max = 12
-	ai_holder_type = /datum/ai_holder/simple_mob/merc/ranged
-	loot_list = list(/obj/item/gun/projectile/clown_pistol = 100,
-					/obj/item/ammo_magazine/mcompressedbio = 30,
-					/obj/item/ammo_magazine/mcompressedbio = 30
+	ai_holder_type = /datum/ai_holder/polaris/simple_mob/merc/ranged
+	loot_list = list(/obj/item/gun/projectile/ballistic/clown_pistol = 100,
+					/obj/item/ammo_magazine/biomatter = 30,
+					/obj/item/ammo_magazine/biomatter = 30
 					)
 
 //Voidsuit Variants
@@ -212,15 +212,15 @@
 	icon_living = "clownop_space_melee"
 	catalogue_data = list(/datum/category_item/catalogue/fauna/clown/commando/space)
 
-	movement_cooldown = 0
+	movement_base_speed = 6.66
 
 	harm_intent_damage = 5
-	melee_damage_lower = 30		//Tac Knife damage
-	melee_damage_upper = 30
+	legacy_melee_damage_lower = 30		//Tac Knife damage
+	legacy_melee_damage_upper = 30
 	attack_sharp = 1
 	attack_edge = 1
 	attacktext = list("slashed", "stabbed")
-	armor = list(melee = 60, bullet = 50, laser = 30, energy = 15, bomb = 35, bio = 100, rad = 100)	// Same armor as their voidsuit
+	armor_legacy_mob = list(melee = 60, bullet = 50, laser = 30, energy = 15, bomb = 35, bio = 100, rad = 100)	// Same armor as their voidsuit
 
 	min_oxy = 0
 	max_oxy = 0
@@ -232,7 +232,7 @@
 	max_n2 = 0
 	minbodytemp = 0
 
-	corpse = /atom/movable/landmark/mobcorpse/clown/clownop/space
+	corpse = /obj/spawner/corpse/clown/clownop/space
 	loot_list = list(/obj/item/melee/clownstaff = 100)
 
 /mob/living/simple_mob/humanoid/clown/commando/melee/space/Process_Spacemove(var/check_drift = 0)
@@ -241,7 +241,7 @@
 /mob/living/simple_mob/humanoid/clown/commando/melee/space/alt
 	icon_state = "clownop_space_alt_melee"
 	icon_living = "clownop_space_alt_melee"
-	corpse = /atom/movable/landmark/mobcorpse/clown/clownop/space/alt
+	corpse = /obj/spawner/corpse/clown/clownop/space/alt
 
 // Ranged Space Clown
 /mob/living/simple_mob/humanoid/clown/commando/ranged/space
@@ -250,10 +250,10 @@
 	icon_living = "clownop_space_ranged"
 	catalogue_data = list(/datum/category_item/catalogue/fauna/clown/commando/space)
 
-	movement_cooldown = 0
+	movement_base_speed = 6.66
 
 	reload_max = 20
-	armor = list(melee = 60, bullet = 50, laser = 30, energy = 15, bomb = 35, bio = 100, rad = 100)	// Same armor as their voidsuit. This should already have been here when polaris patched these guys in.
+	armor_legacy_mob = list(melee = 60, bullet = 50, laser = 30, energy = 15, bomb = 35, bio = 100, rad = 100)	// Same armor as their voidsuit. This should already have been here when polaris patched these guys in.
 
 	min_oxy = 0
 	max_oxy = 0
@@ -265,10 +265,10 @@
 	max_n2 = 0
 	minbodytemp = 0
 
-	corpse = /atom/movable/landmark/mobcorpse/clown/clownop/space
-	loot_list = list(/obj/item/gun/projectile/automatic/clown_rifle = 100,
-					/obj/item/ammo_magazine/mcompressedbio/large/banana = 30,
-					/obj/item/ammo_magazine/mcompressedbio/large/banana = 30
+	corpse = /obj/spawner/corpse/clown/clownop/space
+	loot_list = list(/obj/item/gun/projectile/ballistic/automatic/clown_rifle = 100,
+					/obj/item/ammo_magazine/biomatter/large/banana = 30,
+					/obj/item/ammo_magazine/biomatter/large/banana = 30
 					)
 
 	base_attack_cooldown = 5 // Two attacks a second or so.
@@ -280,4 +280,4 @@
 /mob/living/simple_mob/humanoid/clown/commando/ranged/space/alt
 	icon_state = "clownop_space_alt_ranged"
 	icon_living = "clownop_space_alt_ranged"
-	corpse = /atom/movable/landmark/mobcorpse/clown/clownop/space/alt
+	corpse = /obj/spawner/corpse/clown/clownop/space/alt

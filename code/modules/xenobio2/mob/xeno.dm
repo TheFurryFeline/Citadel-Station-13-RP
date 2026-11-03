@@ -10,8 +10,8 @@ Also includes Life and New
 	real_name = "Xeno"
 	faction = "xeno"	//Needs to be set.
 	desc = "Something's broken, yell at someone."
-	melee_damage_lower = 0
-	melee_damage_upper = 0
+	legacy_melee_damage_lower = 0
+	legacy_melee_damage_upper = 0
 	attacktext = list("hit")
 	attack_sound = null
 	friendly = "touches"
@@ -46,7 +46,7 @@ Also includes Life and New
 
 
 //Life additions
-/mob/living/simple_mob/xeno/Life()
+/mob/living/simple_mob/xeno/Life(seconds, times_fired)
 	if(stasis)
 		stasis--
 		if(stasis < 0)
@@ -79,7 +79,7 @@ Also includes Life and New
 	ProcessTraits()
 	. =..()
 	if(colored)
-		add_atom_colour(traitdat.get_trait(TRAIT_XENO_COLOR), FIXED_COLOUR_PRIORITY)
+		add_atom_color(traitdat.get_trait(TRAIT_XENO_COLOR))
 	create_reagents(internal_vol)
 	temp_chem_holder = new()
 	temp_chem_holder.create_reagents(20)
@@ -92,9 +92,9 @@ Also includes Life and New
 	if(!health)
 		set_stat(DEAD)
 
-/mob/living/simple_mob/xeno/bullet_act(var/obj/item/projectile/Proj)
-	if(istype(Proj, /obj/item/projectile/beam/stun/xeno))
-		var/obj/item/projectile/beam/stun/xeno/hit = Proj
+/mob/living/simple_mob/xeno/on_bullet_act(obj/projectile/proj, impact_flags, list/bullet_act_args)
+	if(istype(Proj, /obj/projectile/beam/stun/xeno))
+		var/obj/projectile/beam/stun/xeno/hit = Proj
 		stasis += hit.stasisforce
 	..()
 

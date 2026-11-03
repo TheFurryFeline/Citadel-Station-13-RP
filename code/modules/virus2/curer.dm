@@ -10,11 +10,11 @@
 
 /obj/machinery/computer/curer/attackby(var/obj/I as obj, var/mob/user as mob)
 	if(istype(I,/obj/item/reagent_containers))
-		var/mob/living/carbon/C = user
+		. = CLICKCHAIN_DO_NOT_PROPAGATE
 		if(!container)
+			if(!user.attempt_insert_item_for_installation(I, src))
+				return
 			container = I
-			C.drop_item()
-			I.loc = src
 		return
 	if(istype(I,/obj/item/virusdish))
 		if(virusing)
@@ -22,7 +22,7 @@
 			return
 		var/obj/item/reagent_containers/glass/beaker/product = new(src.loc)
 
-		var/list/data = list("donor"=null,"viruses"=null,"blood_DNA"=null,"blood_type"=null,"resistances"=null,"trace_chem"=null,"virus2"=list(),"antibodies"=list())
+		var/list/data = list("donor"=null,"blood_DNA"=null,"blood_type"=null, "trace_chem"=null,"virus2"=list(),"antibodies"=list())
 		data["virus2"] |= I:virus2
 		product.reagents.add_reagent("blood",30,data)
 
@@ -30,14 +30,13 @@
 		spawn(1200) virusing = 0
 
 		state("The [src.name] Buzzes", "blue")
-		return
-	..()
-	return
+		return CLICKCHAIN_DO_NOT_PROPAGATE
+	return ..()
 
 /obj/machinery/computer/curer/attack_ai(var/mob/user as mob)
 	return src.attack_hand(user)
 
-/obj/machinery/computer/curer/attack_hand(var/mob/user as mob)
+/obj/machinery/computer/curer/attack_hand(mob/user, datum/event_args/actor/clickchain/e_args)
 	if(..())
 		return
 	user.machine = src
@@ -48,11 +47,11 @@
 		dat = "Virus production in progress"
 	else if(container)
 		// see if there's any blood in the container
-		var/datum/reagent/blood/B = locate(/datum/reagent/blood) in container.reagents.reagent_list
+		var/datum/blood_mixture/mixture_data = container.reagents.get_reagent_data(/datum/reagent/blood)
 
-		if(B)
+		if(mixture_data)
 			dat = "Blood sample inserted."
-			dat += "<BR>Antibodies: [antigens2string(B.data["antibodies"])]"
+			dat += "<BR>Antibodies: [antigens2string(mixture_data.legacy_antibodies)]"
 			dat += "<BR><A href='?src=\ref[src];antibody=1'>Begin antibody production</a>"
 		else
 			dat += "<BR>Please check container contents."
@@ -60,14 +59,14 @@
 	else
 		dat = "Please insert a container."
 
-	user << browse(dat, "window=computer;size=400x500")
+	user << browse(HTML_SKELETON(dat), "window=computer;size=400x500")
 	onclose(user, "computer")
 	return
 
 /obj/machinery/computer/curer/process(delta_time)
 	..()
 
-	if(stat & (NOPOWER|BROKEN))
+	if(machine_stat & (NOPOWER|BROKEN))
 		return
 	use_power(500)
 
@@ -95,10 +94,10 @@
 /obj/machinery/computer/curer/proc/createcure(var/obj/item/reagent_containers/container)
 	var/obj/item/reagent_containers/glass/beaker/product = new(src.loc)
 
-	var/datum/reagent/blood/B = locate() in container.reagents.reagent_list
+	var/datum/blood_mixture/mixture_data = container.reagents.get_reagent_data(/datum/reagent/blood)
 
 	var/list/data = list()
-	data["antibodies"] = B.data["antibodies"]
+	data["antibodies"] = mixture_data.legacy_antibodies
 	product.reagents.add_reagent("antibodies",30,data)
 
 	state("\The [src.name] buzzes", "blue")

@@ -15,6 +15,12 @@
 	idle_power_usage = 0
 	active_power_usage = 0
 
+/obj/machinery/power/Initialize(mapload)
+	. = ..()
+	if(isturf(loc))
+		var/turf/turf_loc = loc
+		turf_loc.add_blueprints_preround(src)
+
 /obj/machinery/power/Destroy()
 	disconnect_from_network()
 	disconnect_terminal()
@@ -26,35 +32,52 @@
 //////////////////////////////
 
 // common helper procs for all power machines
-/obj/machinery/power/drain_power(var/drain_check, var/surge, var/amount = 0)
-	if(drain_check)
-		return 1
+/obj/machinery/power/drain_energy(datum/actor, amount, flags)
+	if(!powernet)
+		return 0
+	return powernet.drain_energy_handler(actor, amount, flags)
 
-	if(powernet && powernet.avail)
-		powernet.trigger_warning()
-		return powernet.draw_power(amount)
+/obj/machinery/power/can_drain_energy(datum/actor, amount)
+	return TRUE
 
-/obj/machinery/power/proc/add_avail(var/amount)
+/**
+ * amount is in KW, NOT W
+ */
+/obj/machinery/power/proc/add_avail(amount)
 	if(powernet)
 		powernet.newavail += amount
 
-/obj/machinery/power/proc/draw_power(var/amount)
+/**
+ * amount is in KW, NOT W
+ */
+/obj/machinery/power/proc/draw_power(amount)
 	if(powernet)
 		return powernet.draw_power(amount)
 	return 0
 
-/obj/machinery/power/proc/surplus()
-	if(powernet)
-		return powernet.avail-powernet.load
-	else
+/**
+ * amount is in KW, NOT W
+ *
+ * include amount to turn this into a boolean check.
+ */
+/obj/machinery/power/proc/surplus(amount)
+	if(!powernet)
 		return 0
+	. = powernet.avail - powernet.load
+	if(!isnull(amount))
+		. = . >= amount
 
-/obj/machinery/power/proc/avail()
-	if(powernet)
-		return powernet.avail
-	else
-		return 0
+/**
+ * amount is in KW, NOT W
+ *
+ * include amount to turn this into a boolean check.
+ */
+/obj/machinery/power/proc/avail(amount)
+	return isnull(amount)? (powernet?.avail || 0) : (powernet?.avail >= amount)
 
+/**
+ * amount is in KW, NOT W
+ */
 /obj/machinery/power/proc/viewload()
 	if(powernet)
 		return powernet.viewload
@@ -86,11 +109,11 @@
 
 // attach a wire to a power machine - leads from the turf you are standing on
 //almost never called, overwritten by all power machines but terminal and generator
-/obj/machinery/power/attackby(obj/item/W, mob/user)
+/obj/machinery/power/attackby(obj/item/I, mob/living/user, list/params, clickchain_flags, damage_multiplier)
 
-	if(istype(W, /obj/item/stack/cable_coil))
+	if(istype(I, /obj/item/stack/cable_coil))
 
-		var/obj/item/stack/cable_coil/coil = W
+		var/obj/item/stack/cable_coil/coil = I
 
 		var/turf/T = user.loc
 
@@ -186,7 +209,7 @@
 /proc/power_list(var/turf/T, var/source, var/d, var/unmarked=0, var/cable_only = 0)
 	. = list()
 
-	var/reverse = d ? GLOB.reverse_dir[d] : 0
+	var/reverse = d ? global.reverse_dir[d] : 0
 	for(var/AM in T)
 		if(AM == source)	continue			//we don't want to return source
 
@@ -271,7 +294,7 @@
 //source is an object caused electrocuting (airlock, grille, etc)
 //No animations will be performed by this proc.
 /proc/electrocute_mob(mob/living/M as mob, var/power_source, var/obj/source, var/siemens_coeff = 1.0)
-	if(istype(M.loc,/obj/mecha))	return 0	//feckin mechs are dumb
+	if(istype(M.loc,/obj/vehicle/sealed/mecha))	return 0	//feckin mechs are dumb
 	if(issilicon(M))	return 0	//No more robot shocks from machinery
 	var/area/source_area
 	if(istype(power_source,/area))
@@ -306,9 +329,9 @@
 		var/mob/living/carbon/human/H = M
 		if(H.species.siemens_coefficient <= 0)
 			return
-		if(H.gloves)
-			var/obj/item/clothing/gloves/G = H.gloves
-			if(G.siemens_coefficient == 0)	return 0		//to avoid spamming with insulated glvoes on
+		siemens_coeff *= H.inventory.query_simple_covered_siemens_coefficient(HANDS)
+		if(siemens_coeff <= 0)
+			return 0		//to avoid spamming with insulated glvoes on
 
 	//Checks again. If we are still here subject will be shocked, trigger standard 20 tick warning
 	//Since this one is longer it will override the original one.
@@ -330,14 +353,26 @@
 	else
 		power_source = cell
 		shock_damage = cell_damage
-	var/drained_hp = M.electrocute_act(shock_damage, source, siemens_coeff) //zzzzzzap!
-	var/drained_energy = drained_hp*20
-
-	if (source_area)
-		source_area.use_power_oneoff(drained_energy/CELLRATE)
-	else if (istype(power_source,/datum/powernet))
-		var/drained_power = drained_energy/CELLRATE
-		drained_power = PN.draw_power(drained_power)
-	else if (istype(power_source, /obj/item/cell))
-		cell.use(drained_energy)
-	return drained_energy
+	var/stun_calculation
+	if(shock_damage >= 100)
+		stun_calculation = 200
+	else if(shock_damage >= 50)
+		stun_calculation = rand(75, 100)
+	else if(shock_damage >= 30)
+		stun_calculation = rand(35, 50)
+	else if(shock_damage >= 20)
+		stun_calculation = rand(20, 35)
+	else
+		stun_calculation = shock_damage
+	var/list/shock_return = M.electrocute(0, shock_damage * siemens_coeff, stun_calculation & siemens_coeff, ELECTROCUTE_ACT_FLAG_IGNORE_ARMOR, null, source)
+	pass(shock_return)
+	// // 10kw per hp
+	// var/drained_energy = drained_hp * 10000
+	// if (source_area)
+	// 	source_area.use_power_oneoff(drained_energy)
+	// else if (istype(power_source,/datum/powernet))
+	// 	drained_energy = PN.draw_power(drained_energy * 0.001) * 1000
+	// else if (istype(power_source, /obj/item/cell))
+	// 	cell.use(DYNAMIC_W_TO_CELL_UNITS(drained_energy, 1))
+	// return drained_energy
+	return TRUE

@@ -2,14 +2,12 @@
 	icon = 'icons/obj/stationobjs.dmi'
 	icon_state = "gsensor1"
 	name = "Gas Sensor"
+	anchored = TRUE
 
-	anchored = 1
 	var/state = 0
-
 	var/id_tag
 	var/frequency = 1439
-
-	var/on = 1
+	var/on = TRUE
 	var/output = 3
 	//Flags:
 	// 1 for pressure
@@ -22,13 +20,14 @@
 
 	var/datum/radio_frequency/radio_connection
 
-/obj/machinery/air_sensor/update_icon()
+/obj/machinery/air_sensor/update_icon_state()
 	icon_state = "gsensor[on]"
+	return ..()
 
 /obj/machinery/air_sensor/process(delta_time)
 	if(on)
 		var/datum/signal/signal = new
-		signal.transmission_method = 1 //radio signal
+		signal.transmission_method = TRANSMISSION_RADIO //radio signal
 		signal.data["tag"] = id_tag
 		signal.data["timestamp"] = world.time
 
@@ -43,13 +42,13 @@
 			var/total_moles = air_sample.total_moles
 			if(total_moles > 0)
 				if(output&4)
-					signal.data["oxygen"] = round(100*air_sample.gas[/datum/gas/oxygen]/total_moles,0.1)
+					signal.data["oxygen"] = round(100*air_sample.gas[GAS_ID_OXYGEN]/total_moles,0.1)
 				if(output&8)
-					signal.data["phoron"] = round(100*air_sample.gas[/datum/gas/phoron]/total_moles,0.1)
+					signal.data["phoron"] = round(100*air_sample.gas[GAS_ID_PHORON]/total_moles,0.1)
 				if(output&16)
-					signal.data["nitrogen"] = round(100*air_sample.gas[/datum/gas/nitrogen]/total_moles,0.1)
+					signal.data["nitrogen"] = round(100*air_sample.gas[GAS_ID_NITROGEN]/total_moles,0.1)
 				if(output&32)
-					signal.data["carbon_dioxide"] = round(100*air_sample.gas[/datum/gas/carbon_dioxide]/total_moles,0.1)
+					signal.data["carbon_dioxide"] = round(100*air_sample.gas[GAS_ID_CARBON_DIOXIDE]/total_moles,0.1)
 			else
 				signal.data["oxygen"] = 0
 				signal.data["phoron"] = 0
@@ -68,7 +67,7 @@
 	if(frequency)
 		set_frequency(frequency)
 
-obj/machinery/air_sensor/Destroy()
+/obj/machinery/air_sensor/Destroy()
 	if(radio_controller)
 		radio_controller.remove_object(src,frequency)
 	. = ..()
@@ -83,22 +82,24 @@ obj/machinery/air_sensor/Destroy()
 	var/datum/radio_frequency/radio_connection
 	circuit = /obj/item/circuitboard/air_management
 
-obj/machinery/computer/general_air_control/Destroy()
+/obj/machinery/computer/general_air_control/Destroy()
 	if(radio_controller)
 		radio_controller.remove_object(src, frequency)
 	..()
 
-/obj/machinery/computer/general_air_control/attack_hand(mob/user)
+/obj/machinery/computer/general_air_control/attack_hand(mob/user, datum/event_args/actor/clickchain/e_args)
 	if(..(user))
 		return
 
 	ui_interact(user)
 
 /obj/machinery/computer/general_air_control/receive_signal(datum/signal/signal)
-	if(!signal || signal.encryption) return
+	if(!signal || signal.encryption)
+		return
 
 	var/id_tag = signal.data["tag"]
-	if(!id_tag || !sensors.Find(id_tag)) return
+	if(!id_tag || !sensors.Find(id_tag))
+		return
 
 	sensor_information[id_tag] = signal.data
 
@@ -108,7 +109,7 @@ obj/machinery/computer/general_air_control/Destroy()
 		ui = new(user, src, "GeneralAtmoControl", name)
 		ui.open()
 
-/obj/machinery/computer/general_air_control/ui_data(mob/user)
+/obj/machinery/computer/general_air_control/ui_data(mob/user, datum/tgui/ui)
 	var/list/data = list()
 	var/sensors_ui[0]
 	if(sensors.len)
@@ -144,7 +145,7 @@ obj/machinery/computer/general_air_control/Destroy()
 	var/pressure_setting = ONE_ATMOSPHERE * 45
 	circuit = /obj/item/circuitboard/air_management/tank_control
 
-/obj/machinery/computer/general_air_control/large_tank_control/ui_data(mob/user)
+/obj/machinery/computer/general_air_control/large_tank_control/ui_data(mob/user, datum/tgui/ui)
 	var/list/data = ..()
 
 	data["tanks"] = 1
@@ -178,25 +179,25 @@ obj/machinery/computer/general_air_control/Destroy()
 	else
 		..(signal)
 
-/obj/machinery/computer/general_air_control/large_tank_control/ui_act(action, params)
+/obj/machinery/computer/general_air_control/large_tank_control/ui_act(action, list/params, datum/tgui/ui, datum/ui_state/state, datum/event_args/actor/actor)
 	if(..())
 		return TRUE
 
 	switch(action)
 		if("adj_pressure")
 			var/new_pressure = text2num(params["adj_pressure"])
-			pressure_setting = between(0, new_pressure, 50*ONE_ATMOSPHERE)
+			pressure_setting = clamp( new_pressure, 0,  50*ONE_ATMOSPHERE)
 			return TRUE
 
 		if("adj_input_flow_rate")
 			var/new_flow = text2num(params["adj_input_flow_rate"])
-			input_flow_setting = between(0, new_flow, ATMOS_DEFAULT_VOLUME_PUMP + 500) //default flow rate limit for air injectors
+			input_flow_setting = clamp( new_flow, 0,  ATMOS_DEFAULT_VOLUME_PUMP + 500) //default flow rate limit for air injectors
 			return TRUE
 
 	if(!radio_connection)
 		return FALSE
 	var/datum/signal/signal = new
-	signal.transmission_method = 1 //radio signal
+	signal.transmission_method = TRANSMISSION_RADIO //radio signal
 	signal.source = src
 	switch(action)
 		if("in_refresh_status")
@@ -243,7 +244,7 @@ obj/machinery/computer/general_air_control/Destroy()
 	var/pressure_setting = 100
 	circuit = /obj/item/circuitboard/air_management/supermatter_core
 
-/obj/machinery/computer/general_air_control/supermatter_core/ui_data(mob/user)
+/obj/machinery/computer/general_air_control/supermatter_core/ui_data(mob/user, datum/tgui/ui)
 	var/list/data = ..()
 	data["core"] = 1
 
@@ -279,19 +280,19 @@ obj/machinery/computer/general_air_control/Destroy()
 	else
 		..(signal)
 
-/obj/machinery/computer/general_air_control/supermatter_core/ui_act(action, params)
+/obj/machinery/computer/general_air_control/supermatter_core/ui_act(action, list/params, datum/tgui/ui, datum/ui_state/state, datum/event_args/actor/actor)
 	if(..())
 		return TRUE
 
 	switch(action)
 		if("adj_pressure")
 			var/new_pressure = text2num(params["adj_pressure"])
-			pressure_setting = between(0, new_pressure, 10*ONE_ATMOSPHERE)
+			pressure_setting = clamp( new_pressure, 0,  10*ONE_ATMOSPHERE)
 			return TRUE
 
 		if("adj_input_flow_rate")
 			var/new_flow = text2num(params["adj_input_flow_rate"])
-			input_flow_setting = between(0, new_flow, ATMOS_DEFAULT_VOLUME_PUMP + 500) //default flow rate limit for air injectors
+			input_flow_setting = clamp( new_flow, 0,  ATMOS_DEFAULT_VOLUME_PUMP + 500) //default flow rate limit for air injectors
 			return TRUE
 
 	if(!radio_connection)
@@ -359,7 +360,7 @@ obj/machinery/computer/general_air_control/Destroy()
 					injecting = 1
 
 		var/datum/signal/signal = new
-		signal.transmission_method = 1 //radio signal
+		signal.transmission_method = TRANSMISSION_RADIO //radio signal
 		signal.source = src
 
 		signal.data = list(
@@ -372,7 +373,7 @@ obj/machinery/computer/general_air_control/Destroy()
 
 	..()
 
-/obj/machinery/computer/general_air_control/fuel_injection/ui_data(mob/user)
+/obj/machinery/computer/general_air_control/fuel_injection/ui_data(mob/user, datum/tgui/ui)
 	var/list/data = ..()
 	data["fuel"] = 1
 	data["automation"] = automation
@@ -394,7 +395,7 @@ obj/machinery/computer/general_air_control/Destroy()
 	else
 		..(signal)
 
-/obj/machinery/computer/general_air_control/fuel_injection/ui_act(action, params)
+/obj/machinery/computer/general_air_control/fuel_injection/ui_act(action, list/params, datum/tgui/ui, datum/ui_state/state, datum/event_args/actor/actor)
 	if(..())
 		return TRUE
 

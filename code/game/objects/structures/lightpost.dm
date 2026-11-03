@@ -28,8 +28,8 @@
 		set_light(0)
 
 	if(festive)
-		var/image/bow = image(icon_state = "[icon_state]-festive")
-		add_overlay(bow)
+		// bow
+		add_overlay("[icon_state]-festive")
 
 /obj/structure/lightpost/unlit
 	lit = FALSE
@@ -40,3 +40,15 @@
 
 /obj/structure/lightpost/festive/unlit
 	lit = FALSE
+
+/obj/structure/lightpost/urban
+	desc = "A lightpost used in cities."
+	festive = TRUE
+	name = "lightpost"
+	icon = 'icons/obj/32x64.dmi'
+	icon_state = "lightpost_urban"
+	plane = MOB_PLANE
+	layer = ABOVE_MOB_LAYER
+	anchored = TRUE
+	density = FALSE
+	opacity = FALSE

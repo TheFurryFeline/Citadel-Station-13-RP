@@ -4,24 +4,27 @@
 	icon = 'icons/obj/xenoarchaeology.dmi'
 	icon_state = "suspension2"
 	density = 1
-	req_access = list(access_research)
-	var/obj/item/cell/cell
+	req_access = list(ACCESS_SCIENCE_MAIN)
+	var/cell_type = /obj/item/cell/basic/tier_1/large
+	var/cell_accept = CELL_TYPE_LARGE | CELL_TYPE_MEDIUM | CELL_TYPE_WEAPON | CELL_TYPE_SMALL
 	var/locked = TRUE
 	var/power_use = 5
 	var/obj/effect/suspension_field/suspension_field
 
 /obj/machinery/suspension_gen/Initialize(mapload)
 	. = ..()
-	qdel(cell)
-	cell = new /obj/item/cell/high(src)
+	if(. == INITIALIZE_HINT_QDEL)
+		return
+	init_cell_slot_easy_machine(cell_type, cell_accept)
 
 /obj/machinery/suspension_gen/process(delta_time)
+	var/obj/item/cell/cell = get_cell()
 	if(suspension_field)
 		if(cell.use(power_use))
 			var/turf/T = get_turf(suspension_field)
 			for(var/mob/living/M in T)
 				if(cell.use(power_use))
-					M.Weaken(3)
+					M.afflict_paralyze(20 * 3)
 					if(prob(5))
 						to_chat(M, SPAN_WARNING("[pick("You feel tingly","You feel like floating","It is hard to speak","You can barely move")]."))
 				else
@@ -30,23 +33,12 @@
 			for(var/obj/item/I in T)
 				if(!suspension_field.contents.len)
 					suspension_field.icon_state = "energynet"
-					suspension_field.overlays += "shield2"
+					suspension_field.add_overlay("shield2")
 				I.forceMove(suspension_field)
 		else
 			deactivate()
 
-/obj/machinery/suspension_gen/attack_hand(var/mob/user)
-	if(panel_open)
-		if(cell)
-			to_chat(user, SPAN_NOTICE("You remove [cell]."))
-			cell.forceMove(loc)
-			cell.add_fingerprint(user)
-			cell.update_icon()
-
-			icon_state = "suspension0"
-			cell = null
-		return
-
+/obj/machinery/suspension_gen/attack_hand(mob/user, datum/event_args/actor/clickchain/e_args)
 	ui_interact(user)
 
 /obj/machinery/suspension_gen/ui_interact(mob/user, datum/tgui/ui)
@@ -55,22 +47,24 @@
 		ui = new(user, src, "XenoarchSuspension", name)
 		ui.open()
 
-/obj/machinery/suspension_gen/ui_data(mob/user, datum/tgui/ui, datum/ui_state/state)
+/obj/machinery/suspension_gen/ui_data(mob/user, datum/tgui/ui)
 	var/list/data = ..()
+	var/obj/item/cell/cell = get_cell()
 
 	data["cell"] = cell
 	data["cellCharge"] = cell?.charge
-	data["cellMaxCharge"] = cell?.maxcharge
+	data["cellMaxCharge"] = cell?.max_charge
 
 	data["locked"] = locked
 	data["suspension_field"] = suspension_field
 
 	return data
 
-/obj/machinery/suspension_gen/ui_act(action, list/params, datum/tgui/ui, datum/ui_state/state)
+/obj/machinery/suspension_gen/ui_act(action, list/params, datum/tgui/ui, datum/ui_state/state, datum/event_args/actor/actor)
 	if(..())
 		return TRUE
 
+	var/obj/item/cell/cell = get_cell()
 	switch(action)
 		if("toggle_field")
 			if(locked)
@@ -99,7 +93,7 @@
 				anchored = FALSE
 			else
 				anchored = TRUE
-			playsound(loc, W.usesound, 50, 1)
+			playsound(loc, W.tool_sound, 50, 1)
 			to_chat(user, SPAN_NOTICE("You wrench the stabilising legs [anchored ? "into place" : "up against the body"]."))
 			if(anchored)
 				desc = "It is resting securely on four stubby legs."
@@ -107,25 +101,13 @@
 				desc = "It has stubby legs bolted up against it's body for stabilising."
 		else
 			to_chat(user, SPAN_WARNING("You are unable to unsecure [src] while it is active!"))
-	else if(istype(W, /obj/item/cell))
-		if(panel_open)
-			if(cell)
-				to_chat(user, SPAN_WARNING("There is a power cell already installed."))
-				return
-			if(user.unEquip(W))
-				W.forceMove(src)
-				cell = W
-				to_chat(user, SPAN_NOTICE("You insert [cell]."))
-				icon_state = "suspension1"
-	else if(istype(W, /obj/item/card/emag))
-		return W.resolve_attackby(src, user)
 	else
 		if(check_access(W))
 			locked = !locked
 			to_chat(user, SPAN_NOTICE("You [locked ? "lock" : "unlock"] [src]."))
 		else
 			to_chat(user, SPAN_WARNING("[src] flashes \'<i>Access denied.</i>\'"))
-		return
+	return ..()
 
 /obj/machinery/suspension_gen/emag_act(var/remaining_charges, var/mob/user)
 	if(locked)
@@ -138,7 +120,7 @@
 	var/collected = 0
 
 	for(var/mob/living/M in T)
-		M.Weaken(5)
+		M.afflict_paralyze(20 * 5)
 		M.visible_message(SPAN_NOTICE("[icon2html(thing = src, target = world)] [M] begins to float in the air!"),"You feel tingly and light, but it is difficult to move.")
 
 	suspension_field = new(T)
@@ -151,7 +133,7 @@
 
 	if(collected)
 		suspension_field.icon_state = "energynet"
-		suspension_field.overlays += "shield2"
+		suspension_field.add_overlay("shield2")
 		visible_message(SPAN_NOTICE("[icon2html(thing = suspension_field, target = world)] [suspension_field] gently absconds [collected > 1 ? "something" : "several things"]."))
 	else
 		if(istype(T,/turf/simulated/mineral) || istype(T,/turf/simulated/wall))
@@ -165,7 +147,7 @@
 
 	for(var/mob/living/M in T)
 		to_chat(M, SPAN_INFO("You no longer feel like floating."))
-		M.Weaken(3)
+		M.afflict_paralyze(20 * 3)
 
 	visible_message(SPAN_NOTICE("[icon2html(thing = src, target = world)] [src] deactivates with a gentle shudder."))
 	qdel(suspension_field)
@@ -179,7 +161,7 @@
 /obj/machinery/suspension_gen/verb/rotate_counterclockwise()
 	set src in view(1)
 	set name = "Rotate suspension gen Counterclockwise"
-	set category = "Object"
+	set category = VERB_CATEGORY_OBJECT
 
 	if(anchored)
 		to_chat(usr, SPAN_DANGER("You cannot rotate [src], it has been firmly fixed to the floor."))
@@ -189,12 +171,15 @@
 /obj/machinery/suspension_gen/verb/rotate_clockwise()
 	set src in view(1)
 	set name = "Rotate suspension gen Clockwise"
-	set category = "Object"
+	set category = VERB_CATEGORY_OBJECT
 
 	if(anchored)
 		to_chat(usr, SPAN_DANGER("You cannot rotate [src], it has been firmly fixed to the floor."))
 		return
 	setDir(turn(dir, 270))
+
+/obj/machinery/suspension_gen/powered(channel)
+	return TRUE		// we use snowflake cell power
 
 /obj/effect/suspension_field
 	name = "energy field"

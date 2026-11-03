@@ -1,17 +1,29 @@
+/**
+ * Called when an admin attempts to delete us with introspection tools.
+ */
+/datum/proc/vv_delete()
+	. = TRUE
+	qdel(src)
+
 /datum/proc/CanProcCall(procname)
 	return TRUE
 
 /datum/proc/can_vv_get(var_name)
 	return TRUE
 
-/datum/proc/vv_edit_var(var_name, var_value) //called whenever a var is edited
+/datum/proc/vv_edit_var(var_name, var_value, mass_edit, raw_edit) //called whenever a var is edited
 	if(var_name == NAMEOF(src, vars) || var_name == NAMEOF(src, parent_type))
 		return FALSE
 	vars[var_name] = var_value
 	datum_flags |= DF_VAR_EDITED
 	return TRUE
 
-/datum/proc/vv_get_var(var_name)
+/**
+ * @params
+ * * var_name - name of the variable
+ * * resolve - automatically resolve the variable if it's lazy loaded?
+ */
+/datum/proc/vv_get_var(var_name, resolve)
 	switch(var_name)
 		if ("vars")
 			return debug_variable(var_name, list(), 0, src)
@@ -30,14 +42,18 @@
 	VV_DROPDOWN_OPTION(VV_HK_DELETE, "Delete")
 	VV_DROPDOWN_OPTION(VV_HK_EXPOSE, "Show VV To Player")
 	VV_DROPDOWN_OPTION(VV_HK_ADDCOMPONENT, "Add Component/Element")
+	VV_DROPDOWN_OPTION(VV_HK_REMOVECOMPONENT, "Remove Component/Element")
+	VV_DROPDOWN_OPTION(VV_HK_MASS_REMOVECOMPONENT, "Mass Remove Component/Element")
 	VV_DROPDOWN_OPTION(VV_HK_MODIFY_TRAITS, "Modify Traits")
 
-//This proc is only called if everything topic-wise is verified. The only verifications that should happen here is things like permission checks!
-//href_list is a reference, modifying it in these procs WILL change the rest of the proc in topic.dm of admin/view_variables!
-//This proc is for "high level" actions like admin heal/set species/etc/etc. The low level debugging things should go in admin/view_variables/topic_basic.dm incase this runtimes.
+/**
+ * This proc is only called if everything topic-wise is verified. The only verifications that should happen here is things like permission checks!
+ * href_list is a reference, modifying it in these procs WILL change the rest of the proc in topic.dm of admin/view_variables!
+ * This proc is for "high level" actions like admin heal/set species/etc/etc. The low level debugging things should go in admin/view_variables/topic_basic.dm in case this runtimes.
+ */
 /datum/proc/vv_do_topic(list/href_list)
-	if(!usr || !usr.client || !usr.client.holder || !check_rights(NONE))
-		return FALSE			//This is VV, not to be called by anything else.
+	if(!usr || !usr.client || !usr.client.holder || !check_rights(R_VAREDIT))
+		return FALSE //This is VV, not to be called by anything else.
 	if(href_list[VV_HK_MODIFY_TRAITS])
 		usr.client.holder.modify_traits(src)
 	return TRUE
@@ -47,5 +63,8 @@
 	if(("name" in vars) && !isatom(src))
 		. += "<b>[vars["name"]]</b><br>"
 
-/datum/proc/on_reagent_change(changetype)
+/datum/proc/on_reagent_change()
 	return
+
+// todo: proper way to mark things immutable & provide a method to make a mutable clone for editing.
+// this would be very useful for cache lists and whatnot.

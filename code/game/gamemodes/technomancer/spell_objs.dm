@@ -5,11 +5,11 @@
 	icon = 'icons/obj/spells.dmi'
 	icon_state = "generic"
 	item_icons = list(
-		slot_l_hand_str = 'icons/mob/items/lefthand_spells.dmi',
-		slot_r_hand_str = 'icons/mob/items/righthand_spells.dmi',
+		SLOT_ID_LEFT_HAND = 'icons/mob/items/lefthand_magic.dmi',
+		SLOT_ID_RIGHT_HAND = 'icons/mob/items/righthand_magic.dmi',
 		)
-	throwforce = 0
-	force = 0
+	throw_force = 0
+	damage_force = 0
 	show_examine = FALSE
 //	var/mob/living/carbon/human/owner = null
 	var/mob/living/owner = null
@@ -130,7 +130,7 @@
 // Parameters: 0
 // Description: Nulls object references so it can qdel() cleanly.
 /obj/item/spell/Destroy()
-	owner.unref_spell(src)
+	owner?.unref_spell(src)
 	owner = null
 	core = null
 	return ..()
@@ -147,9 +147,9 @@
 /obj/item/spell/update_icon()
 	if(toggled)
 		var/image/new_overlay = image('icons/obj/spells.dmi',"toggled")
-		overlays |= new_overlay
+		add_overlay(new_overlay)
 	else
-		overlays.Cut()
+		cut_overlays()
 	..()
 
 // Proc: run_checks()
@@ -176,31 +176,42 @@
 // Parameters: 0
 // Description: Terrible code to check if a scepter is in the offhand, returns 1 if yes.
 /obj/item/spell/proc/check_for_scepter()
-	if(!src || !owner) return 0
-	if(owner.r_hand == src)
-		if(istype(owner.l_hand, /obj/item/scepter))
-			return 1
-	else
-		if(istype(owner.r_hand, /obj/item/scepter))
-			return 1
-	return 0
+	if(isnull(owner))
+		return FALSE
+	var/our_index = owner.get_held_index(src)
+	if(!our_index)
+		return FALSE
+	for(var/i in 1 to length(owner.inventory.held_items))
+		if(i == our_index)
+			continue
+		if(!istype(owner.inventory.held_items[i], /obj/item/scepter))
+			continue
+		return TRUE
+	return FALSE
 
 // Proc: get_other_hand()
 // Parameters: 1 (I - item being compared to determine what the offhand is)
 // Description: Helper for Aspect spells.
 /mob/living/carbon/human/proc/get_other_hand(var/obj/item/I)
-	if(r_hand == I)
-		return l_hand
-	else
-		return r_hand
+	var/our_index = get_held_index(src)
+	if(!our_index)
+		return FALSE
+	for(var/i in 1 to length(inventory.held_items))
+		if(i == our_index)
+			continue
+		if(isnull(inventory.held_items[i]))
+			continue
+		return inventory.held_items[i]
 
 // Proc: attack_self()
 // Parameters: 1 (user - the Technomancer that invoked this proc)
 // Description: Tries to call on_use_cast() if it is allowed to do so.  Don't override this, override on_use_cast() instead.
-/obj/item/spell/attack_self(mob/user)
+/obj/item/spell/attack_self(mob/user, datum/event_args/actor/actor)
+	. = ..()
+	if(.)
+		return
 	if(run_checks() && (cast_methods & CAST_USE))
 		on_use_cast(user)
-	..()
 
 // Proc: attackby()
 // Parameters: 2 (W - the item this spell object is hitting, user - the technomancer who clicked the other object)
@@ -214,15 +225,15 @@
 		..()
 
 // Proc: afterattack()
-// Parameters: 4 (target - the atom clicked on by user, user - the technomancer who clicked with the spell, proximity_flag - argument
+// Parameters: 4 (target - the atom clicked on by user, user - the technomancer who clicked with the spell, (clickchain_flags & CLICKCHAIN_HAS_PROXIMITY) - argument
 // telling the proc if target is adjacent to user, click_parameters - information on where exactly the click occured on the screen.)
 // Description: Tests to make sure it can cast, then casts a combined, ranged, or melee spell based on what it can do and the
 // range the click occured.  Melee casts have higher priority than ranged if both are possible.  Sets cooldown at the end.
 // Don't override this for spells, override the on_*_cast() spells shown above.
-/obj/item/spell/afterattack(atom/target, mob/user, proximity_flag, click_parameters)
+/obj/item/spell/afterattack(atom/target, mob/user, clickchain_flags, list/params)
 	if(!run_checks())
 		return
-	if(!proximity_flag)
+	if(!(clickchain_flags & CLICKCHAIN_HAS_PROXIMITY))
 		if(cast_methods & CAST_RANGED)
 			on_ranged_cast(target, user)
 	else
@@ -237,7 +248,7 @@
 			on_ranged_cast(target, user)
 	if(cooldown)
 		var/effective_cooldown = round(cooldown * core.cooldown_modifier, 5)
-		user.setClickCooldown(effective_cooldown)
+		user.setClickCooldownLegacy(effective_cooldown)
 		flick("cooldown_[effective_cooldown]",src)
 
 // Proc: place_spell_in_hand()
@@ -261,6 +272,9 @@
 		if(S.run_checks())
 			S.on_innate_cast(src)
 
+	// todo: shitcode, doesn't properly support multihanding
+	var/obj/item/l_hand = get_left_held_item()
+	var/obj/item/r_hand = get_right_held_item()
 	if(l_hand && r_hand) //Make sure our hands aren't full.
 		if(istype(r_hand, /obj/item/spell)) //If they are full, perhaps we can still be useful.
 			var/obj/item/spell/r_spell = r_hand
@@ -284,7 +298,7 @@
 // Proc: dropped()
 // Parameters: 0
 // Description: Deletes the spell object immediately.
-/obj/item/spell/dropped()
+/obj/item/spell/dropped(mob/user, flags, atom/newLoc)
 	. = ..()
 	qdel(src)
 

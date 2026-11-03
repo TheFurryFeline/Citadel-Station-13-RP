@@ -1,7 +1,7 @@
 /obj/machinery/vr_sleeper
 	name = "virtual reality sleeper"
-	desc = "A fancy bed with built-in sensory I/O ports and connectors to interface users' minds with their bodies in virtual reality."
-	icon = 'icons/obj/Cryogenic2.dmi'
+	desc = "A fancy bed with built-in sensory I/O ports and connectors to interface users' minds with their bodies in virtual reality.\n <span class='notice'>\[Accepts Upgrades\]</span>"
+	icon = 'icons/obj/medical/cryogenic2.dmi'
 	icon_state = "syndipod_0"
 
 	var/base_state = "syndipod_"
@@ -41,7 +41,7 @@
 	go_out()
 
 /obj/machinery/vr_sleeper/process(delta_time)
-	if(stat & (NOPOWER|BROKEN))
+	if(machine_stat & (NOPOWER|BROKEN))
 		if(occupant)
 			go_out()
 			visible_message("<span class='notice'>\The [src] emits a low droning sound, before the pod door clicks open.</span>")
@@ -50,8 +50,9 @@
 		visible_message("<span class='warning'>\The [src] sounds an alarm, swinging its hatch open.</span>")
 		go_out()
 
-/obj/machinery/vr_sleeper/update_icon()
+/obj/machinery/vr_sleeper/update_icon_state()
 	icon_state = "[base_state][occupant ? "1" : "0"]"
+	return ..()
 
 /obj/machinery/vr_sleeper/Topic(href, href_list)
 	if(..())
@@ -72,7 +73,7 @@
 	add_fingerprint(user)
 
 	if(occupant && (istype(I, /obj/item/healthanalyzer) || istype(I, /obj/item/robotanalyzer)))
-		I.attack(occupant, user)
+		I.lazy_melee_interaction_chain(occupant, user)
 		return
 
 	if(default_deconstruction_screwdriver(user, I))
@@ -85,7 +86,7 @@
 		return
 
 
-/obj/machinery/vr_sleeper/MouseDrop_T(var/mob/target, var/mob/user)
+/obj/machinery/vr_sleeper/MouseDroppedOnLegacy(mob/target, mob/user)
 	if(user.stat || user.lying || !Adjacent(user) || !target.Adjacent(user)|| !isliving(target))
 		return
 	go_in(target, user)
@@ -101,7 +102,7 @@
 
 
 /obj/machinery/vr_sleeper/emp_act(var/severity)
-	if(stat & (BROKEN|NOPOWER))
+	if(machine_stat & (BROKEN|NOPOWER))
 		..(severity)
 		return
 
@@ -114,13 +115,13 @@
 			visible_message("<span class='danger'>\The [src]'s internal lighting flashes rapidly, before the hatch swings open with a cloud of smoke.</span>")
 			smoke.set_up(severity, 0, src)
 			smoke.start("#202020")
-		go_out()
+		INVOKE_ASYNC(src, PROC_REF(go_out))
 
 	..(severity)
 
 /obj/machinery/vr_sleeper/verb/eject()
 	set src in view(1)
-	set category = "Object"
+	set category = VERB_CATEGORY_OBJECT
 	set name = "Eject VR Capsule"
 
 	if(usr.incapacitated())
@@ -128,7 +129,7 @@
 
 	var/forced = FALSE
 
-	if(stat & (BROKEN|NOPOWER) || occupant && occupant.stat == DEAD)
+	if(machine_stat & (BROKEN|NOPOWER) || occupant && occupant.stat == DEAD)
 		forced = TRUE
 
 	go_out(forced)
@@ -136,7 +137,7 @@
 
 /obj/machinery/vr_sleeper/verb/climb_in()
 	set src in oview(1)
-	set category = "Object"
+	set category = VERB_CATEGORY_OBJECT
 	set name = "Enter VR Capsule"
 
 	if(usr.incapacitated())
@@ -149,10 +150,10 @@
 		return 0 //maybe they should be able to get out with cuffs, but whatever
 	go_out()
 
-/obj/machinery/vr_sleeper/proc/go_in(var/mob/M, var/mob/user)
+/obj/machinery/vr_sleeper/proc/go_in(mob/M, mob/user)
 	if(!M)
 		return
-	if(stat & (BROKEN|NOPOWER))
+	if(machine_stat & (BROKEN|NOPOWER))
 		return
 	if(!ishuman(M))
 		to_chat(user, "<span class='warning'>\The [src] rejects [M] with a sharp beep.</span>")
@@ -227,24 +228,24 @@
 		// Get the desired spawn location to put the body
 		var/S = null
 		var/list/vr_landmarks = list()
-		for(var/atom/movable/landmark/virtual_reality/sloc in GLOB.landmarks_list)
+		for(var/obj/landmark/virtual_reality/sloc in GLOB.landmarks_list)
 			vr_landmarks += sloc.name
 
 		S = input(occupant, "Please select a location to spawn your avatar at:", "Spawn location") as null|anything in vr_landmarks
 		if(!S)
 			return 0
 
-		for(var/atom/movable/landmark/virtual_reality/i in GLOB.landmarks_list)
+		for(var/obj/landmark/virtual_reality/i in GLOB.landmarks_list)
 			if(i.name == S)
 				S = i
 				break
 
 		avatar = new(S, SPECIES_VR)
 		// If the user has a non-default (Human) bodyshape, make it match theirs.
-		if(occupant.species.name != SPECIES_PROMETHEAN && occupant.species.name != SPECIES_HUMAN && mirror_first_occupant)
+		if(occupant.species.get_species_id() != SPECIES_ID_PROMETHEAN && occupant.species.get_species_id() != SPECIES_ID_HUMAN && mirror_first_occupant)
 			avatar.shapeshifter_change_shape(occupant.species.name)
 		avatar.forceMove(get_turf(S))			// Put the mob on the landmark, instead of inside it
-		avatar.Sleeping(1)
+		avatar.afflict_sleeping(20 * 1)
 
 		occupant.enter_vr(avatar)
 

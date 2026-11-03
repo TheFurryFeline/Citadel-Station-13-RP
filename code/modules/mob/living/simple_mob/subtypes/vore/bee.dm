@@ -20,18 +20,18 @@
 	response_disarm = "gently pushes aside the"
 	response_harm = "hits the"
 
-	movement_cooldown = 5
+	movement_base_speed = 10 / 5
 //	speed = 5
 	maxHealth = 25
 	health = 25
 
 	harm_intent_damage = 4
-	melee_damage_lower = 2
-	melee_damage_upper = 4
+	legacy_melee_damage_lower = 2
+	legacy_melee_damage_upper = 4
 	attacktext = list("stung")
 
 	say_list_type = /datum/say_list/bee
-	ai_holder_type = /datum/ai_holder/simple_mob/retaliate
+	ai_holder_type = /datum/ai_holder/polaris/simple_mob/retaliate
 
 	//Space bees aren't affected by atmos.
 	min_oxy = 0
@@ -44,7 +44,7 @@
 	max_n2 = 0
 	minbodytemp = 0
 
-	faction = "bee"
+	iff_factions = MOB_IFF_FACTION_FARM_ANIMAL
 
 	var/poison_type = "spidertoxin"	// The reagent that gets injected when it attacks, can be changed to different toxin.
 	var/poison_chance = 10			// Chance for injection to occur.
@@ -55,8 +55,6 @@
 
 // Activate Noms!
 /mob/living/simple_mob/vore/bee
-	vore_active = 1
-	vore_icons = SA_ICON_LIVING
 
 /mob/living/simple_mob/vore/bee/apply_melee_effects(var/atom/A)
 	if(isliving(A))
@@ -69,7 +67,7 @@
 // Does actual poison injection, after all checks passed.
 /mob/living/simple_mob/vore/bee/proc/inject_poison(mob/living/L, target_zone)
 	if(prob(poison_chance))
-		to_chat(L, "<span class='warning'>You feel a tiny prick.</span>")
+		L.custom_pain(SPAN_WARNING("You feel a tiny prick."), 1, TRUE)
 		L.reagents.add_reagent(poison_type, poison_per_bite)
 
 /datum/say_list/bee

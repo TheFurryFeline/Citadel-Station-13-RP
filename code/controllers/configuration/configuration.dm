@@ -8,28 +8,32 @@
 	var/list/entries
 	var/list/entries_by_type
 
-	var/list/maplist
-	var/datum/map_config/defaultmap
-
-	/*
-	var/list/modes			// allowed modes
-	var/list/gamemode_cache
-	var/list/votable_modes		// votable modes
-	var/list/storyteller_cache
-	var/list/mode_names
-	var/list/mode_reports
-	var/list/mode_false_report_weight
-	*/
-
 	var/motd
 
+	/// If the configuration is loaded
+	var/loaded = FALSE
+
+	/// If a reload is in progress
+	var/reload_in_progress = FALSE
+
 /datum/controller/configuration/proc/admin_reload()
-	if(IsAdminAdvancedProcCall())
+	if(IsAdminAdvancedProcCall() || !PreConfigReload())
 		return
+
 	log_admin("[key_name_admin(usr)] has forcefully reloaded the configuration from disk.")
 	message_admins("[key_name_admin(usr)] has forcefully reloaded the configuration from disk.")
 	full_wipe()
 	Load(world.params[OVERRIDE_CONFIG_DIRECTORY_PARAMETER])
+
+/datum/controller/configuration/proc/PreConfigReload()
+	if(reload_in_progress)
+		to_chat(usr, SPAN_WARNING("Another user is already reloading the config!"))
+		return FALSE
+
+	reload_in_progress = TRUE
+	world.TgsTriggerEvent("tg-PreConfigReload", wait_for_completion = TRUE)
+	reload_in_progress = FALSE
+	return TRUE
 
 /datum/controller/configuration/proc/Load(_directory)
 	if(IsAdminAdvancedProcCall())		//If admin proccall is detected down the line it will horribly break everything.
@@ -42,18 +46,21 @@
 	// LoadModes()
 	// storyteller_cache = typecacheof(/datum/dynamic_storyteller, TRUE)
 	if(fexists("[directory]/config.txt") && LoadEntries("config.txt") <= 1)
-		var/list/legacy_configs = list("game_options.txt", "dbconfig.txt", "comms.txt")
+		var/list/legacy_configs = list("legacy/game_options.txt", "legacy/dbconfig.txt")
 		for(var/I in legacy_configs)
 			if(fexists("[directory]/[I]"))
 				log_config("No $include directives found in config.txt! Loading legacy [legacy_configs.Join("/")] files...")
 				for(var/J in legacy_configs)
 					LoadEntries(J)
 				break
-	loadmaplist(CONFIG_MAPS_FILE)
+	if (fexists("[directory]/dev_overrides.txt"))
+		LoadEntries("dev_overrides.txt")
 	LoadMOTD()
 
+	loaded = TRUE
+
 	if (Master)
-		Master.OnConfigLoad()
+		Master.on_config_loaded()
 
 /datum/controller/configuration/proc/full_wipe()
 	if(IsAdminAdvancedProcCall())
@@ -61,9 +68,9 @@
 	entries_by_type.Cut()
 	QDEL_LIST_ASSOC_VAL(entries)
 	entries = null
-	QDEL_LIST_ASSOC_VAL(maplist)
-	maplist = null
-	QDEL_NULL(defaultmap)
+	// QDEL_LIST_ASSOC_VAL(maplist)
+	// maplist = null
+	// QDEL_NULL(defaultmap)
 
 /datum/controller/configuration/Destroy()
 	full_wipe()
@@ -145,6 +152,16 @@
 				++.
 			continue
 
+		// Reset directive, used for setting a config value back to defaults. Useful for string list config types
+		if (entry == "$reset")
+			var/datum/config_entry/resetee = _entries[lowertext(value)]
+			if (!value || !resetee)
+				log_config("Warning: invalid $reset directive: [value]")
+				continue
+			resetee.set_default()
+			log_config("Reset configured value for [value] to original defaults")
+			continue
+
 		var/datum/config_entry/E = _entries[entry]
 		if(!E)
 			log_config("LINE [linenumber]: Unknown setting in configuration: '[entry]'")
@@ -159,7 +176,7 @@
 			var/good_update = istext(new_value)
 			log_config("LINE [linenumber]: Entry [entry] is deprecated and will be removed soon. Migrate to [new_ver.name]![good_update ? " Suggested new value is: [new_value]" : ""]")
 			if(!warned_deprecated_configs)
-				addtimer(CALLBACK(GLOBAL_PROC, /proc/message_admins, "This server is using deprecated configuration settings. Please check the logs and update accordingly."), 0)
+				addtimer(CALLBACK(GLOBAL_PROC, GLOBAL_PROC_REF(message_admins), "This server is using deprecated configuration settings. Please check the logs and update accordingly."), 0)
 				warned_deprecated_configs = TRUE
 			if(good_update)
 				value = new_value
@@ -195,9 +212,7 @@
 	return !(var_name in banned_edits) && ..()
 
 /datum/controller/configuration/stat_entry()
-	if(!statclick)
-		statclick = new/obj/effect/statclick/debug(null, "Edit", src)
-	stat("[name]:", statclick)
+	return "Edit"
 
 /datum/controller/configuration/proc/Get(entry_type)
 	var/datum/config_entry/E = GetEntryDatum(entry_type)
@@ -261,10 +276,14 @@
 
 /datum/controller/configuration/proc/LoadMOTD()
 	motd = file2text("[directory]/motd.txt")
+
 	var/tm_info = GLOB.revdata.GetTestMergeInfo()
 	if(motd || tm_info)
 		motd = motd ? "[motd]<br>[tm_info]" : tm_info
 
+// todo: actual map config.
+
+/*
 /datum/controller/configuration/proc/loadmaplist(filename)
 	log_config("Loading config file [filename]...")
 	filename = "[directory]/[filename]"
@@ -299,7 +318,7 @@
 
 		switch (command)
 			if ("map")
-				currentmap = load_map_config("_maps/[data].json")
+				currentmap = load_map_config("_mapload/[data].json")
 				if(currentmap.defaulted)
 					log_config("Failed to load map config for [data]!")
 					currentmap = null
@@ -319,6 +338,7 @@
 				currentmap = null
 			else
 				log_config("Unknown command in map vote config: '[command]'")
+*/
 
 /*
 /datum/controller/configuration/proc/pick_mode(mode_name)

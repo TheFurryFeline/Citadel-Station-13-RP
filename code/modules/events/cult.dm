@@ -31,7 +31,7 @@
 	endWhen = 45
 
 /datum/event/cult/announce()
-	command_announcement.Announce("Attention [station_name()], unknown humanoid and non-humanoid entities are warping onto the ships! Advise immediate removal of these intruders before productivity aboard gets hindered!", "Screaming Signals Detected", new_sound = sound('sound/effects/c_alarm.mp3',volume=5))
+	command_announcement.Announce("Attention [location_name()], unknown humanoid and non-humanoid entities have been detected warping into the facility! We advise crew move to a secure area immediately!", "Screaming Signals Detected", new_sound = sound('sound/effects/c_alarm.mp3',volume=2))
 
 
 /datum/event/cult/start()
@@ -74,8 +74,8 @@
 	var/list/vents = list()
 	for(var/areapath in typesof(spawn_area_type))
 		var/area/A = locate(areapath)
-		for(var/obj/machinery/atmospherics/unary/vent_pump/temp_vent in A.contents)
-			if(temp_vent.network && ((temp_vent.loc.z in GLOB.using_map.station_levels) || isTalon == 1))
+		for(var/obj/machinery/atmospherics/component/unary/vent_pump/temp_vent in A.contents)
+			if(temp_vent.network && ((temp_vent.loc.z in (LEGACY_MAP_DATUM).station_levels) || isTalon == 1))
 				vents += temp_vent
 
 	var/cult_spawn = list(/mob/living/simple_mob/humanoid/cultist/human,
@@ -97,31 +97,31 @@
 	spawn(0)
 		var/num = spawncount
 		while(vents.len > 0 && num > 0)
-			var/obj/machinery/atmospherics/unary/vent_pump/V = pick(vents)
+			var/obj/machinery/atmospherics/component/unary/vent_pump/V = pick(vents)
 			num--
 			var/spawn_type = pick(cult_spawn)
 			new spawn_type(V.loc)
 		var/bossnum = boss_spawn_count
 		while(vents.len > 0 && bossnum > 0)
 			bossnum--
-			var/obj/machinery/atmospherics/unary/vent_pump/V = pick(vents)
+			var/obj/machinery/atmospherics/component/unary/vent_pump/V = pick(vents)
 			var/spawn_type = pick(cult_boss)
 			new spawn_type(V.loc)
 		isTalon = 0
 
 // Overmap version
 /datum/event/cult/overmap/announce()
-	if(istype(victim, /obj/effect/overmap/visitable/ship/talon))
+	if(istype(victim, /obj/overmap/entity/visitable/ship/talon))
 		command_announcement.Announce("Attention ITV Talon. You have run into a hostile sub-sector. High potential for humanoid and non-humanoid entities to warp on your ship. Brace.", "Screaming Signals Intercepted")
 	else
-		command_announcement.Announce("Attention [station_name()], the ship has run into a hostile sub-sector and reports of humanoid and non-humanoid entities are warping onto the ships! Advise immediate removal of these intruders before productivy aboard gets hindered!", "Screaming Signals Intercepted", new_sound = 'sound/effects/c_alarm.mp3')//,volume=5)
+		command_announcement.Announce("Attention [station_name()], the ship has run into a hostile sub-sector and humanoid and non-humanoid signatures have been detected warping aboard! Expect boarders imminently!", "Screaming Signals Intercepted", new_sound = 'sound/effects/c_alarm.mp3')//,volume=4)
 		return
 
 /datum/event/cult/overmap/start()		// override - cancel if not main ship since it doesn't properly target the actual triggering ship
-	if(istype(victim, /obj/effect/overmap/visitable/ship/landable))
+	if(istype(victim, /obj/overmap/entity/visitable/ship/landable))
 		kill()
 		return
-	if(istype(victim, /obj/effect/overmap/visitable/ship/talon)) //Forces the location to be the Talon.
+	if(istype(victim, /obj/overmap/entity/visitable/ship/talon)) //Forces the location to be the Talon.
 		isTalon = 1
 		location = 5
 	return ..()

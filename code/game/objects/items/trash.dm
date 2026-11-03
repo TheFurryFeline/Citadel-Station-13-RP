@@ -4,10 +4,16 @@
 //Added by Jack Rost
 /obj/item/trash
 	icon = 'icons/obj/trash.dmi'
-	w_class = ITEMSIZE_SMALL
+	w_class = WEIGHT_CLASS_SMALL
+	damage_force = 0
 	desc = "This is rubbish."
 	drop_sound = 'sound/items/drop/wrapper.ogg'
 	pickup_sound = 'sound/items/pickup/wrapper.ogg'
+
+/obj/item/trash/Initialize(mapload)
+	. = ..()
+	if(mapload)
+		obj_persist_status |= OBJ_PERSIST_STATUS_NO_THANK_YOU
 
 /obj/item/trash/raisins
 	name = "\improper 4no raisins"
@@ -24,6 +30,10 @@
 /obj/item/trash/cheesie
 	name = "\improper Cheesie Honkers"
 	icon_state = "cheesie_honkers"
+
+/obj/item/trash/hot_cheesie
+	name = "Hot Cheesie Honkers"
+	icon_state = "hot_cheesie_honkers"
 
 /obj/item/trash/chips
 	name = "chips"
@@ -96,9 +106,6 @@
 	name = "Basch's Baked Beans"
 	icon_state = "baschbeans"
 
-/obj/item/trash/attack(mob/M as mob, mob/living/user as mob)
-	return
-
 /obj/item/trash/creamcorn
 	name = "Garm n' Bozia's Cream Corn"
 	icon_state = "creamcorn"
@@ -108,9 +115,6 @@
 	icon = 'icons/obj/food.dmi'
 	icon_state = "lollipop_stick"
 
-/obj/item/trash/attack(mob/M as mob, mob/living/user as mob)
-	return
-
 // Custom garbage or whatever
 
 /obj/item/trash/rkibble
@@ -119,25 +123,26 @@
 	icon = 'icons/mob/dogborg_vr.dmi'
 	icon_state = "kibble"
 
-/obj/item/trash/attack(mob/living/M as mob, mob/living/user as mob)
-	if(ishuman(M))
-		var/mob/living/carbon/human/H = M
+/obj/item/trash/legacy_mob_melee_hook(mob/target, mob/user, clickchain_flags, list/params, mult, target_zone, intent)
+	if(ishuman(target))
+		var/mob/living/carbon/human/H = target
 		if(H.species.trashcan == 1)
-			playsound(H.loc,'sound/items/eatfood.ogg', rand(10,50), 1)
-			user.drop_item()
-			forceMove(H.vore_selected)
+			if(!user.attempt_insert_item_for_installation(src, H.vore_selected))
+				return
+			playsound(H,'sound/items/eatfood.ogg', rand(10,50), 1)
 			to_chat(H, "<span class='notice'>You can taste the flavor of garbage. Wait what?</span>")
 			return
 
-	if(isrobot(M))
-		var/mob/living/silicon/robot/R = M
-		if(R.module.type == /obj/item/robot_module/robot/scrubpup) // You can now feed the trash borg yay.
-			playsound(R.loc,'sound/items/eatfood.ogg', rand(10,50), 1)
-			user.drop_item()
-			forceMove(R.vore_selected)
-			R.visible_message("<span class='warning'>[user] feeds [R] with [src]!</span>")
-			return
-	..()
+	if(isrobot(target))
+		var/mob/living/silicon/robot/R = target
+		if(R.module.type == /datum/prototype/robot_module/nanotrasen/janitor && R.chassis.type == /datum/prototype/robot_chassis/quadruped) // You can now feed the trash borg yay.
+			if(R.vore_selected)
+				if(!user.attempt_insert_item_for_installation(src, R.vore_selected))
+					return
+				playsound(R,'sound/items/eatfood.ogg', rand(10,50), 1)
+				R.visible_message("<span class='warning'>[user] feeds [R] with [src]!</span>")
+				return
+	return ..()
 
 /obj/item/trash/fancyplate
 	name = "dirty fancy plate"
@@ -197,3 +202,12 @@
 /obj/item/trash/bugsnacks
 	name = "Bugsnacks"
 	icon_state = "bugsnacks"
+
+/obj/item/trash/brainsnaxtrash
+	name = "\improper BrainSnax can"
+	icon_state = "brainsnaxtrash"
+
+/obj/item/trash/fishingboot
+	name = "old boot"
+	desc = "The famous pair of Salmucci's that was dropped in here by none other than Mister Nanotrasen's 53rd secretary is still rumoured to be lying at the bottom of the pool. This.. is not it. The shoe is soggy, and seems about as comfortable as it was before being tossed in here."
+	icon_state = "fishingboot"

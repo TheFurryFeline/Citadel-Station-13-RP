@@ -33,19 +33,21 @@
 
 	poison_per_bite = 5
 
-	movement_cooldown = 5
+	movement_base_speed = 10 / 5
 
-	melee_damage_lower = 10
-	melee_damage_upper = 10
+	legacy_melee_damage_lower = 10
+	legacy_melee_damage_upper = 10
 	poison_chance = 30
 	poison_type = "cryptobiolin"
 	poison_per_bite = 1
+
+	exotic_type = /obj/item/reagent_containers/glass/venomgland/spider/confusing
 
 	player_msg = "You have an imperfect, but automatic stealth. If you attack something while 'hidden', then \
 	you will do bonus damage, stun the target, and unstealth for a period of time.<br>\
 	Getting attacked will also break your stealth."
 
-	ai_holder_type = /datum/ai_holder/simple_mob/melee/hit_and_run
+	ai_holder_type = /datum/ai_holder/polaris/simple_mob/melee/hit_and_run
 
 	var/stealthed = FALSE
 	var/stealthed_alpha = 45			// Lower = Harder to see.
@@ -109,17 +111,27 @@
 	if(stealthed)
 		if(isliving(A))
 			var/mob/living/L = A
-			L.Weaken(stealthed_weaken_amount)
+			L.afflict_paralyze(20 * stealthed_weaken_amount)
 			to_chat(L, SPAN_DANGER("\The [src] ambushes you!"))
 			playsound(L, 'sound/weapons/spiderlunge.ogg', 75, 1)
 	unstealth()
 	..() // For the poison.
 
 // Force unstealthing if attacked.
-/mob/living/simple_mob/animal/giant_spider/lurker/bullet_act(obj/item/projectile/P)
+/mob/living/simple_mob/animal/giant_spider/lurker/on_bullet_act(obj/projectile/proj, impact_flags, list/bullet_act_args)
 	. = ..()
 	break_cloak()
 
-/mob/living/simple_mob/animal/giant_spider/lurker/hit_with_weapon(obj/item/O, mob/living/user, effective_force, hit_zone)
+/mob/living/simple_mob/animal/giant_spider/lurker/on_melee_act(mob/attacker, obj/item/weapon, datum/melee_attack/attack_style, target_zone, datum/event_args/actor/clickchain/clickchain, clickchain_flags)
 	. = ..()
+	if(. & CLICKCHAIN_ATTACK_MISSED)
+		return
 	break_cloak()
+
+/obj/item/reagent_containers/glass/venomgland/spider/confusing
+	name = "Confusing Venom Gland"
+	desc = "A sac full of venom. You feel a bit dizzy holding it."
+
+/obj/item/reagent_containers/glass/venomgland/spider/confusing/Initialize(mapload)
+	. = ..()
+	reagents.add_reagent("cryptobiolin", 15)

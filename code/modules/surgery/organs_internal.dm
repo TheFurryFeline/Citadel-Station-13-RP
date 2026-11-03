@@ -5,12 +5,12 @@
 	blood_level = 1
 
 /datum/surgery_step/internal/can_use(mob/living/user, mob/living/carbon/human/target, target_zone, obj/item/tool)
-
+	if(!..()) return FALSE
 	if (!hasorgans(target))
 		return 0
 
 	var/obj/item/organ/external/affected = target.get_organ(target_zone)
-	return affected && affected.open == (affected.encased ? 3 : 2)
+	return affected && affected.open >= (affected.encased ? 3 : 2)
 
 
 //////////////////////////////////////////////////////////////////
@@ -58,6 +58,8 @@
 //				CHEST INTERNAL ORGAN SURGERY					//
 //////////////////////////////////////////////////////////////////
 /datum/surgery_step/internal/fix_organ
+	step_name = "Fix organs"
+
 	allowed_tools = list(
 	/obj/item/stack/medical/advanced/bruise_pack= 100,		\
 	/obj/item/stack/medical/bruise_pack = 20
@@ -116,10 +118,7 @@
 			if(!(I.robotic >= ORGAN_ROBOT))
 				user.visible_message("<span class='notice'>[user] treats damage to [target]'s [I.name] with [tool_name].</span>", \
 				"<span class='notice'>You treat damage to [target]'s [I.name] with [tool_name].</span>" )
-				I.damage = 0
-				I.status = 0
-				if(I.organ_tag == O_EYES)
-					target.sdisabilities &= ~BLIND
+				I.revive(TRUE)
 				if(I.organ_tag == O_LUNGS)
 					target.SetLosebreath(0)
 
@@ -137,7 +136,7 @@
 	else if (istype(tool, /obj/item/stack/medical/bruise_pack))
 		dam_amt = 5
 		target.adjustToxLoss(10)
-		affected.createwound(CUT, 5)
+		affected.create_wound(WOUND_TYPE_CUT, 5)
 
 	for(var/obj/item/organ/I in affected.internal_organs)
 		if(I && I.damage > 0)
@@ -148,9 +147,11 @@
 ///////////////////////////////////////////////////////////////
 
 /datum/surgery_step/internal/detatch_organ/
+	step_name = "Detatch organ"
 
 	allowed_tools = list(
 	/obj/item/surgical/scalpel = 100,		\
+	/obj/item/surgical/scalpel_bronze = 90,	\
 	/obj/item/surgical/scalpel_primitive = 80,	\
 	/obj/item/material/knife = 75,	\
 	/obj/item/material/shard = 50, 		\
@@ -204,13 +205,14 @@
 	var/obj/item/organ/external/affected = target.get_organ(target_zone)
 	user.visible_message("<span class='warning'>[user]'s hand slips, slicing an artery inside [target]'s [affected.name] with \the [tool]!</span>", \
 	"<span class='warning'>Your hand slips, slicing an artery inside [target]'s [affected.name] with \the [tool]!</span>")
-	affected.createwound(CUT, rand(30,50), 1)
+	affected.create_wound(WOUND_TYPE_CUT, rand(30,50), 1)
 
 ///////////////////////////////////////////////////////////////
 // Organ Removal Surgery
 ///////////////////////////////////////////////////////////////
 
 /datum/surgery_step/internal/remove_organ
+	step_name = "Extract organ"
 
 	allowed_tools = list(
 	/obj/item/surgical/hemostat = 100,	\
@@ -263,13 +265,15 @@
 	var/obj/item/organ/external/affected = target.get_organ(target_zone)
 	user.visible_message("<span class='warning'>[user]'s hand slips, damaging [target]'s [affected.name] with \the [tool]!</span>", \
 	"<span class='warning'>Your hand slips, damaging [target]'s [affected.name] with \the [tool]!</span>")
-	affected.createwound(BRUISE, 20)
+	affected.create_wound(WOUND_TYPE_BRUISE, 20)
 
 ///////////////////////////////////////////////////////////////
 // Organ Replacement Surgery
 ///////////////////////////////////////////////////////////////
 
 /datum/surgery_step/internal/replace_organ
+	step_name = "Insert organ"
+
 	allowed_tools = list(
 	/obj/item/organ = 100
 	)
@@ -334,7 +338,7 @@
 	"<span class='notice'>You have transplanted \the [tool] into [target]'s [affected.name].</span>")
 	var/obj/item/organ/O = tool
 	if(istype(O))
-		user.remove_from_mob(O)
+		user.temporarily_remove_from_inventory(O, INV_OP_FORCE | INV_OP_SHOULD_NOT_INTERCEPT | INV_OP_SILENT)
 		O.replaced(target,affected)
 
 /datum/surgery_step/internal/replace_organ/fail_step(mob/living/user, mob/living/carbon/human/target, target_zone, obj/item/tool)
@@ -349,6 +353,8 @@
 ///////////////////////////////////////////////////////////////
 
 /datum/surgery_step/internal/attach_organ
+	step_name = "Attach organ"
+
 	allowed_tools = list(
 	/obj/item/surgical/FixOVein = 100, \
 	/obj/item/stack/cable_coil = 75
@@ -394,13 +400,14 @@
 	var/obj/item/organ/external/affected = target.get_organ(target_zone)
 	user.visible_message("<span class='warning'>[user]'s hand slips, damaging the flesh in [target]'s [affected.name] with \the [tool]!</span>", \
 	"<span class='warning'>Your hand slips, damaging the flesh in [target]'s [affected.name] with \the [tool]!</span>")
-	affected.createwound(BRUISE, 20)
+	affected.create_wound(WOUND_TYPE_BRUISE, 20)
 
 ///////////////////////////////////////////////////////////////
 // Organ Ripping Surgery
 ///////////////////////////////////////////////////////////////
 
 /datum/surgery_step/internal/rip_organ
+	step_name = "Rip organ"
 
 	allowed_tools = list(
 	/obj/item/surgical/scalpel/ripper = 100
@@ -453,7 +460,7 @@
 	var/obj/item/organ/external/affected = target.get_organ(target_zone)
 	user.visible_message("<span class='warning'>[user]'s hand slips, damaging [target]'s [affected.name] with \the [tool]!</span>", \
 	"<span class='warning'>Your hand slips, damaging [target]'s [affected.name] with \the [tool]!</span>")
-	affected.createwound(BRUISE, 20)
+	affected.create_wound(WOUND_TYPE_BRUISE, 20)
 
 //////////////////////////////////////////////////////////////////
 //						HEART SURGERY							//

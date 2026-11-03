@@ -166,8 +166,9 @@
 				to_chat(src, "<font color=#4F49AF>PM to-<b>Admins</b>: [msg]</font>")
 
 			//play the recieving admin the adminhelp sound (if they have them enabled)
-			if(recipient.is_preference_enabled(/datum/client_preference/holder/play_adminhelp_ping))
-				SEND_SOUND(recipient, sound('sound/effects/adminhelp.ogg'))
+			// if(recipient.get_preference_toggle(/datum/client_preference/holder/play_adminhelp_ping))
+				// SEND_SOUND(recipient, sound('sound/effects/adminhelp.ogg'))
+			SEND_SOUND(recipient, sound('sound/effects/adminhelp.ogg'))
 
 		else
 			if(holder)	//sender is an admin but recipient is not. Do BIG RED TEXT
@@ -183,32 +184,18 @@
 
 				//always play non-admin recipients the adminhelp sound
 				SEND_SOUND(recipient, sound('sound/effects/adminhelp.ogg'))
-
-				//AdminPM popup for ApocStation and anybody else who wants to use it. Set it with POPUP_ADMIN_PM in config_legacy.txt ~Carn
-				if(config_legacy.popup_admin_pm)
-					spawn()	//so we don't hold the caller proc up
-						var/sender = src
-						var/sendername = key
-						var/reply = input(recipient, msg,"Admin PM from-[sendername]", "") as message|null		//show message and await a reply
-						if(recipient && reply)
-							if(sender)
-								recipient.cmd_admin_pm(sender,reply)										//sender is still about, let's reply to them
-							else
-								adminhelp(reply)													//sender has left, adminhelp instead
-						return
-
 			else		//neither are admins
 				to_chat(src, "<font color='red'>Error: Admin-PM: Non-admin to non-admin PM communication is forbidden.</font>")
 				return
 
 	if(irc)
 		log_admin("PM: [key_name(src)]->IRC: [rawmsg]")
-		for(var/client/X in admins)
+		for(var/client/X in GLOB.admins)
 			to_chat(X, "<font color=#4F49AF><B>PM: [key_name(src, X, 0)]-&gt;IRC:</B> [keywordparsedmsg]</font>")
 	else
 		log_admin("PM: [key_name(src)]->[key_name(recipient)]: [rawmsg]")
 		//we don't use message_admins here because the sender/receiver might get it too
-		for(var/client/X in admins)
+		for(var/client/X in GLOB.admins)
 			if(X.key!=key && X.key!=recipient.key)	//check client/X is an admin and isn't the sender or recipient
 				to_chat(X, "<font color=#4F49AF><B>PM: [key_name(src, X, 0)]-&gt;[key_name(recipient, X, 0)]:</B> [keywordparsedmsg]</font>" )
 

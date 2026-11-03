@@ -6,20 +6,19 @@
 	icon_state = "inducer-engi"
 	item_state = "inducer-engi"
 	item_icons = list(
-		slot_l_hand_str = 'icons/obj/item/inducer.dmi',
-		slot_r_hand_str = 'icons/obj/item/inducer.dmi',
+		SLOT_ID_LEFT_HAND = 'icons/obj/item/inducer.dmi',
+		SLOT_ID_RIGHT_HAND = 'icons/obj/item/inducer.dmi',
 	)
 	item_state_slots = list(
-		slot_l_hand_str = "inducer_lefthand",
-		slot_r_hand_str = "inducer_righthand"
+		SLOT_ID_LEFT_HAND = "inducer_lefthand",
+		SLOT_ID_RIGHT_HAND = "inducer_righthand"
 	)
-	force = 7
+	damage_force = 7
 	/// transfer amount per second
-	var/transfer_rate = 500
+	var/transfer_rate = 1000
 	/// type of cell to spawn
-	var/cell_type = /obj/item/cell/high
-	/// our cell
-	var/obj/item/cell/cell
+	var/cell_type = /obj/item/cell/basic/tier_1/medium
+	var/cell_accept = CELL_TYPE_MEDIUM | CELL_TYPE_SMALL | CELL_TYPE_WEAPON
 	/// panel open?
 	var/opened = FALSE
 	/// currently inducing?
@@ -34,56 +33,46 @@
 	opened = TRUE
 
 /obj/item/inducer/Initialize(mapload)
+	var/datum/object_system/cell_slot/cell_slot = init_cell_slot_easy_tool(cell_type, cell_accept)
+	cell_slot.remove_yank_inhand = TRUE
 	. = ..()
-	if(!cell && cell_type)
-		cell = new cell_type
 	update_appearance()
 
-/obj/item/inducer/get_cell()
-	return cell
-
-/obj/item/inducer/emp_act(severity)
+/obj/item/inducer/examine(mob/user, dist)
 	. = ..()
-	if(cell)
-		cell.emp_act(severity)
-
-/obj/item/inducer/attack(mob/living/M, mob/living/user)
-	if(user.a_intent == INTENT_HARM)
-		return ..()
+	if(!isnull(obj_cell_slot.cell))
+		. += "<br><span class='notice'>Its display shows: [round(obj_cell_slot.cell.charge)] / [obj_cell_slot.cell.max_charge].</span>"
 	else
-		return 0 //No accidental bludgeons!
+		. += "<br><span class='notice'>Its display is dark.</span>"
+	if(opened)
+		. += SPAN_NOTICE("Its battery compartment is open, and looks like it can be closed with a <b>screwdriver</b>")
+	else
+		. += SPAN_NOTICE("Its battery compartment is closed, and looks like it can be opened with a <b>screwdriver</b>")
 
-
-/obj/item/inducer/afterattack(atom/A, mob/living/carbon/user, proximity)
+/obj/item/inducer/afterattack(atom/target, mob/user, clickchain_flags, list/params)
 	if(user.a_intent == INTENT_HARM)
 		return ..()
-
 	if(cantbeused(user))
 		return
-
-	if(recharge(A, user))
-		return
-
-	return ..()
+	recharge(target, user)
 
 /obj/item/inducer/proc/cantbeused(mob/user)
 	if(!user.IsAdvancedToolUser())
 		to_chat(user, "<span class='warning'>You don't have the dexterity to use [src]!</span>")
 		return TRUE
 
-	if(!cell)
+	if(!obj_cell_slot.cell)
 		to_chat(user, "<span class='warning'>[src] doesn't have a power cell installed!</span>")
 		return TRUE
 
-	if(!cell.charge)
+	if(!obj_cell_slot.cell.charge)
 		to_chat(user, "<span class='warning'>[src]'s battery is dead!</span>")
 		return TRUE
 	return FALSE
 
-
 /obj/item/inducer/attackby(obj/item/W, mob/user)
 	if(W.is_screwdriver())
-		playsound(src, W.usesound, 50, 1)
+		playsound(src, W.tool_sound, 50, 1)
 		if(!opened)
 			to_chat(user, "<span class='notice'>You open the battery compartment.</span>")
 			opened = TRUE
@@ -94,24 +83,6 @@
 			opened = FALSE
 			update_icon()
 			return
-	if(istype(W, /obj/item/cell))
-		if(opened)
-			if(!cell)
-				user.drop_from_inventory(W)
-				W.forceMove(src)
-				to_chat(user, "<span class='notice'>You insert [W] into [src].</span>")
-				cell = W
-				update_icon()
-				return
-			else
-				to_chat(user, "<span class='warning'>[src] already has \a [cell] installed!</span>")
-				return
-
-	if(cantbeused(user))
-		return
-
-	if(recharge(W, user))
-		return
 
 	return ..()
 
@@ -145,7 +116,7 @@
 	user.visible_message(SPAN_NOTICE("[user] starts recharging [A] with [src]."), SPAN_NOTICE("You start recharging [A] with [src]."))
 	A.add_filter("inducer_outline", 1, outline_filter(1, "#22aaFF"))
 
-	var/datum/beam/charge_beam = user.Beam(A, icon_state = "rped_upgrade", time = 20 SECONDS)
+	var/datum/beam_legacy/charge_beam = user.Beam(A, icon_state = "rped_upgrade", time = 20 SECONDS)
 	var/datum/effect_system/spark_spread/spark_system = new
 	spark_system.set_up(5, 0, get_turf(A))
 	spark_system.attach(A)
@@ -154,8 +125,8 @@
 		var/datum/current = targets[1]
 		targets.Cut(1, 2)
 
-		while(!QDELETED(A) && do_after(user, 2 SECONDS, A, ignore_movement = TRUE, max_distance = recharge_dist))
-			var/amount = min(cell.charge, transfer_rate * 2)	// transfer rate is per second, we do this every 2 seconds
+		while(!QDELETED(A) && do_after(user, 2 SECONDS, A, DO_AFTER_IGNORE_MOVEMENT, max_distance = recharge_dist) && !QDELETED(obj_cell_slot.cell))
+			var/amount = min(obj_cell_slot.cell.charge, transfer_rate * 2)	// transfer rate is per second, we do this every 2 seconds
 			var/charged = current.inducer_act(src, amount, inducer_flags)
 			spark_system.start()
 			if(charged == INDUCER_ACT_CONTINUE)
@@ -164,37 +135,31 @@
 				break
 			if(charged <= 0)
 				break
-			cell.use(charged)
+			obj_cell_slot.use(charged)
 			used += charged
 
 	qdel(spark_system)
 	qdel(charge_beam)
 	A.remove_filter("inducer_outline")
 	inducing = FALSE
-	user.visible_message(SPAN_NOTICE("[user] recharged [A]."), SPAN_NOTICE("Rechraged [A] with [used] units of power."))
+	user.visible_message(SPAN_NOTICE("[user] recharged [A]."), SPAN_NOTICE("Recharged [A] with [used] units of power."))
 
-/obj/item/inducer/attack_self(mob/user)
-	if(opened && cell)
-		user.visible_message("<span class='notice'>[user] removes [cell] from [src]!</span>", "<span class='notice'>You remove [cell].</span>")
-		cell.update_icon()
-		user.put_in_hands(cell)
-		cell = null
-		update_icon()
-
-/obj/item/inducer/examine(mob/living/M)
+/obj/item/inducer/object_cell_slot_removed(obj/item/cell/cell, datum/object_system/cell_slot/slot, silent, datum/event_args/actor/actor)
 	. = ..()
-	if(cell)
-		. += "<br><span class='notice'>Its display shows: [round(cell.charge)] / [cell.maxcharge].</span>"
-	else
-		. += "<br><span class='notice'>Its display is dark.</span>"
-	if(opened)
-		. += "<br><span class='notice'>Its battery compartment is open.</span>"
+	update_icon()
+
+/obj/item/inducer/object_cell_slot_inserted(obj/item/cell/cell, datum/object_system/cell_slot/slot, silent, datum/event_args/actor/actor)
+	. = ..()
+	update_icon()
+
+/obj/item/inducer/object_cell_slot_mutable(mob/user, datum/object_system/cell_slot/slot, silent, datum/event_args/actor/actor)
+	return opened && ..()
 
 /obj/item/inducer/update_icon()
 	..()
 	cut_overlays()
 	if(opened)
-		if(!cell)
+		if(isnull(obj_cell_slot.cell))
 			add_overlay("inducer-nobat")
 		else
 			add_overlay("inducer-bat")
@@ -206,7 +171,7 @@
 	icon_state = "inducer-sci"
 	item_state = "inducer-sci"
 	cell_type = null
-	transfer_rate = 1000
+	transfer_rate = 500
 	opened = TRUE
 
 /obj/item/inducer/syndicate
@@ -214,8 +179,8 @@
 	desc = "A tool for inductively charging internal power cells. This one has a suspicious colour scheme, and seems to be rigged to transfer charge at a much faster rate."
 	icon_state = "inducer-syndi"
 	item_state = "inducer-syndi"
-	transfer_rate = 1000
-	cell_type = /obj/item/cell/super
+	transfer_rate = 2000
+	cell_type = /obj/item/cell/basic/tier_3/medium
 	inducer_flags = NONE
 
 /*
@@ -246,10 +211,10 @@
  * even if full, always add things, or the inducer might think we don't support induction when we do!
  */
 /atom/proc/inducer_scan(obj/item/inducer/I, list/things_to_induce = list(), inducer_flags)
-	var/obj/item/cell/C = get_cell()
+	var/obj/item/cell/C = get_cell(TRUE)
 	if(C)
 		things_to_induce += C
-		if(C.charge >= C.maxcharge)
+		if(C.charge >= C.max_charge)
 			return INDUCER_SCAN_FULL
 
 /**
@@ -266,7 +231,7 @@
 	. = ..()
 	var/obj/item/cell/C = get_cell()
 	if(C)
-		var/use = clamp(C.maxcharge - C.charge, 0, amount)
+		var/use = clamp(C.max_charge - C.charge, 0, amount)
 		C.give(use)
 		return use
 	else

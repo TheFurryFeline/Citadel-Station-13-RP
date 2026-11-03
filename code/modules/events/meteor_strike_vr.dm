@@ -4,14 +4,14 @@
 
 /datum/event/meteor_strike/setup()
 	startWhen = rand(8,15)
-	if(LAZYLEN(GLOB.using_map.meteor_strike_areas))
-		strike_target = pick(get_area_turfs(pick(GLOB.using_map.meteor_strike_areas)))
+	if(LAZYLEN((LEGACY_MAP_DATUM).meteor_strike_areas))
+		strike_target = pick(get_area_turfs(pick((LEGACY_MAP_DATUM).meteor_strike_areas)))
 
 	if(!strike_target)
 		kill()
 
 /datum/event/meteor_strike/announce()
-	command_announcement.Announce("A meteoroid has been detected entering the atmosphere on a trajectory that will terminate near the surface facilty. Brace for impact.", "NanoTrasen Orbital Monitoring", new_sound = 'sound/effects/meteor_strike.ogg')
+	command_announcement.Announce("A meteoroid has been detected entering the atmosphere on a trajectory that will terminate near the surface facilty. Brace for impact.", "Nanotrasen Orbital Monitoring", new_sound = 'sound/effects/meteor_strike.ogg')
 
 /datum/event/meteor_strike/start()
 	new /obj/effect/meteor_falling(strike_target)
@@ -26,17 +26,17 @@
 /obj/effect/meteor_falling/Initialize(mapload)
 	. = ..()
 	SpinAnimation()
-	meteor_fall()
+	INVOKE_ASYNC(src, PROC_REF(meteor_fall))
 
 /obj/effect/meteor_falling/proc/meteor_fall()
 	var/turf/current = get_turf(src)
 	if(istype(current, /turf/simulated/open) || istype(current, /turf/space))
-		var/turf/below = GetBelow(src)
+		var/turf/below = current.below()
 		if(below.density)
 			meteor_impact()
 			return
 		for(var/atom/movable/A in current)
-			A.ex_act(3) //Let's have it be heavy, but not devistation in case it hits walls or something.
+			LEGACY_EX_ACT(A, 3, null) //Let's have it be heavy, but not devistation in case it hits walls or something.
 		forceMove(below)
 		meteor_fall()
 		return
@@ -63,13 +63,13 @@
 				continue
 			if(!L.buckled && !issilicon(L))
 				if(!L.Check_Shoegrip())
-					L.throw_at(get_step_rand(L),1,5)
-				L.Weaken(5)
+					L.throw_at_old(get_step_rand(L),1,5)
+				L.afflict_paralyze(20 * 5)
 			if(L.client)
 				to_chat(L, "<span class='danger'>The ground lurches beneath you!</span>")
 				shake_camera(L, 6, 1)
 				if(!L.ear_deaf)
-					SEND_SOUND(L, sound('sound/effects/explosionfar.ogg'))
+					SEND_SOUND(L, sound('sound/soundbytes/effects/explosion/explosionfar.ogg'))
 	qdel(src)
 
 /obj/structure/meteorite
@@ -77,8 +77,9 @@
 	desc = "A big hunk of star-stuff."
 	icon = 'icons/obj/meteor.dmi'
 	icon_state = "large"
-	density = 1
-	climbable = 1
+	density = TRUE
+	climb_allowed = TRUE
+	depth_level = 16
 
 /obj/structure/meteorite/Initialize(mapload)
 	. = ..()
@@ -86,17 +87,17 @@
 	switch(rand(1,100))
 		if(1 to 30)
 			for(var/i=1 to rand(12,36))
-				new /obj/item/ore/iron(src)
+				new /obj/item/stack/ore/iron(src)
 		if(31 to 90)
 			for(var/i=1 to rand(8,24))
-				new /obj/item/ore/silver(src)
-				new /obj/item/ore/gold(src)
-				new /obj/item/ore/osmium(src)
-				new /obj/item/ore/diamond(src)
+				new /obj/item/stack/ore/silver(src)
+				new /obj/item/stack/ore/gold(src)
+				new /obj/item/stack/ore/osmium(src)
+				new /obj/item/stack/ore/diamond(src)
 		if(91 to 100)
 			new /obj/machinery/artifact(src)
 
-/obj/structure/meteorite/ex_act()
+/obj/structure/meteorite/legacy_ex_act()
 	return
 
 /obj/structure/meteorite/attackby(var/obj/item/I, var/mob/M)

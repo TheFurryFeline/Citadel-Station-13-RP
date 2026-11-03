@@ -13,17 +13,20 @@
 	icon = 'icons/obj/device.dmi'
 	icon_state = "locator"
 	var/temp = null
-	var/frequency = 1451
+	var/frequency = FREQ_LOCATOR_IMPLANT
 	var/broadcasting = null
 	var/listening = 1.0
-	w_class = ITEMSIZE_SMALL
+	w_class = WEIGHT_CLASS_SMALL
 	item_state = "electronic"
 	throw_speed = 4
 	throw_range = 20
 	origin_tech = list(TECH_MAGNET = 1)
-	matter = list(MAT_STEEL = 400)
+	materials_base = list(MAT_STEEL = 400)
 
-/obj/item/locator/attack_self(mob/user as mob)
+/obj/item/locator/attack_self(mob/user, datum/event_args/actor/actor)
+	. = ..()
+	if(.)
+		return
 	user.set_machine(src)
 	var/dat
 	if (src.temp)
@@ -38,7 +41,7 @@ Frequency:
 <A href='byond://?src=\ref[src];freq=10'>+</A><BR>
 
 <A href='?src=\ref[src];refresh=1'>Refresh</A>"}
-	user << browse(dat, "window=radio")
+	user << browse(HTML_SKELETON(dat), "window=radio")
 	onclose(user, "radio")
 	return
 
@@ -122,21 +125,24 @@ Frequency:
 	icon = 'icons/obj/device.dmi'
 	icon_state = "hand_tele"
 	item_state = "electronic"
-	throwforce = 5
-	w_class = ITEMSIZE_SMALL
+	throw_force = 5
+	w_class = WEIGHT_CLASS_SMALL
 	throw_speed = 3
 	throw_range = 5
 	origin_tech = list(TECH_MAGNET = 1, TECH_BLUESPACE = 3)
-	matter = list(MAT_STEEL = 10000)
+	materials_base = list(MAT_STEEL = 10000)
 	preserve_item = 1
 
-/obj/item/hand_tele/attack_self(mob/user as mob)
+/obj/item/hand_tele/attack_self(mob/user, datum/event_args/actor/actor)
+	. = ..()
+	if(.)
+		return
 	var/turf/current_location = get_turf(user)//What turf is the user on?
-	if(!current_location || (current_location.z in GLOB.using_map.admin_levels) || current_location.block_tele)//If turf was not found or they're on z level 2 or >7 which does not currently exist.
+	if(!current_location || (current_location.z in (LEGACY_MAP_DATUM).admin_levels) || current_location.block_tele)//If turf was not found or they're on z level 2 or >7 which does not currently exist.
 		to_chat(user, "<span class='notice'>\The [src] is malfunctioning.</span>")
 		return
 	var/list/L = list(  )
-	for(var/obj/machinery/tele_pad/R in machines)
+	for(var/obj/machinery/tele_pad/R in GLOB.machines)
 		var/obj/machinery/computer/teleporter/com
 		var/obj/machinery/tele_projector/station
 		for(var/direction in GLOB.cardinal)
@@ -161,7 +167,7 @@ Frequency:
 	if(turfs.len)
 		L["None (Dangerous)"] = pick(turfs)
 	var/t1 = input(user, "Please select a teleporter to lock in on.", "Hand Teleporter") in L
-	if ((user.get_active_hand() != src || user.stat || user.restrained()))
+	if ((user.get_active_held_item() != src || user.stat || user.restrained()))
 		return
 	var/count = 0	//num of portals from this teleport in world
 	for(var/obj/effect/portal/PO in GLOB.all_portals)

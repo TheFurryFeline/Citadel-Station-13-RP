@@ -1,10 +1,10 @@
-/datum/tgui_module/computer_configurator
+/datum/tgui_module_old/computer_configurator
 	name = "NTOS Computer Configuration Tool"
 	ntos = TRUE
 	tgui_id = "Configuration"
 	var/obj/item/modular_computer/movable = null
 
-/datum/tgui_module/computer_configurator/ui_data(mob/user, datum/tgui/ui, datum/ui_state/state)
+/datum/tgui_module_old/computer_configurator/ui_data(mob/user, datum/tgui/ui)
 	movable = ui_host()
 	// No computer connection, we can't get data from that.
 	if(!istype(movable))
@@ -17,11 +17,11 @@
 	data["power_usage"] = movable.last_power_usage
 	data["battery_exists"] = movable.battery_module ? 1 : 0
 	if(movable.battery_module)
-		data["battery_rating"] = movable.battery_module.battery.maxcharge
+		data["battery_rating"] = movable.battery_module.battery.max_charge
 		data["battery_percent"] = round(movable.battery_module.battery.percent())
 
 	if(movable.battery_module && movable.battery_module.battery)
-		data["battery"] = list("max" = movable.battery_module.battery.maxcharge, "charge" = round(movable.battery_module.battery.charge))
+		data["battery"] = list("max" = movable.battery_module.battery.max_charge, "charge" = round(movable.battery_module.battery.charge))
 
 	var/list/hardware = movable.get_all_components()
 	var/list/all_entries[0]
@@ -37,7 +37,7 @@
 	data["hardware"] = all_entries
 	return data
 
-/datum/tgui_module/computer_configurator/ui_act(action, params)
+/datum/tgui_module_old/computer_configurator/ui_act(action, list/params, datum/tgui/ui, datum/ui_state/state, datum/event_args/actor/actor)
 	if(..())
 		return
 	switch(action)

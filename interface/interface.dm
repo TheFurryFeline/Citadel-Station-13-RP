@@ -2,18 +2,18 @@
 /client/verb/wiki(query as text)
 	set name = "wiki"
 	set desc = "Type what you want to know about.  This will open the wiki on your web browser."
-	set category = "OOC"
+	set category = VERB_CATEGORY_OOC
 	if(config_legacy.wikiurl)
 		if(query)
 			if(config_legacy.wikisearchurl)
 				var/output = replacetext(config_legacy.wikisearchurl, "%s", url_encode(query))
 				src << link(output)
 			else
-				to_chat(src, "<span class='warning'> The wiki search URL is not set in the server configuration.</span>")
+				to_chat(src, SPAN_WARNING("The wiki search URL is not set in the server configuration."))
 		else
 			src << link(config_legacy.wikiurl)
 	else
-		to_chat(src, "<span class='warning'>The wiki URL is not set in the server configuration.</span>")
+		to_chat(src, SPAN_WARNING("The wiki URL is not set in the server configuration."))
 		return
 
 /client/verb/forum()
@@ -25,7 +25,7 @@
 			return
 		src << link(config_legacy.forumurl)
 	else
-		to_chat(src, "<span class='warning'>The forum URL is not set in the server configuration.</span>")
+		to_chat(src, SPAN_WARNING("The forum URL is not set in the server configuration."))
 		return
 
 /client/verb/rules()
@@ -38,7 +38,7 @@
 			return
 		src << link(config_legacy.rulesurl)
 	else
-		to_chat(src, "<span class='danger'>The rules URL is not set in the server configuration.</span>")
+		to_chat(src, SPAN_DANGER("The rules URL is not set in the server configuration."))
 	return
 
 /client/verb/map()
@@ -51,7 +51,7 @@
 			return
 		src << link(config_legacy.mapurl)
 	else
-		to_chat(src, "<span class='danger'>The map URL is not set in the server configuration.</span>")
+		to_chat(src, SPAN_DANGER("The map URL is not set in the server configuration."))
 	return
 
 /client/verb/github()
@@ -64,12 +64,75 @@
 			return
 		src << link(CONFIG_GET(string/githuburl))
 	else
-		to_chat(src, "<span class='danger'>The GitHub URL is not set in the server configuration.</span>")
+		to_chat(src, SPAN_DANGER("The GitHub URL is not set in the server configuration."))
 	return
+
+/client/verb/reportissue()
+	set name = "report-issue"
+	set desc = "Report an issue"
+	set hidden = 1
+
+	var/githuburl = CONFIG_GET(string/githuburl)
+	if(!githuburl)
+		to_chat(src, SPAN_DANGER("The Github URL is not set in the server configuration."))
+		return
+
+	var/testmerge_data = GLOB.revdata.testmerge
+	var/has_testmerge_data = (length(testmerge_data) != 0)
+
+	var/message = "This will open the Github issue reporter in your browser. Are you sure?"
+	if(has_testmerge_data)
+		message += "<br>The following experimental changes are active and are probably the cause of any new or sudden issues you may experience. If possible, please try to find a specific thread for your issue instead of posting to the general issue tracker:<br>"
+		message += GLOB.revdata.GetTestMergeInfo(FALSE)
+
+	// We still use tg_alert here because some people were concerned that if someone wanted to report that tgui wasn't working
+	// then the report issue button being tgui-based would be problematic.
+	if(tgalert(src, message, "Report Issue", "Yes", "No") != "Yes")
+		return
+
+	var/base_link = githuburl + "/issues/new?template=bug_report_form.yml"
+	var/list/concatable = list(base_link)
+
+	var/client_version = "[byond_version].[byond_build]"
+	concatable += ("&reporting-version=" + client_version)
+
+	// the way it works is that we use the ID's that are baked into the template YML and replace them with values that we can collect in game.
+	if(GLOB.round_id)
+		concatable += ("&round-id=" + GLOB.round_id)
+
+	// Insert testmerges
+	if(has_testmerge_data)
+		var/list/all_tms = list()
+		for(var/entry in testmerge_data)
+			var/datum/tgs_revision_information/test_merge/tm = entry
+			all_tms += "- \[[tm.title]\]([githuburl]/pull/[tm.number])"
+		var/all_tms_joined = jointext(all_tms, "\n")
+
+		concatable += ("&test-merges=" + url_encode(all_tms_joined))
+
+	DIRECT_OUTPUT(src, link(jointext(concatable, "")))
+
+/client/proc/changelog_async()
+	set waitfor = FALSE
+
+	changelog()
+
+/client/verb/changelog()
+	set name = "Changelog"
+	set category = VERB_CATEGORY_OOC
+	if(!GLOB.changelog_tgui)
+		GLOB.changelog_tgui = new /datum/changelog()
+
+	GLOB.changelog_tgui.ui_interact(usr)
+
+	if(player.immediately_available() && player.player_misc["changelog_hash"] != GLOB.changelog_hash)
+		player.player_misc["changelog_hash"] = GLOB.changelog_hash
+		player.save()
+		winset(src, "infowindow.changelog", "font-style=;")
 
 /client/verb/hotkeys_help()
 	set name = "hotkeys-help"
-	set category = "OOC"
+	set category = VERB_CATEGORY_OOC
 
 	var/admin = {"<font color='purple'>
 Admin:

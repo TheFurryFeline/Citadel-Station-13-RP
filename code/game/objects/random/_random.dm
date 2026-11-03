@@ -14,24 +14,32 @@
 		stack_trace("Attempted to spawn base /obj/random.")
 		return INITIALIZE_HINT_QDEL
 	if(!prob(spawn_nothing_percentage))
-		spawn_item()
+		spawn_item(mapload)
 	return INITIALIZE_HINT_QDEL
 
 // this function should return a specific item to spawn
 /obj/random/proc/item_to_spawn()
 	return
 
+/obj/random/proc/create_obj(obj_path, location)
+	var/obj/created = new obj_path(location)
+	ASSERT(istype(created))
+
+	// todo: shitcode but w/e
+	created.obj_persist_status |= OBJ_PERSIST_STATUS_NO_THANK_YOU
+
+	if(pixel_x || pixel_y)
+		created.pixel_x = pixel_x
+		created.pixel_y = pixel_y
+
 /obj/random/drop_location()
 	return drop_get_turf? get_turf(src) : ..()
 
 // creates the random item
-/obj/random/proc/spawn_item()
+/obj/random/proc/spawn_item(mapload)
 	var/build_path = item_to_spawn()
 
-	var/atom/A = new build_path(drop_location())
-	if(pixel_x || pixel_y)
-		A.pixel_x = pixel_x
-		A.pixel_y = pixel_y
+	create_obj(build_path, drop_location())
 
 var/list/random_junk_
 var/list/random_useful_
@@ -48,17 +56,17 @@ var/list/random_useful_
 
 /proc/get_random_junk_type()
 	if(prob(20)) // Misc. clutter
-		return /obj/effect/decal/cleanable/generic
+		return /obj/effect/debris/cleanable/generic
 	if(prob(70)) // Misc. junk
 		if(!random_junk_)
 			random_junk_ = subtypesof(/obj/item/trash)
 			random_junk_ += typesof(/obj/item/cigbutt)
-			random_junk_ += /obj/effect/decal/cleanable/spiderling_remains
+			random_junk_ += /obj/effect/debris/cleanable/spiderling_remains
 			random_junk_ += /obj/effect/decal/remains/mouse
 			random_junk_ += /obj/effect/decal/remains/robot
 			random_junk_ += /obj/item/paper/crumpled
 			random_junk_ += /obj/item/inflatable/torn
-			random_junk_ += /obj/effect/decal/cleanable/molten_item
+			random_junk_ += /obj/effect/debris/cleanable/molten_item
 			random_junk_ += /obj/item/material/shard
 
 			random_junk_ -= /obj/item/trash/plate
@@ -87,7 +95,7 @@ var/list/random_useful_
 /obj/random/multiple/spawn_item()
 	var/list/things_to_make = item_to_spawn()
 	for(var/new_type in things_to_make)
-		new new_type(src.loc)
+		create_obj(new_type, src.loc)
 
 /*
 //	Multi Point Spawn
@@ -132,7 +140,7 @@ var/list/multi_point_spawns
 /obj/random_multi/single_item/generate_items()
 	new item_path(loc)
 
-/hook/roundstart/proc/generate_multi_spawn_items()
+/legacy_hook/roundstart/proc/generate_multi_spawn_items()
 	for(var/id in multi_point_spawns)
 		var/list/spawn_points = multi_point_spawns[id]
 		var/obj/random_multi/rm = pickweight(spawn_points)

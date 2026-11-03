@@ -1,10 +1,12 @@
-#define SECBOT_WAIT_TIME	3		//Around number*2 real seconds to surrender.
-#define SECBOT_THREAT_ARREST 4		//threat level at which we decide to arrest someone
-#define SECBOT_THREAT_ATTACK 8		//threat level at which was assume immediate danger and attack right away
-
+///Around number*2 real seconds to surrender.
+#define SECBOT_WAIT_TIME	3
+///threat level at which we decide to arrest someone
+#define SECBOT_THREAT_ARREST 4
+///threat level at which was assume immediate danger and attack right away
+#define SECBOT_THREAT_ATTACK 8
 /datum/category_item/catalogue/technology/bot/secbot
 	name = "Bot - Securitron"
-	desc = "The Securitron is a proprietary support bot designed by NanoTrasen. \
+	desc = "The Securitron is a proprietary support bot designed by Nanotrasen. \
 	Utilizing the standard Security department helmet, this wheeled automaton moves \
 	over floors at high speed to intercept flagged personnel. It is capable of pacifying \
 	suspects with its stun baton, and may assist in the arrest process by cuffing disabled \
@@ -18,8 +20,8 @@
 	icon_state = "secbot0"
 	maxHealth = 100
 	health = 100
-	req_one_access = list(access_security, access_forensics_lockers)
-	botcard_access = list(access_security, access_sec_doors, access_forensics_lockers, access_maint_tunnels)
+	req_one_access = list(ACCESS_SECURITY_EQUIPMENT, ACCESS_SECURITY_FORENSICS)
+	botcard_access = list(ACCESS_SECURITY_EQUIPMENT, ACCESS_SECURITY_MAIN, ACCESS_SECURITY_FORENSICS, ACCESS_ENGINEERING_MAINT)
 	patrol_speed = 2
 	target_speed = 3
 	catalogue_data = list(/datum/category_item/catalogue/technology/bot/secbot)
@@ -40,6 +42,7 @@
 	var/can_next_insult = 0			// Uses world.time
 	var/stun_strength = 60			// For humans.
 	var/xeno_harm_strength = 15 	// How hard to hit simple_mobs.
+	var/xeno_stun_strength = 3		// How hard to slimebatoned()'d naughty slimes. Normal securitrons aren't all that good at it but can do it.
 	var/baton_glow = "#FF6A00"
 
 	var/used_weapon	= /obj/item/melee/baton	//Weapon used by the bot
@@ -47,9 +50,10 @@
 	var/list/threat_found_sounds = list('sound/voice/bcriminal.ogg', 'sound/voice/bjustice.ogg', 'sound/voice/bfreeze.ogg')
 	var/list/preparing_arrest_sounds = list('sound/voice/bgod.ogg', 'sound/voice/biamthelaw.ogg', 'sound/voice/bsecureday.ogg', 'sound/voice/bradio.ogg', 'sound/voice/bcreep.ogg')
 	var/list/fighting_sounds = list('sound/voice/biamthelaw.ogg', 'sound/voice/bradio.ogg', 'sound/voice/bjustice.ogg')
-//VOREStation Add - They don't like being pulled. This is going to fuck with slimesky, but meh.	//Screw you. Just screw you and your 'meh'
-/mob/living/bot/secbot/Life()
-	..()
+// They don't like being pulled. This is going to fuck with slimesky, but meh.	//Screw you. Just screw you and your 'meh'
+/mob/living/bot/secbot/Life(seconds, times_fired)
+	if((. = ..()))
+		return
 	if(health > 0 && on && pulledby)
 		if(isliving(pulledby))
 			var/pull_allowed = FALSE
@@ -61,15 +65,14 @@
 				UnarmedAttack(L)
 				say("Do not interfere with active law enforcement routines!")
 				GLOB.global_announcer.autosay("[src] was interfered with in <b>[get_area(src)]</b>, activating defense routines.", "[src]", "Security")
-//VOREStation Add End
 
 /datum/category_item/catalogue/technology/bot/secbot/beepsky
 	name = "Bot - Officer Beepsky"
 	desc = "Officer Beepsky was designed to be the mascot for \
-	NanoTrasen's unveiling of the Securitron line. A favorite among \
-	NanoTrasen workers due to its iconic profile and tendency to break out into \
+	Nanotrasen's unveiling of the Securitron line. A favorite among \
+	Nanotrasen workers due to its iconic profile and tendency to break out into \
 	wild bouts of profanity, the Beepsky pattern chassis is often replicated \
-	on individual NanoTrasen facilities as a form of morale booster. \
+	on individual Nanotrasen facilities as a form of morale booster. \
 	The model's increased durability ensures Officer Beepsky stands wheels and visors \
 	above its inferior peers."
 	value = CATALOGUER_REWARD_TRIVIAL
@@ -84,7 +87,7 @@
 
 /datum/category_item/catalogue/technology/bot/secbot/slime
 	name = "Bot - Slime Securitron"
-	desc = "A rare NanoTrasen variant of their Securitron designs, \
+	desc = "A rare Nanotrasen variant of their Securitron designs, \
 	Slime Securitrons utilize the same technology and programming as \
 	the standard model, but with equipment and parameters designed to \
 	pacify Slimes. Prometheans often view these bots with suspicion."
@@ -92,17 +95,17 @@
 
 /mob/living/bot/secbot/slime
 	name = "Slime Securitron"
-	desc = "A little security robot, with a slime baton subsituted for the regular one."
+	desc = "A little security robot, with a slime baton substituted for the regular one."
 	default_icon_state = "slimesecbot"
 	stun_strength = 10 // Slimebatons aren't meant for humans.
 	catalogue_data = list(/datum/category_item/catalogue/technology/bot/secbot/slime)
 
 	xeno_harm_strength = 9 // Weaker than regular slimesky but they can stun.
 	baton_glow = "#33CCFF"
-	req_one_access = list(access_research, access_robotics)
-	botcard_access = list(access_research, access_robotics, access_xenobiology, access_xenoarch, access_tox, access_tox_storage, access_maint_tunnels)
+	req_one_access = list(ACCESS_SCIENCE_MAIN, ACCESS_SCIENCE_ROBOTICS)
+	botcard_access = list(ACCESS_SCIENCE_MAIN, ACCESS_SCIENCE_ROBOTICS, ACCESS_SCIENCE_XENOBIO, ACCESS_SCIENCE_XENOARCH, ACCESS_SCIENCE_FABRICATION, ACCESS_SCIENCE_TOXINS, ACCESS_ENGINEERING_MAINT)
 	used_weapon = /obj/item/melee/baton/slime
-	var/xeno_stun_strength = 5 // How hard to slimebatoned()'d naughty slimes. 5 works out to 2 discipline and 5 weaken.
+	xeno_stun_strength = 5 // 5 works out to 2 discipline and 5 weaken.
 
 /datum/category_item/catalogue/technology/bot/secbot/slime/slimesky
 	name = "Bot - Doctor Slimesky"
@@ -135,7 +138,7 @@
 		ui = new(user, src, "Secbot", name)
 		ui.open()
 
-/mob/living/bot/secbot/ui_data(mob/user, datum/tgui/ui, datum/ui_state/state)
+/mob/living/bot/secbot/ui_data(mob/user, datum/tgui/ui)
 	var/list/data = ..()
 
 	data["on"] = on
@@ -155,15 +158,15 @@
 		data["check_arrest"] = check_arrest
 		data["arrest_type"] = arrest_type
 		data["declare_arrests"] = declare_arrests
-		if(GLOB.using_map.bot_patrolling)
+		if((LEGACY_MAP_DATUM).bot_patrolling)
 			data["will_patrol"] = will_patrol
 
 	return data
 
-/mob/living/bot/secbot/attack_hand(var/mob/user)
+/mob/living/bot/secbot/attack_hand(mob/user, datum/event_args/actor/clickchain/e_args)
 	ui_interact(user)
 
-/mob/living/bot/secbot/ui_act(action, list/params, datum/tgui/ui, datum/ui_state/state)
+/mob/living/bot/secbot/ui_act(action, list/params, datum/tgui/ui, datum/ui_state/state, datum/event_args/actor/actor)
 	if(..())
 		return TRUE
 
@@ -221,22 +224,22 @@
 	var/curhealth = health
 	. = ..()
 	if(health < curhealth && on == TRUE)
-		react_to_attack(user)
+		react_to_attack_polaris(user)
 
-/mob/living/bot/secbot/bullet_act(var/obj/item/projectile/P)
+/mob/living/bot/secbot/on_bullet_act(obj/projectile/proj, impact_flags, list/bullet_act_args)
 	var/curhealth = health
-	var/mob/shooter = P.firer
+	var/mob/shooter = proj.firer
 	. = ..()
 	//if we already have a target just ignore to avoid lots of checking
 	if(!target && health < curhealth && shooter && (shooter in view(world.view, src)))
-		react_to_attack(shooter)
+		react_to_attack_polaris(shooter)
 
 /mob/living/bot/secbot/attack_generic(var/mob/attacker)
 	if(attacker)
-		react_to_attack(attacker)
+		react_to_attack_polaris(attacker)
 	..()
 
-/mob/living/bot/secbot/proc/react_to_attack(mob/attacker)
+/mob/living/bot/secbot/proc/react_to_attack_polaris(mob/attacker)
 	if(!on)		// We don't want it to react if it's off
 		return
 
@@ -254,7 +257,7 @@
 	say("Down on the floor, [suspect_name]! You have [SECBOT_WAIT_TIME*2] seconds to comply.")
 	playsound(src.loc, pick(preparing_arrest_sounds), 50)
 	// Register to be told when the target moves
-	RegisterSignal(target, COMSIG_MOVABLE_MOVED, .proc/target_moved)
+	RegisterSignal(target, COMSIG_MOVABLE_MOVED, PROC_REF(target_moved))
 
 // Callback invoked if the registered target moves
 /mob/living/bot/secbot/proc/target_moved(atom/movable/moving_instance, atom/old_loc, atom/new_loc)
@@ -264,7 +267,8 @@
 
 /mob/living/bot/secbot/resetTarget()
 	..()
-	UnregisterSignal(target, COMSIG_MOVABLE_MOVED)
+	if(target)
+		UnregisterSignal(target, COMSIG_MOVABLE_MOVED)
 	awaiting_surrender = 0
 	attacked = FALSE
 	walk_to(src, 0)
@@ -357,10 +361,10 @@
 		var/mob/living/carbon/human/H = M
 		var/cuff = TRUE
 
-		if(!H.lying || H.handcuffed || arrest_type)
+		if(CHECK_MOBILITY(H, MOBILITY_CAN_MOVE | MOBILITY_CAN_USE) || H.handcuffed || arrest_type)
 			cuff = FALSE
 		if(!cuff)
-			H.stun_effect_act(0, stun_strength, null)
+			H.electrocute(0, 0, stun_strength, NONE, BP_TORSO, src)
 			playsound(loc, 'sound/weapons/Egloves.ogg', 50, 1, -1)
 			do_attack_animation(H)
 			busy = TRUE
@@ -376,14 +380,24 @@
 			busy = TRUE
 			if(do_mob(src, H, 60))
 				if(!H.handcuffed)
-					if(istype(H.back, /obj/item/rig) && istype(H.gloves,/obj/item/clothing/gloves/gauntlets/rig))
-						H.handcuffed = new /obj/item/handcuffs/cable(H) // Better to be cable cuffed than stun-locked
+					var/type
+					if(istype(H.back, /obj/item/hardsuit) && istype(H.gloves,/obj/item/clothing/gloves/gauntlets/hardsuit))
+						type = /obj/item/handcuffs/cable // Better to be cable cuffed than stun-locked
 					else
-						H.handcuffed = new /obj/item/handcuffs(H)
-					H.update_handcuffed()
+						type = /obj/item/handcuffs
+					var/obj/item/handcuffs/hc = new type(H)
+					// force equip because no mercy
+					H.force_equip_to_slot_or_del(hc, SLOT_ID_HANDCUFFED, user = src)
 			busy = FALSE
 	else if(istype(M, /mob/living))
 		var/mob/living/L = M
+		if(istype(L, /mob/living/simple_mob/slime/xenobio))
+			var/mob/living/simple_mob/slime/xenobio/S = L
+			var/datum/ai_holder/polaris/simple_mob/xenobio_slime/sai = S.ai_holder
+			if(!S.is_justified_to_discipline() && !sai?.rabid) //will kill angry slimes.
+				attacked = FALSE //quit abusing the damn slimes. I don't care if they're hurting you.
+				return
+			S.slimebatoned(src, xeno_stun_strength)
 		L.adjustBruteLoss(xeno_harm_strength)
 		do_attack_animation(M)
 		playsound(loc, "swing_hit", 50, 1, -1)
@@ -395,20 +409,13 @@
 		visible_message("<span class='warning'>\The [M] was beaten by \the [src] with a stun baton!</span>")
 		insult(L)
 
-/mob/living/bot/secbot/slime/UnarmedAttack(var/mob/living/L, var/proximity)
-	..()
-
-	if(istype(L, /mob/living/simple_mob/slime/xenobio))
-		var/mob/living/simple_mob/slime/xenobio/S = L
-		S.slimebatoned(src, xeno_stun_strength)
-
 /mob/living/bot/secbot/explode()
 	visible_message("<span class='warning'>[src] blows apart!</span>")
 	var/turf/Tsec = get_turf(src)
 
 	var/obj/item/secbot_assembly/Sa = new /obj/item/secbot_assembly(Tsec)
 	Sa.build_step = 1
-	Sa.overlays += image('icons/obj/aibots.dmi', "hs_hole")
+	Sa.add_overlay(image('icons/obj/aibots.dmi', "hs_hole"))
 	Sa.created_name = name
 	new /obj/item/assembly/prox_sensor(Tsec)
 	new used_weapon(Tsec)
@@ -419,7 +426,7 @@
 	s.set_up(3, 1, src)
 	s.start()
 
-	new /obj/effect/decal/cleanable/blood/oil(Tsec)
+	new /obj/effect/debris/cleanable/blood/oil(Tsec)
 	qdel(src)
 
 /mob/living/bot/secbot/proc/target_name(mob/living/T)
@@ -429,7 +436,7 @@
 	return "unidentified lifeform"
 
 /mob/living/bot/secbot/proc/check_threat(var/mob/living/M)
-	if(!M || !istype(M) || M.stat == DEAD || src == M)
+	if(!M || !istype(M) || M.stat == DEAD || src == M || (isslime(M) && M.incapacitated()))
 		threat = 0
 
 	else if(emagged && !M.incapacitated()) //check incapacitated so emagged secbots don't keep attacking the same target forever
@@ -454,9 +461,8 @@
 	if(S.secured)
 		qdel(S)
 		var/obj/item/secbot_assembly/A = new /obj/item/secbot_assembly
-		user.put_in_hands(A)
+		user.put_in_hands_or_drop(A)
 		to_chat(user, "You add the signaler to the helmet.")
-		user.drop_from_inventory(src)
 		qdel(src)
 	else
 		return
@@ -467,8 +473,8 @@
 	icon = 'icons/obj/aibots.dmi'
 	icon_state = "helmet_signaler"
 	item_icons = list(
-			slot_l_hand_str = 'icons/mob/items/lefthand_hats.dmi',
-			slot_r_hand_str = 'icons/mob/items/righthand_hats.dmi',
+			SLOT_ID_LEFT_HAND = 'icons/mob/items/lefthand_hats.dmi',
+			SLOT_ID_RIGHT_HAND = 'icons/mob/items/righthand_hats.dmi',
 			)
 	item_state = "helmet"
 	var/build_step = 0
@@ -480,27 +486,28 @@
 		var/obj/item/weldingtool/WT = W
 		if(WT.remove_fuel(0, user))
 			build_step = 1
-			overlays += image('icons/obj/aibots.dmi', "hs_hole")
+			add_overlay(image('icons/obj/aibots.dmi', "hs_hole"))
 			to_chat(user, "You weld a hole in \the [src].")
 
 	else if(isprox(W) && (build_step == 1))
-		user.drop_item()
+		if(!user.attempt_insert_item_for_installation(W, src))
+			return
 		build_step = 2
 		to_chat(user, "You add \the [W] to [src].")
-		overlays += image('icons/obj/aibots.dmi', "hs_eye")
+		add_overlay(image('icons/obj/aibots.dmi', "hs_eye"))
 		name = "helmet/signaler/prox sensor assembly"
-		qdel(W)
 
 	else if((istype(W, /obj/item/robot_parts/l_arm) || istype(W, /obj/item/robot_parts/r_arm) || (istype(W, /obj/item/organ/external/arm) && ((W.name == "robotic right arm") || (W.name == "robotic left arm")))) && build_step == 2)
-		user.drop_item()
+		if(!user.attempt_insert_item_for_installation(W, src))
+			return
 		build_step = 3
 		to_chat(user, "You add \the [W] to [src].")
 		name = "helmet/signaler/prox sensor/robot arm assembly"
-		overlays += image('icons/obj/aibots.dmi', "hs_arm")
-		qdel(W)
+		add_overlay(image('icons/obj/aibots.dmi', "hs_arm"))
 
 	else if(istype(W, /obj/item/melee/baton) && build_step == 3)
-		user.drop_item()
+		if(!user.attempt_insert_item_for_installation(W, src))
+			return
 		to_chat(user, "You complete the Securitron! Beep boop.")
 		if(istype(W, /obj/item/melee/baton/slime))
 			var/mob/living/bot/secbot/slime/S = new /mob/living/bot/secbot/slime(get_turf(src))
@@ -508,7 +515,6 @@
 		else
 			var/mob/living/bot/secbot/S = new /mob/living/bot/secbot(get_turf(src))
 			S.name = created_name
-		qdel(W)
 		qdel(src)
 
 	else if(istype(W, /obj/item/pen))

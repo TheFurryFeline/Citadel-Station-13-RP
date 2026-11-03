@@ -3,15 +3,19 @@
 	icon = 'icons/obj/objects.dmi'
 	desc = "FUCK FUCK FUCK AAAHHH"
 	icon_state = "bhole3"
-	opacity = 1
-	unacidable = 1
-	density = 0
-	anchored = 1
+	opacity = TRUE
+	integrity_flags = INTEGRITY_INDESTRUCTIBLE | INTEGRITY_ACIDPROOF | INTEGRITY_FIREPROOF | INTEGRITY_LAVAPROOF
+	density = FALSE
+	anchored = TRUE
 	var/process_step = 0
 
 /obj/effect/bhole/Initialize(mapload)
 	. = ..()
-	START_PROCESSING(SSfastprocess, src)
+	START_PROCESSING(SSprocess_5fps, src)
+
+/obj/effect/bhole/Destroy()
+	STOP_PROCESSING(SSprocess_5fps, src)
+	return ..()
 
 /obj/effect/bhole/process()
 	if(!isturf(loc))
@@ -71,11 +75,11 @@
 	var/turf/T = locate(x, y, z)
 	if(isnull(T))	return
 
-	//Pulling and/or ex_act-ing movable atoms in that turf
+	//Pulling and/or legacy_ex_act-ing movable atoms in that turf
 	if( prob(pull_chance) )
 		for(var/obj/O in T.contents)
 			if(O.anchored)
-				O.ex_act(ex_act_force)
+				LEGACY_EX_ACT(O, ex_act_force, null)
 			else
 				step_towards(O,src)
 		for(var/mob/living/M in T.contents)

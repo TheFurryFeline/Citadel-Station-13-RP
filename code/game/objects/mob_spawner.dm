@@ -7,6 +7,7 @@
 	icon = 'icons/effects/effects.dmi'
 	icon_state = "rift"
 	anchored = 1
+	integrity_flags = INTEGRITY_INDESTRUCTIBLE
 
 	var/last_spawn = 0
 	var/spawn_delay = 10 MINUTES
@@ -19,9 +20,6 @@
 	var/total_spawns = -1 //Total mob spawns, over all time, -1 for no limiteee
 	var/simultaneous_spawns = 3 //Max spawned mobs active at one time
 	var/mob_faction
-
-	var/destructible = 0
-	var/health = 50
 
 	var/list/spawned_mobs = list()
 
@@ -40,6 +38,11 @@
 /obj/structure/mob_spawner/process()
 	if(!can_spawn())
 		return
+	for(var/mob/M as anything in spawned_mobs)
+		if(!istype(M))
+			spawned_mobs -= M
+		if(QDELETED(M))
+			spawned_mobs -= M
 	var/chosen_mob = choose_spawn()
 	if(chosen_mob)
 		do_spawn(chosen_mob)
@@ -66,32 +69,8 @@
 	if(total_spawns > 0)
 		total_spawns--
 	if(mob_faction)
-		L.faction = mob_faction
+		L.set_iff_factions(mob_faction)
 	return L
-
-/obj/structure/mob_spawner/proc/get_death_report(var/mob/living/L)
-	if(L in spawned_mobs)
-		spawned_mobs.Remove(L)
-
-/obj/structure/mob_spawner/attackby(var/obj/item/I, var/mob/living/user)
-	if(!I.force || I.flags & NOBLUDGEON || !destructible)
-		return
-
-	user.setClickCooldown(DEFAULT_ATTACK_COOLDOWN)
-	user.do_attack_animation(src)
-	visible_message("<span class='warning'>\The [src] has been [I.attack_verb.len ? "[pick(I.attack_verb)]":"attacked"] with \the [I] by [user].</span>")
-	take_damage(I.force)
-
-/obj/structure/mob_spawner/bullet_act(var/obj/item/projectile/Proj)
-	..()
-	if(destructible)
-		take_damage(Proj.get_structure_damage())
-
-/obj/structure/mob_spawner/take_damage(var/damage)
-	health -= damage
-	if(health <= 0)
-		visible_message("<span class='warning'>\The [src] breaks apart!</span>")
-		qdel(src)
 
 /obj/structure/mob_spawner/clear_zlevel/can_spawn()
 	if(!..())
@@ -99,7 +78,7 @@
 	var/turf/T = get_turf(src)
 	if(!T)
 		return 0
-	for(var/mob/living/L in player_list)
+	for(var/mob/living/L in GLOB.player_list)
 		var/turf/L_T
 		if(L.stat == DEAD)
 			continue
@@ -124,7 +103,7 @@ It also makes it so a ghost wont know where all the goodies/mobs are.
 	if(world.time > last_spawn + spawn_delay)
 		var/turf/mainloc = get_turf(src)
 		for(var/mob/living/A in range(range,mainloc))
-			if ((A.faction != mob_faction) && (A.move_speed < 12))
+			if (((!mob_faction || !A.has_iff_faction(mob_faction))) && (A.move_speed < 12))
 				var/chosen_mob = choose_spawn()
 				if(chosen_mob)
 					do_spawn(chosen_mob)
@@ -132,6 +111,71 @@ It also makes it so a ghost wont know where all the goodies/mobs are.
 //////////////
 // Spawners //
 /////////////
+
+//Non-Scanners
+/obj/structure/mob_spawner/goliath
+	name = "Deep Warrens Rift"
+	desc = "This hole leads deep underground. Although possibly large enough for you to enter, something seems to compel you not to. Occasionally, a deep, choral rumbling can be heard far below."
+	icon_state = "tunnel_hole"
+	spawn_delay = 20 MINUTES
+	simultaneous_spawns = 1
+	mob_faction = MOB_IFF_FACTION_BIND_TO_MAP
+	total_spawns = 6
+	integrity_flags = NONE
+	anchored = 1
+	integrity = 500
+	spawn_types = list(
+	/mob/living/simple_mob/animal/goliath = 100
+	)
+
+/obj/structure/mob_spawner/gutshank
+	name = "Gutshank Hive"
+	desc = "This telltale pile of debris and hardened sand marks this as the entrance to a Gutshank hive."
+	icon_state = "eggy_tunnel"
+	spawn_delay = 10 MINUTES
+	simultaneous_spawns = 3
+	mob_faction = MOB_IFF_FACTION_BIND_TO_MAP
+	total_spawns = 12
+	anchored = 1
+	integrity_flags = NONE
+	integrity = 400
+	spawn_types = list(
+	/mob/living/simple_mob/animal/gutshank = 100
+	)
+
+/obj/structure/mob_spawner/stormdrifter
+	name = "Violent Downdraft"
+	desc = "The air here seems especially hot. A swirling wind agitates the ash and sand, kicking up eddies and small dust devils."
+	icon_state = "punch"
+	spawn_delay = 10 MINUTES
+	simultaneous_spawns = 6
+	mob_faction = MOB_IFF_FACTION_BIND_TO_MAP
+	total_spawns = 12
+	anchored = 1
+	integrity_flags = NONE
+	integrity = 1000
+	spawn_types = list(
+	/mob/living/simple_mob/animal/stormdrifter = 60,
+	/mob/living/simple_mob/animal/stormdrifter/bull = 30
+	)
+
+/obj/structure/mob_spawner/sandsifter
+	name = "Sand Sifter Colony"
+	desc = "A pile of rocks and other debris sand sifters often nest in."
+	icon = 'icons/obj/lavaland/lavaland_flora.dmi'
+	icon_state = "snails"
+	spawn_delay = 5 MINUTES
+	simultaneous_spawns = 8
+	mob_faction = MOB_IFF_FACTION_BIND_TO_MAP
+	total_spawns = 36
+	anchored = 1
+	integrity_flags = NONE
+	integrity = 100
+	spawn_types = list(
+	/mob/living/simple_mob/animal/sandsifter = 100
+	)
+
+//Scanners
 /obj/structure/mob_spawner/scanner/corgi
 	name = "Corgi Lazy Spawner"
 	desc = "This is a proof of concept, not sure why you would use this one"
@@ -144,8 +188,8 @@ It also makes it so a ghost wont know where all the goodies/mobs are.
 
 	simultaneous_spawns = 5
 	range = 7
-	destructible = 1
-	health = 200
+	integrity_flags = NONE
+	integrity = 200
 	total_spawns = 100
 
 /obj/structure/mob_spawner/scanner/wild_animals
@@ -155,7 +199,7 @@ It also makes it so a ghost wont know where all the goodies/mobs are.
 	simultaneous_spawns = 1
 	mob_faction = "wild animal"
 	total_spawns = -1
-	destructible = 0
+	integrity_flags = INTEGRITY_INDESTRUCTIBLE
 	anchored = 1
 	invisibility = 101
 	spawn_types = list(
@@ -172,16 +216,15 @@ It also makes it so a ghost wont know where all the goodies/mobs are.
 	simultaneous_spawns = 1
 	mob_faction = "xeno"
 	total_spawns = -1
-	destructible = 1
-	health = 50
+	integrity_flags = NONE
+	integrity = 50
 	anchored = 1
 	icon = 'icons/screen/actions/actions.dmi'
 	icon_state = "alien_egg"
 	spawn_types = list(
-	/mob/living/simple_mob/animal/space/alien/drone = 20,
-	/mob/living/simple_mob/animal/space/alien = 10,
-	/mob/living/simple_mob/animal/space/alien/sentinel = 5,
-	/mob/living/simple_mob/animal/space/alien/queen = 1
+	/mob/living/simple_mob/animal/space/xenomorph/drone = 20,
+	/mob/living/simple_mob/animal/space/xenomorph/warrior = 10,
+	/mob/living/simple_mob/animal/space/xenomorph/vanguard = 5
 	)
 
 /obj/structure/mob_spawner/scanner/xenos/royal
@@ -191,14 +234,11 @@ It also makes it so a ghost wont know where all the goodies/mobs are.
 	simultaneous_spawns = 1
 	mob_faction = "xeno"
 	total_spawns = 1
-	destructible = 1
-	health = 50
+	integrity_flags = NONE
+	integrity = 50
 	anchored = 1
 	icon = 'icons/screen/actions/actions.dmi'
 	icon_state = "alien_egg"
-	spawn_types = list(
-	/mob/living/simple_mob/animal/space/alien/queen = 5
-	)
 
 ////////////////////////////////////
 //Invisible mob spawner. This one spawns mobs until depleted. Often used in caves.
@@ -252,7 +292,7 @@ It also makes it so a ghost wont know where all the goodies/mobs are.
 		my_mob.low_priority = TRUE
 
 		if(faction)
-			my_mob.faction = faction
+			my_mob.set_iff_factions(faction)
 
 		if(atmos_comp)
 			var/turf/T = get_turf(src)
@@ -262,14 +302,14 @@ It also makes it so a ghost wont know where all the goodies/mobs are.
 				my_mob.maxbodytemp = env.temperature * 1.2
 
 				var/list/gaslist = env.gas
-				my_mob.min_oxy = gaslist[/datum/gas/oxygen] * 0.8
-				my_mob.min_tox = gaslist[/datum/gas/phoron] * 0.8
-				my_mob.min_n2 = gaslist[/datum/gas/nitrogen] * 0.8
-				my_mob.min_co2 = gaslist[/datum/gas/carbon_dioxide] * 0.8
-				my_mob.max_oxy = gaslist[/datum/gas/oxygen] * 1.2
-				my_mob.max_tox = gaslist[/datum/gas/phoron] * 1.2
-				my_mob.max_n2 = gaslist[/datum/gas/nitrogen] * 1.2
-				my_mob.max_co2 = gaslist[/datum/gas/carbon_dioxide] * 1.2
+				my_mob.min_oxy = gaslist[GAS_ID_OXYGEN] * 0.8
+				my_mob.min_tox = gaslist[GAS_ID_PHORON] * 0.8
+				my_mob.min_n2 = gaslist[GAS_ID_NITROGEN] * 0.8
+				my_mob.min_co2 = gaslist[GAS_ID_CARBON_DIOXIDE] * 0.8
+				my_mob.max_oxy = gaslist[GAS_ID_OXYGEN] * 1.2
+				my_mob.max_tox = gaslist[GAS_ID_PHORON] * 1.2
+				my_mob.max_n2 = gaslist[GAS_ID_NITROGEN] * 1.2
+				my_mob.max_co2 = gaslist[GAS_ID_CARBON_DIOXIDE] * 1.2
 		return
 	else
 		STOP_PROCESSING(SSobj, src)
@@ -354,32 +394,30 @@ It also makes it so a ghost wont know where all the goodies/mobs are.
 	name = "Alien Spawner"
 	prob_fall = 10
 	mobs_to_pick_from = list(
-		/mob/living/simple_mob/animal/space/alien = 1
+		/mob/living/simple_mob/animal/space/xenomorph/drone = 1
 	)
 
 /obj/mob_spawner/alien/easy
 	name = "Easy Alien Spawner"
 	mobs_to_pick_from = list(
-		/mob/living/simple_mob/animal/space/alien = 1,
-		/mob/living/simple_mob/animal/space/alien/drone = 2,
-		/mob/living/simple_mob/animal/space/alien/sentinel = 1,
+		/mob/living/simple_mob/animal/space/xenomorph/warrior = 1,
+		/mob/living/simple_mob/animal/space/xenomorph/drone = 2,
+		/mob/living/simple_mob/animal/space/xenomorph/neurotoxin_spitter = 1,
 	)
 
 /obj/mob_spawner/alien/medium
 	name = "Medium Alien Spawner"
 	mobs_to_pick_from = list(
-		/mob/living/simple_mob/animal/space/alien = 2,
-		/mob/living/simple_mob/animal/space/alien/drone = 3,
-		/mob/living/simple_mob/animal/space/alien/sentinel = 2,
-		/mob/living/simple_mob/animal/space/alien/sentinel/praetorian = 1
+		/mob/living/simple_mob/animal/space/xenomorph/warrior = 2,
+		/mob/living/simple_mob/animal/space/xenomorph/drone = 3,
+		/mob/living/simple_mob/animal/space/xenomorph/neurotoxin_spitter = 2,
 	)
 
 /obj/mob_spawner/alien/hard
 	name = "Hard Alien Spawner"
 	mobs_to_pick_from = list(
-		/mob/living/simple_mob/animal/space/alien = 4,
-		/mob/living/simple_mob/animal/space/alien/sentinel = 4,
-		/mob/living/simple_mob/animal/space/alien/sentinel/praetorian = 2
+		/mob/living/simple_mob/animal/space/xenomorph/warrior = 4,
+		/mob/living/simple_mob/animal/space/xenomorph/acid_spitter = 4,
 	)
 
 /obj/structure/mob_spawner/scanner/corgi
@@ -394,8 +432,8 @@ It also makes it so a ghost wont know where all the goodies/mobs are.
 
 	simultaneous_spawns = 5
 	range = 7
-	destructible = 1
-	health = 200
+	integrity_flags = NONE
+	integrity = 200
 	total_spawns = 100
 
 /obj/structure/mob_spawner/scanner/wild_animals
@@ -405,7 +443,7 @@ It also makes it so a ghost wont know where all the goodies/mobs are.
 	simultaneous_spawns = 1
 	mob_faction = "wild animal"
 	total_spawns = -1
-	destructible = 0
+	integrity_flags = INTEGRITY_INDESTRUCTIBLE
 	anchored = 1
 	invisibility = 101
 	spawn_types = list(
@@ -422,16 +460,15 @@ It also makes it so a ghost wont know where all the goodies/mobs are.
 	simultaneous_spawns = 1
 	mob_faction = "xeno"
 	total_spawns = -1
-	destructible = 1
-	health = 50
+	integrity_flags = NONE
+	integrity = 50
 	anchored = 1
 	icon = 'icons/screen/actions/actions.dmi'
 	icon_state = "alien_egg"
 	spawn_types = list(
-	/mob/living/simple_mob/animal/space/alien/drone = 20,
-	/mob/living/simple_mob/animal/space/alien = 10,
-	/mob/living/simple_mob/animal/space/alien/sentinel = 5,
-	/mob/living/simple_mob/animal/space/alien/queen = 1
+	/mob/living/simple_mob/animal/space/xenomorph/drone = 20,
+	/mob/living/simple_mob/animal/space/xenomorph/warrior = 10,
+	/mob/living/simple_mob/animal/space/xenomorph/neurotoxin_spitter = 5,
 	)
 
 /obj/structure/mob_spawner/scanner/xenos/royal
@@ -441,11 +478,8 @@ It also makes it so a ghost wont know where all the goodies/mobs are.
 	simultaneous_spawns = 1
 	mob_faction = "xeno"
 	total_spawns = 1
-	destructible = 1
-	health = 50
+	integrity_flags = NONE
+	integrity = 50
 	anchored = 1
 	icon = 'icons/screen/actions/actions.dmi'
 	icon_state = "alien_egg"
-	spawn_types = list(
-	/mob/living/simple_mob/animal/space/alien/queen = 5,
-	)

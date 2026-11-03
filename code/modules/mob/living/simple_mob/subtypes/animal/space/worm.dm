@@ -12,9 +12,10 @@
 
 	maxHealth = 200
 	health = 200
-	movement_cooldown = 0
+	movement_base_speed = 7
+	movement_sound = 'sound/effects/sand_step.ogg'
 
-	faction = "worm"
+	iff_factions = MOB_IFF_FACTION_WORM
 
 	status_flags = 0
 	universal_speak = 0
@@ -29,7 +30,7 @@
 
 	attacktext = list("slammed")
 
-	ai_holder_type = /datum/ai_holder/simple_mob/inert
+	ai_holder_type = /datum/ai_holder/polaris/simple_mob/inert //Segments dont need AI
 
 	mob_class = MOB_CLASS_ABERRATION	// It's a monster.
 
@@ -67,7 +68,7 @@
 	process similar to plant photosynthesis, although this is yet to be confirmed. \
 	The curious nature of the Space Worm's biology has made the capture and study \
 	of corpses difficult. Samples and scans are considered especially valuable."
-	value = CATALOGUER_REWARD_MEDIUM
+	value = CATALOGUER_REWARD_HARD
 
 /mob/living/simple_mob/animal/space/space_worm/head
 	name = "space worm"
@@ -82,8 +83,8 @@
 
 	hovering = TRUE
 
-	melee_damage_lower = 10
-	melee_damage_upper = 25
+	legacy_melee_damage_lower = 10
+	legacy_melee_damage_upper = 25
 	attack_sharp = TRUE
 	attack_edge = TRUE
 	attack_armor_pen = 30
@@ -92,6 +93,18 @@
 	animate_movement = SLIDE_STEPS
 
 	var/segment_count = 6
+
+	ai_holder_type = /datum/ai_holder/polaris/simple_mob/worm
+
+/datum/ai_holder/polaris/simple_mob/worm
+	hostile = TRUE
+	retaliate = TRUE
+	cooperative = TRUE // Worm teammates
+	returns_home = FALSE // Hungry, not territorial
+	can_flee = FALSE
+	speak_chance = 1 // Nothing until a saylist is added
+	wander = TRUE
+	base_wander_delay = 3 // Lil faster idle wandering
 
 /mob/living/simple_mob/animal/space/space_worm/head/severed
 	segment_count = 0
@@ -130,7 +143,7 @@
 			var/mob/living/simple_mob/animal/space/space_worm/newSegment = new segment_type(loc)
 			current.Attach(newSegment)
 			current = newSegment
-			current.faction = faction
+			current.copy_iff_factions(src)
 
 /mob/living/simple_mob/animal/space/space_worm/head/verb/toggle_devour()
 	set name = "Toggle Feeding"
@@ -151,9 +164,10 @@
 	open_maw = state
 	if(open_maw)
 		time_maw_opened = world.time
-		movement_cooldown = initial(movement_cooldown) + 1.5
+		movement_base_speed = movement_base_speed - 1.5
 	else
-		movement_cooldown = initial(movement_cooldown)
+		movement_base_speed = initial(movement_base_speed)
+	update_movespeed_base()
 	update_icon()
 
 /mob/living/simple_mob/animal/space/space_worm/death()
@@ -196,7 +210,7 @@
 
 	if(istype(mover, /mob/living/simple_mob/animal/space/space_worm))	// Worms don't run over worms. That's weird. And also really annoying.
 		return TRUE
-	else if(src.stat == DEAD && !istype(mover, /obj/item/projectile))	// Projectiles need to do their normal checks.
+	else if(src.stat == DEAD && !istype(mover, /obj/projectile))	// Projectiles need to do their normal checks.
 		return TRUE
 	return ..()
 
@@ -267,7 +281,7 @@
 /mob/living/simple_mob/animal/space/space_worm/proc/AttemptToEat(var/atom/target)
 	if(istype(target,/turf/simulated/wall))
 		var/turf/simulated/wall/W = target
-		if((!W.reinf_material && do_after(src, 5 SECONDS)) || do_after(src, 10 SECONDS)) // 10 seconds for an R-wall, 5 seconds for a normal one.
+		if((!W.material_reinf && do_after(src, 5 SECONDS)) || do_after(src, 10 SECONDS)) // 10 seconds for an R-wall, 5 seconds for a normal one.
 			if(target)
 				W.dismantle_wall()
 				return 1
@@ -276,7 +290,7 @@
 			var/atom/movable/objectOrMob = target
 			if(istype(objectOrMob, /obj/machinery/door))	// Doors and airlocks take time based on their durability and our damageo.
 				var/obj/machinery/door/D = objectOrMob
-				var/total_hits = max(2, round(D.maxhealth / (2 * melee_damage_upper)))
+				var/total_hits = max(2, round(D.integrity_max / (5 * legacy_melee_damage_upper)))
 
 				for(var/I = 1 to total_hits)
 
@@ -284,14 +298,14 @@
 						objectOrMob = null
 						break
 
-					if(do_after(src, 5))
+					if(do_after(src, 5, D))
 						D.visible_message("<span class='danger'>Something crashes against \the [D]!</span>")
-						D.take_damage(2 * melee_damage_upper)
+						D.inflict_atom_damage(5 * legacy_melee_damage_upper)
 					else
 						objectOrMob = null
 						break
 
-					if(D && (D.stat & BROKEN|NOPOWER))
+					if(D && (D.machine_stat & BROKEN|NOPOWER))
 						D.open(TRUE)
 						break
 
@@ -309,7 +323,7 @@
 					EF.visible_message("<span class='danger'>\The [EF] reverberates as it returns to normal.</span>")
 
 			if(objectOrMob)
-				objectOrMob.update_nearby_tiles(need_rebuild=1)
+				objectOrMob.update_nearby_tiles()
 				objectOrMob.forceMove(src)
 				return 1
 
@@ -365,9 +379,9 @@
 						var/mob/living/carbon/C = L
 						var/damage_cycles = rand(3, 5)
 						for(var/I = 0, I < damage_cycles, I++)
-							C.apply_damage(damage = rand(10,20), damagetype = BIOACID, def_zone = pick(BP_ALL))
+							C.apply_damage(damage = rand(10,20), damagetype = DAMAGE_TYPE_BIOACID, def_zone = pick(BP_ALL))
 					else
-						L.apply_damage(damage = rand(10,60), damagetype = BIOACID)
+						L.apply_damage(damage = rand(10,60), damagetype = DAMAGE_TYPE_BIOACID)
 				continue
 
 	DumpStomach()
@@ -391,7 +405,7 @@
 
 /mob/living/simple_mob/animal/space/space_worm/proc/update_body_faction()
 	if(next)	// Keep us on the same page, here.
-		faction = next.faction
+		copy_iff_factions(next)
 	if(previous)
 		previous.update_body_faction()
 		return 1
@@ -403,7 +417,6 @@
 	name = "meat"
 	desc = "A chunk of pulsating meat."
 	icon_state = "wormmeat"
-	health = 180
 	filling_color = "#551A8B"
 	center_of_mass = list("x"=16, "y"=14)
 
@@ -425,7 +438,7 @@
 		/obj/random/contraband = 3,
 		/obj/random/unidentified_medicine/old_medicine = 7,
 		/obj/item/strangerock = 3,
-		/obj/item/ore/phoron = 7,
+		/obj/item/stack/ore/phoron = 7,
 		/obj/random/handgun = 1,
 		/obj/random/toolbox = 4,
 		/obj/random/drinkbottle = 5

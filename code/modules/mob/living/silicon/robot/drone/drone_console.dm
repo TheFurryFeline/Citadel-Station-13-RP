@@ -3,7 +3,7 @@
 	desc = "Used to monitor the station's drone population and the assembler that services them."
 	icon_keyboard = "power_key"
 	icon_screen = "generic"
-	req_access = list(access_engine_equip)
+	req_access = list(ACCESS_ENGINEERING_ENGINE)
 	circuit = /obj/item/circuitboard/drone_control
 
 	//Used when pinging drones.
@@ -14,12 +14,12 @@
 /obj/machinery/computer/drone_control/attack_ai(var/mob/user as mob)
 	return src.attack_hand(user)
 
-/obj/machinery/computer/drone_control/ui_status(mob/user)
+/obj/machinery/computer/drone_control/ui_status(mob/user, datum/ui_state/state)
 	if(!allowed(user))
 		return UI_CLOSE
 	return ..()
 
-/obj/machinery/computer/drone_control/attack_hand(var/mob/user as mob)
+/obj/machinery/computer/drone_control/attack_hand(mob/user, datum/event_args/actor/clickchain/e_args)
 	if(..())
 		return
 
@@ -31,12 +31,12 @@
 		ui = new(user, src, "DroneConsole", name)
 		ui.open()
 
-/obj/machinery/computer/drone_control/ui_data(mob/user)
+/obj/machinery/computer/drone_control/ui_data(mob/user, datum/tgui/ui)
 	var/list/data = list()
 
 	var/list/drones = list()
 	for(var/mob/living/silicon/robot/drone/D in GLOB.mob_list)
-		if(!(D.z in GLOB.using_map.get_map_levels(z, TRUE, 0)))
+		if(!(D.z in (LEGACY_MAP_DATUM).get_map_levels(z, TRUE, 0)))
 			continue
 		if(D.foreign_droid)
 			continue
@@ -45,7 +45,7 @@
 			"name" = D.real_name,
 			"active" = D.stat != 2,
 			"charge" = D.cell.charge,
-			"maxCharge" = D.cell.maxcharge,
+			"maxCharge" = D.cell.max_charge,
 			"loc" = "[get_area(D)]",
 			"ref" = "\ref[D]",
 		)))
@@ -59,7 +59,7 @@
 
 	return data
 
-/obj/machinery/computer/drone_control/ui_act(action, params)
+/obj/machinery/computer/drone_control/ui_act(action, list/params, datum/tgui/ui, datum/ui_state/state, datum/event_args/actor/actor)
 	if(..())
 		return TRUE
 
@@ -74,7 +74,7 @@
 
 		if("ping")
 			to_chat(usr, SPAN_NOTICE("You issue a maintenance request for all active drones, highlighting [drone_call_area]."))
-			for(var/mob/living/silicon/robot/drone/D in player_list)
+			for(var/mob/living/silicon/robot/drone/D in GLOB.player_list)
 				if(D.stat == 0)
 					to_chat(D, "-- Maintenance drone presence requested in: [drone_call_area].")
 
@@ -99,7 +99,7 @@
 				return
 
 			for(var/obj/machinery/drone_fabricator/fab in oview(3,src))
-				if(fab.stat & NOPOWER)
+				if(fab.machine_stat & NOPOWER)
 					continue
 
 				dronefab = fab

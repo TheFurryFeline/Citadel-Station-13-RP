@@ -3,7 +3,8 @@
 	desc = "A handy little spring-loaded trap for catching pesty rodents."
 	icon_state = "mousetrap"
 	origin_tech = list(TECH_COMBAT = 1)
-	matter = list(MAT_STEEL = 100)
+	materials_base = list(MAT_STEEL = 100)
+	belt_storage_class = BELT_CLASS_SMALL
 	var/armed = 0
 
 
@@ -30,15 +31,14 @@
 			if("feet")
 				if(!H.shoes)
 					affecting = H.get_organ(pick("l_leg", "r_leg"))
-					H.Weaken(3)
+					H.afflict_paralyze(20 * 3)
 			if("l_hand", "r_hand")
 				if(!H.gloves)
 					affecting = H.get_organ(type)
-					H.Stun(3)
-		if(affecting)
-			if(affecting.take_damage(1, 0))
-				H.UpdateDamageIcon()
-			H.updatehealth()
+					H.afflict_stun(20 * 3)
+		affecting?.inflict_bodypart_damage(
+			brute = 1,
+		)
 	else if(ismouse(target))
 		var/mob/living/simple_mob/animal/passive/mouse/M = target
 		visible_message("<font color='red'><b>SPLAT!</b></font>")
@@ -49,13 +49,14 @@
 	update_icon()
 	pulse(0)
 
-/obj/item/assembly/mousetrap/attack_self(var/mob/living/user)
+/obj/item/assembly/mousetrap/attack_self(mob/user, datum/event_args/actor/actor)
 	if(!armed)
 		to_chat(user, "<span class='notice'>You arm [src].</span>")
 	else
-		if((CLUMSY in user.mutations) && prob(50))
+		if((MUTATION_CLUMSY in user.mutations) && prob(50))
 			var/which_hand = "l_hand"
-			if(!user.hand)
+			var/mob/living/carbon/human/H = ishuman(user)? user : null
+			if(!(H?.active_hand % 2))
 				which_hand = "r_hand"
 			triggered(user, which_hand)
 			user.visible_message("<span class='warning'>[user] accidentally sets off [src], breaking their fingers.</span>", \
@@ -68,12 +69,13 @@
 	playsound(user.loc, 'sound/weapons/handcuffs.ogg', 30, 1, -3)
 
 
-/obj/item/assembly/mousetrap/attack_hand(var/mob/living/user)
+/obj/item/assembly/mousetrap/attack_hand(mob/user, datum/event_args/actor/clickchain/e_args)
+	var/mob/living/L = user
+	if(!istype(L))
+		return
 	if(armed)
-		if((CLUMSY in user.mutations) && prob(50))
-			var/which_hand = "l_hand"
-			if(!user.hand)
-				which_hand = "r_hand"
+		if((MUTATION_CLUMSY in user.mutations) && prob(50))
+			var/which_hand = user.active_hand % 2? "l_hand" : "r_hand"
 			triggered(user, which_hand)
 			user.visible_message("<span class='warning'>[user] accidentally sets off [src], breaking their fingers.</span>", \
 								 "<span class='warning'>You accidentally trigger [src]!</span>")
@@ -82,7 +84,7 @@
 
 
 /obj/item/assembly/mousetrap/Crossed(var/atom/movable/AM)
-	if(AM.is_incorporeal())
+	if(AM.is_incorporeal() || AM.is_avoiding_ground())
 		return
 	if(armed)
 		if(ishuman(AM))
@@ -95,20 +97,24 @@
 			triggered(AM)
 	..()
 
+/obj/item/assembly/mousetrap/on_containing_storage_opening(datum/event_args/actor/actor, datum/object_system/storage/storage)
+	. = ..()
 
-/obj/item/assembly/mousetrap/on_found(var/mob/living/finder)
+	var/mob/living/finder = actor.performer
+	if(!istype(finder))
+		return
 	if(armed)
 		finder.visible_message("<span class='warning'>[finder] accidentally sets off [src], breaking their fingers.</span>", \
 							   "<span class='warning'>You accidentally trigger [src]!</span>")
-		triggered(finder, finder.hand ? "l_hand" : "r_hand")
+		triggered(finder, finder.active_hand % 2? "l_hand" : "r_hand")
 		return 1	//end the search!
 	return 0
 
-
-/obj/item/assembly/mousetrap/hitby(var/atom/movable/A)
+/obj/item/assembly/mousetrap/throw_impacted(atom/movable/AM, datum/thrownthing/TT)
+	. = ..()
 	if(!armed)
-		return ..()
-	visible_message("<span class='warning'>[src] is triggered by [A].</span>")
+		return
+	visible_message("<span class='warning'>[src] is triggered by [AM].</span>")
 	triggered(null)
 
 /obj/item/assembly/mousetrap/armed
@@ -118,7 +124,7 @@
 /obj/item/assembly/mousetrap/verb/hide_under()
 	set src in oview(1)
 	set name = "Hide"
-	set category = "Object"
+	set category = VERB_CATEGORY_OBJECT
 
 	if(usr.stat)
 		return

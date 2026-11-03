@@ -1,191 +1,547 @@
-//Beam Datum and effect
+//* This file is explicitly licensed under the MIT license. *//
+//* Copyright (c) 2024 Citadel Station Developers           *//
+
+/**
+ * creates a segmenting beam
+ *
+ * you must delete this beam yourself, unlike legacy beams
+ *
+ * @params
+ * * source - where to draw from
+ * * target - where to draw to
+ * * collider_type - set to a type to create colliders
+ * * icon - beam icon
+ * * icon_state - beam icon state
+ * * emissive_state - emissive overlay to use
+ */
+/proc/create_segmented_beam(atom/source, atom/target, collider_type, icon, icon_state, emissive_state)
+	var/datum/beam/created = new(source, target)
+	if(!isnull(collider_type))
+		created.collider_type = collider_type
+	created.icon = icon
+	created.icon_state = icon_state
+	created.emissive_state = emissive_state
+	created.beam_visual_mode = BEAM_VISUAL_SEGMENTS
+	created.initialize()
+	return created
+
+/**
+ * creates a stretching beam
+ *
+ * you must delete this beam yourself, unlike legacy beams
+ *
+ * @params
+ * * source - where to draw from
+ * * target - where to draw to
+ * * collider_type - set to a type to create colliders
+ * * icon - beam icon
+ * * icon_state - beam icon state
+ * * emissive_state - emissive overlay to use
+ */
+/proc/create_stretched_beam(atom/source, atom/target, collider_type, icon, icon_state, emissive_state)
+	var/datum/beam/created = new(source, target)
+	if(!isnull(collider_type))
+		created.collider_type = collider_type
+	created.icon = icon
+	created.icon_state = icon_state
+	created.emissive_state = emissive_state
+	created.beam_visual_mode = BEAM_VISUAL_STRETCH
+	created.initialize()
+	return created
+
+/**
+ * creates a beam that... doesn't render (lmao)
+ *
+ * you must delete this beam yourself, unlike legacy beams
+ *
+ * @params
+ * * source - where to draw from
+ * * target - where to draw to
+ * * collider_type - set to a type to create colliders
+ */
+/proc/create_particle_beam(atom/source, atom/target, collider_type)
+	var/datum/beam/created = new(source, target)
+	if(!isnull(collider_type))
+		created.collider_type = collider_type
+	created.initialize()
+	return created
+
+/**
+ * linear on-map line drawing datums
+ *
+ * can optionally handle colliders.
+ *
+ * * beam_source, beam_target are both get_turf()'d. it is *your* job to handle whether or not this is valid
+ * * beam drawing is event-driven. it doesn't redraw unless necessary.
+ */
 /datum/beam
-	var/atom/origin = null
-	var/atom/target = null
-	var/list/elements = list()
-	var/icon/base_icon = null
+	//* basics *//
+	/// source
+	var/atom/beam_source
+	/// target
+	var/atom/beam_target
+	/// listener for source
+	var/datum/beam_listener/listener_source
+	/// listener for target
+	var/datum/beam_listener/listener_target
+	/// distance to bias towards target from source
+	var/shift_start_towards_target = 0
+	/// distance to bias towards source from target
+	var/shift_end_towards_source = 0
+	/// do not automatically redraw on things moving
+	var/no_automatic_redraw = FALSE
+
+	//* collision *//
+	/// collider type to use
+	var/collider_type
+	/// registered colliding entities, turf or movable; only made as a list if collision or segment mode is enabled
+	var/list/atom/colliding
+	/// colliders
+	var/list/atom/movable/beam_collider/colliders
+
+	//* segmentation *//
+	/// beam segment holder
+	var/atom/movable/render/beam_segments/segmentation
+	/// beam segment holder
+	var/atom/movable/render/beam_segments/emissive/emissive_segmentation
+
+	//* graphics *//
+	/// graphics mode
+	var/beam_visual_mode
+	/// icon to use in non-particle mode
 	var/icon
-	var/icon_state = "" //icon state of the main segments of the beam
-	var/max_distance = 0
-	var/endtime = 0
-	var/sleep_time = 3
-	var/finished = 0
-	var/target_oldloc = null
-	var/origin_oldloc = null
-	var/static_beam = 0
-	var/beam_type = /obj/effect/ebeam //must be subtype
+	/// state to use in non-particle mode
+	var/icon_state
+	/// emissive state to use in non-particle mode
+	var/emissive_state
+	/// if we are in stretch mode, this is our rendering line
+	var/atom/movable/render/beam_line/line_renderer
+	/// if we are in stretch mode, this is our emissive rendering line
+	var/atom/movable/render/beam_line/emissive/emissive_line_renderer
+	/// if we are in particle mode, this is our renderer
+	var/atom/movable/render/particle/beam_line/particle_renderer
+	/// if we are in particle mode, this is our emissive renderer
+	var/atom/movable/render/particle/beam_line/emissive/emissive_particle_renderer
+	/// if we are in particle mode, this is the particle instance we use.
+	var/particles/particle_reference
+	/// if we are in particle mode, tihs is the emissive particle instance we use.
+	var/particles/emissive_particle_reference
 
-/datum/beam/New(beam_origin,beam_target,beam_icon='icons/effects/beam.dmi',beam_icon_state="b_beam",time=50,maxdistance=10,btype = /obj/effect/ebeam,beam_sleep_time=3)
-	endtime = world.time+time
-	origin = beam_origin
-	origin_oldloc =	get_turf(origin)
-	target = beam_target
-	target_oldloc = get_turf(target)
-	sleep_time = beam_sleep_time
-	if(origin_oldloc == origin && target_oldloc == target)
-		static_beam = 1
-	max_distance = maxdistance
-	base_icon = new(beam_icon,beam_icon_state)
-	icon = beam_icon
-	icon_state = beam_icon_state
-	beam_type = btype
-
-/datum/beam/proc/Start()
-	Draw()
-	while(!finished && origin && target && world.time < endtime && get_dist(origin,target)<max_distance && origin.z == target.z)
-		var/origin_turf = get_turf(origin)
-		var/target_turf = get_turf(target)
-		if(!static_beam && (origin_turf != origin_oldloc || target_turf != target_oldloc))
-			origin_oldloc = origin_turf //so we don't keep checking against their initial positions, leading to endless Reset()+Draw() calls
-			target_oldloc = target_turf
-			Reset()
-			Draw()
-		sleep(sleep_time)
-
-	qdel(src)
-
-/datum/beam/proc/End()
-	finished = TRUE
-
-/datum/beam/proc/Reset()
-	for(var/obj/effect/ebeam/B in elements)
-		qdel(B)
-	elements.Cut()
+/datum/beam/New(atom/source, atom/target)
+	src.beam_source = source
+	src.beam_target = target
+	register()
 
 /datum/beam/Destroy()
-	Reset()
-	target = null
-	origin = null
+	unregister()
+	beam_source = null
+	beam_target = null
+	// get rid of emissives first
+	QDEL_NULL(emissive_line_renderer)
+	QDEL_NULL(line_renderer)
+	QDEL_NULL(emissive_particle_renderer)
+	QDEL_NULL(particle_renderer)
+	QDEL_NULL(emissive_segmentation)
+	QDEL_NULL(segmentation)
+	// get rid of colliders
+	QDEL_LIST_NULL(colliders)
 	return ..()
 
-/datum/beam/proc/Draw()
-	if(QDELETED(target) || QDELETED(origin))
-		qdel(src)
-		return
+/datum/beam/proc/register()
+	listener_source = new(src, beam_source)
+	listener_target = new(src, beam_target)
 
-	var/Angle = round(Get_Angle(origin,target))
+/datum/beam/proc/unregister()
+	QDEL_NULL(listener_source)
+	QDEL_NULL(listener_target)
 
-	var/matrix/rot_matrix = matrix()
-	rot_matrix.Turn(Angle)
+/datum/beam/proc/initialize()
+	// for any modes with emissives, the emissive is shoved into the main renderer
+	// and the entire thing is KT-group'd together.
+	switch(beam_visual_mode)
+		if(BEAM_VISUAL_SEGMENTS)
+			segmentation = new
+			segmentation.icon = icon
+			if(!isnull(emissive_state))
+				emissive_segmentation = new(segmentation)
+				emissive_segmentation.icon = icon
+		if(BEAM_VISUAL_STRETCH)
+			line_renderer = new
+			line_renderer.icon = icon
+			line_renderer.icon_state = icon_state
+			if(!isnull(emissive_state))
+				emissive_line_renderer = new(line_renderer)
+				emissive_line_renderer.icon = icon
+				emissive_line_renderer.icon_state = emissive_state
 
-	//Translation vector for origin and target
-	var/DX = (32*target.x+target.pixel_x)-(32*origin.x+origin.pixel_x)
-	var/DY = (32*target.y+target.pixel_y)-(32*origin.y+origin.pixel_y)
-	var/N = 0
-	var/length = round(sqrt((DX)**2+(DY)**2)) //hypotenuse of the triangle formed by target and origin's displacement
+	if(collider_type)
+		LAZYINITLIST(colliders)
+		LAZYINITLIST(colliding)
 
-	for(N in 0 to length-1 step 32)//-1 as we want < not <=, but we want the speed of X in Y to Z and step X
-		if(QDELETED(src) || finished)
-			break
-		var/obj/effect/ebeam/X = new beam_type(origin_oldloc)
-		X.owner = src
-		elements |= X
+	force_redraw()
 
-		//Assign icon, for main segments it's base_icon, for the end, it's icon+icon_state
-		//cropped by a transparent box of length-N pixel size
-		if(N+32>length)
-			var/icon/II = new(icon, icon_state)
-			II.DrawBox(null,1,(length-N),32,32)
-			X.icon = II
+/datum/beam/proc/force_redraw()
+	var/turf/start = get_turf(beam_source)
+	var/turf/end = get_turf(beam_target)
+	var/spx = 0
+	var/spy = 0
+	var/epx = 0
+	var/epy = 0
+	if(isturf(beam_source.loc))
+		var/atom/movable/movable_source = beam_source
+		spx = movable_source.pixel_x
+		spy = movable_source.pixel_y
+	if(isturf(beam_target.loc))
+		var/atom/movable/movable_target = beam_target
+		epx = movable_target.pixel_x
+		epy = movable_target.pixel_y
+	render(start, spx, spy, end, epx, epy)
+	SEND_SIGNAL(src, COMSIG_BEAM_REDRAW)
+
+/datum/beam/proc/signal_redraw(atom/movable/source, atom/old_loc, dir, forced, list/old_locs, momentum_change)
+	if(ismovable(old_loc))
+		// get old turf
+		var/turf/was_at = get_turf(old_loc)
+		// signal was emitted on an intermediate object instead of top level; drop signals there
+		var/atom/iterating
+		iterating = old_loc
+		do
+			UnregisterSignal(iterating, COMSIG_MOVABLE_MOVED)
+			iterating = iterating.loc
+		while(ismovable(iterating))
+		// and register to the new intermediate object, if any
+		if(ismovable(source.loc))
+			iterating = source.loc
+			do
+				RegisterSignal(iterating, COMSIG_MOVABLE_MOVED, PROC_REF(signal_redraw))
+				iterating = iterating.loc
+			while(ismovable(iterating))
+		// get new turf
+		var/turf/is_at = get_turf(source.loc)
+		// if both turfs are the same, aka we were shifting internally, don't bother redrawing
+		if(was_at == is_at)
+			return
+	// todo: optimize
+	// for now i'm lazy so just do a hard draw instead of a cached draw of some kind
+	force_redraw()
+
+/datum/beam/proc/render(turf/start, start_px, start_py, turf/end, end_px, end_py)
+	// nah.
+	if(start.z != end.z || start == end)
+		switch(beam_visual_mode)
+			if(BEAM_VISUAL_SEGMENTS)
+				segmentation?.loc = emissive_segmentation?.loc = null
+			if(BEAM_VISUAL_STRETCH)
+				line_renderer?.loc = emissive_line_renderer?.loc = null
+		particle_renderer?.loc = null
+		for(var/atom/movable/beam_collider/collider as anything in colliders)
+			collider.move_onto(null)
+		return FALSE
+	// calculate parameters
+	var/dx = ((WORLD_ICON_SIZE * end.x + end_px) - (WORLD_ICON_SIZE * start.x + start_px))
+	var/dy = ((WORLD_ICON_SIZE * end.y + end_py) - (WORLD_ICON_SIZE * start.y + start_py))
+	// cw from north
+	var/angle = arctan(dy, dx)
+	// do biases
+	// todo: is there is a better way to do this
+	if(shift_start_towards_target)
+		var/x_amt = shift_start_towards_target * sin(angle)
+		var/y_amt = shift_start_towards_target * cos(angle)
+		start_px += x_amt
+		start_py += y_amt
+		dx -= x_amt
+		dy -= y_amt
+	if(shift_end_towards_source)
+		var/x_amt = shift_end_towards_source * sin(angle)
+		var/y_amt = shift_end_towards_source * cos(angle)
+		end_px -= x_amt
+		end_py -= y_amt
+		dx -= x_amt
+		dy -= y_amt
+	// dist in pixels
+	var/distance = sqrt(dx ** 2 + dy ** 2)
+	// draw
+	switch(beam_visual_mode)
+		if(BEAM_VISUAL_SEGMENTS)
+			// don't stretch past distance
+			var/steps_required = CEILING(distance / WORLD_ICON_SIZE, 1)
+			// we assume both segment renderers are lockstepped
+			var/requires_update = FALSE
+			if(steps_required > length(segmentation.segment_appearances))
+				requires_update = TRUE
+				var/start_from_pixel = length(segmentation.segment_appearances) * WORLD_ICON_SIZE
+				for(var/i in 1 to steps_required - length(segmentation.segment_appearances))
+					var/image/injecting = image(icon_state = icon_state)
+					injecting.pixel_y = i * WORLD_ICON_SIZE - (WORLD_ICON_SIZE * 0.5) + start_from_pixel
+					segmentation.segment_appearances += injecting
+				if(!isnull(emissive_segmentation))
+					for(var/i in 1 to steps_required - length(emissive_segmentation.segment_appearances))
+						var/image/emissive_injecting = image(icon_state = emissive_state)
+						emissive_injecting.pixel_y = i * WORLD_ICON_SIZE - (WORLD_ICON_SIZE * 0.5) + start_from_pixel
+						emissive_segmentation.segment_appearances += emissive_injecting
+			else if(steps_required < length(segmentation.segment_appearances))
+				requires_update = TRUE
+				segmentation.segment_appearances.len = steps_required
+				emissive_segmentation?.segment_appearances.len = steps_required
+			if(requires_update)
+				segmentation.overlays = segmentation.segment_appearances
+				emissive_segmentation?.overlays = emissive_segmentation?.segment_appearances
+			// calculate matrix
+			var/matrix/transform_to_apply = matrix()
+			// transform as necessary to shrink just enough to cut off extra pixels
+			// todo: please use an alphamask filter on last element maybe, this looks like shit
+			transform_to_apply.Scale(1, distance / (steps_required * WORLD_ICON_SIZE))
+			// rotate
+			transform_to_apply.Turn(angle)
+			// move renders to location
+			segmentation.forceMove(start)
+			segmentation.pixel_x = start_px
+			segmentation.pixel_y = start_py
+			segmentation.transform = transform_to_apply
+		if(BEAM_VISUAL_STRETCH)
+			// calculate matrix
+			var/matrix/transform_to_apply = matrix()
+			// shift up so it's not in the way
+			transform_to_apply.Translate(0, 16)
+			// scale up the now shifted one so we don't have to translate post-scale
+			transform_to_apply.Scale(1, distance / WORLD_ICON_SIZE)
+			// rotate
+			transform_to_apply.Turn(angle)
+			// handle normal render
+			line_renderer.forceMove(start)
+			line_renderer.pixel_x = start_px
+			line_renderer.pixel_y = start_py
+			line_renderer.transform = transform_to_apply
+	// deal with colliders
+	if(!isnull(collider_type))
+		var/list/turf/colliding_turfs = getline(start, end)
+		if(length(colliding_turfs) < colliders)
+			// if more than needed, nullspace the rest but keep them on hand
+			for(var/i in length(colliding_turfs) + 1 to length(colliders))
+				var/atom/movable/beam_collider/collider = colliders[i]
+				collider.move_onto(null)
+		else if(length(colliding_turfs) > colliders)
+			// if less than needed, make new ones but don't collide yet
+			for(var/i in 1 to length(colliding_turfs) - length(colliders))
+				colliders += new /atom/movable/beam_collider(src)
+		// we should be greater-or-equal colliders than turfs now
+		// now-overallocated colliders are ignored and cached in nullspace
+		// this system also enforces deterministic source-to-target propagation as opposed
+		// to non-deterministic orderings.
+		for(var/i in 1 to min(length(colliders), length(colliding_turfs)))
+			var/atom/movable/beam_collider/collider = colliders[i]
+			collider.move_onto(colliding_turfs[i])
+	// deal with particles
+	if(!isnull(particle_renderer))
+		// calculate matrix
+		var/matrix/transform_to_apply = matrix()
+		// rotate
+		transform_to_apply.Turn(angle)
+		// move renders to location
+		particle_renderer.forceMove(start)
+		particle_renderer.pixel_x = start_px
+		particle_renderer.pixel_y = start_py
+		particle_renderer.transform = transform_to_apply
+
+/datum/beam/proc/uncrossed(atom/movable/entity)
+	SHOULD_CALL_PARENT(TRUE)
+	colliding -= entity
+	SEND_SIGNAL(src, COMSIG_BEAM_UNCROSSED, entity)
+
+/datum/beam/proc/crossed(atom/movable/entity)
+	SHOULD_CALL_PARENT(TRUE)
+	colliding += entity
+	SEND_SIGNAL(src, COMSIG_BEAM_CROSSED, entity)
+
+/**
+ * adds a set of particles to this beam
+ *
+ * you have to control the particles yourself
+ *
+ * * the beam assumes that the particles will project in the **north** direction.
+ * * this just makes the beam automatically rotate the particles as necessary.
+ * * if you pass in 'TRUE' as emissive_particle_renderer, emissives will render_source from the main particle system.
+ */
+/datum/beam/proc/set_particles(particles/particle_reference, particles/emissive_particle_reference)
+	if(isnull(particle_renderer))
+		particle_renderer = new
+	particle_renderer.particles = particle_reference
+	if(!isnull(emissive_particle_reference))
+		if(isnull(emissive_particle_renderer))
+			emissive_particle_renderer = new
+		if(emissive_particle_reference == TRUE)
+			particle_renderer.ensure_render_target()
+			emissive_particle_renderer.render_source = particle_renderer.render_target
 		else
-			X.icon = base_icon
-		X.transform = rot_matrix
+			emissive_particle_renderer.particles = emissive_particle_reference
+	else if(!isnull(emissive_particle_renderer))
+		QDEL_NULL(emissive_particle_renderer)
+	force_redraw()
 
-		//Calculate pixel offsets (If necessary)
-		var/Pixel_x
-		var/Pixel_y
-		if(DX == 0)
-			Pixel_x = 0
-		else
-			Pixel_x = round(sin(Angle)+32*sin(Angle)*(N+16)/32)
-		if(DY == 0)
-			Pixel_y = 0
-		else
-			Pixel_y = round(cos(Angle)+32*cos(Angle)*(N+16)/32)
+/**
+ * tl;dr
+ *
+ * we don't track the 'real' top level atom in beam
+ * so this causes problems since component signal registrations are idempotent for a given (target, listening, signal) tuple
+ * we don't want that but that's what makes comsigs efficient
+ *
+ * so this is here because this means /datum/beam isn't the only datum when source / target are part of the same
+ * nested contents tree, avoiding collisions from it
+ */
+/datum/beam_listener
+	/// our beam
+	var/datum/beam/beam
+	/// our target
+	var/atom/target
 
-		//Position the effect so the beam is one continous line
-		var/a
-		if(abs(Pixel_x)>32)
-			a = Pixel_x > 0 ? round(Pixel_x/32) : CEILING(Pixel_x/32, 1)
-			X.x += a
-			Pixel_x %= 32
-		if(abs(Pixel_y)>32)
-			a = Pixel_y > 0 ? round(Pixel_y/32) : CEILING(Pixel_y/32, 1)
-			X.y += a
-			Pixel_y %= 32
+/datum/beam_listener/New(datum/beam/beam, atom/target)
+	src.beam = beam
+	src.target = target
+	register()
 
-		X.pixel_x = Pixel_x
-		X.pixel_y = Pixel_y
-
-		X.on_drawn()
-
-/obj/effect/ebeam
-	mouse_opacity = 0
-	anchored = TRUE
-	var/datum/beam/owner
-
-/obj/effect/ebeam/Destroy()
-	owner = null
+/datum/beam_listener/Destroy()
+	unregister()
 	return ..()
 
-/obj/effect/ebeam/singularity_pull()
-	return
-/obj/effect/ebeam/singularity_act()
-	return
+/datum/beam_listener/proc/register()
+	if(ismovable(target))
+		var/atom/iterating = target
+		do
+			RegisterSignal(iterating, COMSIG_MOVABLE_MOVED, PROC_REF(on_move))
+			iterating = iterating.loc
+		while(ismovable(iterating))
 
-// Called when the beam datum finishes drawing and the ebeam object is placed correctly.
-/obj/effect/ebeam/proc/on_drawn()
-	return
+/datum/beam_listener/proc/unregister()
+	if(ismovable(target))
+		var/atom/iterating = target
+		do
+			UnregisterSignal(iterating, COMSIG_MOVABLE_MOVED)
+			iterating = iterating.loc
+		while(ismovable(iterating))
 
-/obj/effect/ebeam/deadly/Crossed(atom/A)
-	if(A.is_incorporeal())
+/datum/beam_listener/proc/on_move(atom/movable/source, atom/old_loc, dir, forced, list/old_locs, momentum_change)
+	beam.signal_redraw(arglist(args))
+
+//* Segmented Renderers *//
+
+/atom/movable/render/beam_segments
+	SET_APPEARANCE_FLAGS(PIXEL_SCALE | KEEP_TOGETHER)
+	animate_movement = NONE
+
+	/// segments in us
+	var/list/image/segment_appearances = list()
+
+/atom/movable/render/beam_segments/emissive
+	plane = EMISSIVE_PLANE
+
+/atom/movable/render/beam_segments/emissive/Initialize(mapload)
+	ASSERT(istype(loc, /atom/movable/render/beam_segments))
+	loc:vis_contents += src
+	return ..()
+
+/atom/movable/render/beam_segments/emissive/Destroy()
+	ASSERT(istype(loc, /atom/movable/render/beam_segments))
+	loc:vis_contents -= src
+	return ..()
+
+//* Colliders *//
+
+INITIALIZE_IMMEDIATE(/atom/movable/beam_collider)
+/atom/movable/beam_collider
+	atom_flags = ATOM_ABSTRACT
+	animate_movement = NONE
+	mouse_opacity = MOUSE_OPACITY_TRANSPARENT
+	invisibility = INVISIBILITY_ABSTRACT
+
+	/// parent beam
+	var/datum/beam/parent
+
+/atom/movable/beam_collider/Initialize(mapload, datum/beam/parent)
+	SHOULD_CALL_PARENT(FALSE)
+	src.parent = parent
+	atom_flags |= ATOM_INITIALIZED
+	return INITIALIZE_HINT_NORMAL
+
+/atom/movable/beam_collider/Destroy()
+	if(!isnull(parent))
+		// make sure we uncross everything!
+		move_onto(null)
+		parent = null
+	return ..()
+
+/atom/movable/beam_collider/proc/move_onto(turf/where)
+	if(where == loc)
 		return
-	..()
-	A.ex_act(1)
+	for(var/atom/movable/other as anything in loc)
+		if(other == src)
+			continue
+		if(other.atom_flags & ATOM_ABSTRACT)
+			continue
+		parent.uncrossed(other)
+	parent.uncrossed(loc)
+	abstract_move(where)
+	parent.crossed(loc)
+	for(var/atom/movable/other as anything in loc)
+		if(other == src)
+			continue
+		if(other.atom_flags & ATOM_ABSTRACT)
+			continue
+		parent.crossed(other)
 
-// 'Reactive' beam parts do something when touched or stood in.
-/obj/effect/ebeam/reactive
-
-/obj/effect/ebeam/reactive/Initialize(mapload)
-	START_PROCESSING(SSobj, src)
-	return ..()
-
-/obj/effect/ebeam/reactive/Destroy()
-	STOP_PROCESSING(SSobj, src)
-	return ..()
-
-/obj/effect/ebeam/reactive/on_drawn()
-	for(var/A in loc)
-		on_contact(A)
-
-/obj/effect/ebeam/reactive/Crossed(atom/A)
-	if(A.is_incorporeal())
+/atom/movable/beam_collider/Crossed(atom/movable/AM)
+	. = ..()
+	if(AM.atom_flags & (ATOM_ABSTRACT))
 		return
-	..()
-	on_contact(A)
+	parent.crossed(AM)
 
-/obj/effect/ebeam/reactive/process(delta_time)
-	for(var/A in loc)
-		on_contact(A)
+/atom/movable/beam_collider/Uncrossed(atom/movable/AM)
+	. = ..()
+	if(AM.atom_flags & (ATOM_ABSTRACT))
+		return
+	parent.uncrossed(AM)
 
-// Override for things to do when someone touches the beam.
-/obj/effect/ebeam/reactive/proc/on_contact(atom/movable/AM)
-	return
+/atom/movable/beam_collider/Move()
+	return FALSE
 
+/atom/movable/beam_collider/doMove(atom/destination)
+	if(destination == null)
+		return ..()
+	return FALSE
 
-// Shocks things that touch it.
-/obj/effect/ebeam/reactive/electric
-	var/shock_amount = 25 // Be aware that high numbers may stun and result in dying due to not being able to get out of the beam.
+//* Stretched Renderers *//
 
-/obj/effect/ebeam/reactive/electric/on_contact(atom/movable/AM)
-	if(isliving(AM))
-		var/mob/living/L = AM
-		L.inflict_shock_damage(shock_amount)
+/atom/movable/render/beam_line
+	appearance_flags = KEEP_TOGETHER
+	animate_movement = NONE
 
+/atom/movable/render/beam_line/emissive
+	plane = EMISSIVE_PLANE
 
+/atom/movable/render/beam_line/emissive/Initialize(mapload)
+	ASSERT(istype(loc, /atom/movable/render/beam_line))
+	loc:vis_contents += src
+	return ..()
 
-/atom/proc/Beam(atom/BeamTarget,icon_state="b_beam",icon='icons/effects/beam.dmi',time=50, maxdistance=10,beam_type=/obj/effect/ebeam,beam_sleep_time=3)
-	var/datum/beam/newbeam = new(src,BeamTarget,icon,icon_state,time,maxdistance,beam_type,beam_sleep_time)
-	spawn(0)
-		newbeam.Start()
-	return newbeam
+/atom/movable/render/beam_line/emissive/Destroy()
+	ASSERT(istype(loc, /atom/movable/render/beam_line))
+	loc:vis_contents -= src
+	return ..()
+
+//* Particle Renderers *//
+
+/atom/movable/render/particle/beam_line
+	appearance_flags = KEEP_TOGETHER
+	animate_movement = NONE
+
+/atom/movable/render/particle/beam_line/emissive
+	plane = EMISSIVE_PLANE
+
+/atom/movable/render/particle/beam_line/emissive/Initialize(mapload)
+	ASSERT(istype(loc, /atom/movable/render/particle/beam_line))
+	loc:vis_contents += src
+	return ..()
+
+/atom/movable/render/particle/beam_line/emissive/Destroy()
+	ASSERT(istype(loc, /atom/movable/render/particle/beam_line))
+	loc:vis_contents -= src
+	return ..()

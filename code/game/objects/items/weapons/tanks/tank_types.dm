@@ -21,13 +21,12 @@
 
 /obj/item/tank/oxygen/Initialize(mapload)
 	. = ..()
-	air_contents.adjust_gas(/datum/gas/oxygen, (6*ONE_ATMOSPHERE)*volume/(R_IDEAL_GAS_EQUATION*T20C))
+	air_contents.adjust_gas(GAS_ID_OXYGEN, (6*ONE_ATMOSPHERE)*volume/(R_IDEAL_GAS_EQUATION*T20C))
 
-/obj/item/tank/oxygen/examine(mob/user)
+/obj/item/tank/oxygen/examine(mob/user, dist)
 	. = ..()
-	if(air_contents.gas[/datum/gas/oxygen] < 10)
+	if(air_contents.gas[GAS_ID_OXYGEN] < 10)
 		. += "<span class='warning'>The meter on the [src] indicates you are almost out of oxygen!</span>"
-		playsound(usr, 'sound/effects/alert.ogg', 50, 1)
 
 /obj/item/tank/oxygen/yellow
 	desc = "A tank of oxygen, this one is yellow."
@@ -51,8 +50,8 @@
 /obj/item/tank/anesthetic/Initialize(mapload)
 	. = ..()
 
-	air_contents.gas[/datum/gas/oxygen] = (3*ONE_ATMOSPHERE)*70/(R_IDEAL_GAS_EQUATION*T20C) * O2STANDARD
-	air_contents.gas[/datum/gas/nitrous_oxide] = (3*ONE_ATMOSPHERE)*70/(R_IDEAL_GAS_EQUATION*T20C) * N2STANDARD
+	air_contents.gas[GAS_ID_OXYGEN] = (3*ONE_ATMOSPHERE)*70/(R_IDEAL_GAS_EQUATION*T20C) * O2STANDARD
+	air_contents.gas[GAS_ID_NITROUS_OXIDE] = (3*ONE_ATMOSPHERE)*70/(R_IDEAL_GAS_EQUATION*T20C) * N2STANDARD
 	air_contents.update_values()
 
 /*
@@ -64,16 +63,16 @@
 	icon = 'icons/obj/tank_vr.dmi'
 	icon_state = "oxygen"
 
-/obj/item/tank/air/examine(mob/user)
+/obj/item/tank/air/examine(mob/user, dist)
 	. = ..()
-	if(air_contents.gas[/datum/gas/oxygen] < 1 && loc==user)
+	if(air_contents.gas[GAS_ID_OXYGEN] < 1 && loc==user)
 		. += "<span class='danger'>The meter on the [src.name] indicates you are almost out of air!</span>"
 		//user.playsound('sound/effects/alert.ogg')
 
 /obj/item/tank/air/Initialize(mapload)
 	. = ..()
 
-	src.air_contents.adjust_multi(/datum/gas/oxygen, (6*ONE_ATMOSPHERE)*volume/(R_IDEAL_GAS_EQUATION*T20C) * O2STANDARD, /datum/gas/nitrogen, (6*ONE_ATMOSPHERE)*volume/(R_IDEAL_GAS_EQUATION*T20C) * N2STANDARD)
+	src.air_contents.adjust_multi(GAS_ID_OXYGEN, (6*ONE_ATMOSPHERE)*volume/(R_IDEAL_GAS_EQUATION*T20C) * O2STANDARD, GAS_ID_NITROGEN, (6*ONE_ATMOSPHERE)*volume/(R_IDEAL_GAS_EQUATION*T20C) * N2STANDARD)
 
 /*
  * Phoron
@@ -85,22 +84,11 @@
 	icon_state = "phoron"
 	gauge_icon = null
 	slot_flags = null	//they have no straps!
+	worth_intrinsic = 75 // heavy duty
 
 /obj/item/tank/phoron/Initialize(mapload)
 	. = ..()
-	src.air_contents.adjust_gas(/datum/gas/phoron, (3*ONE_ATMOSPHERE)*70/(R_IDEAL_GAS_EQUATION*T20C))
-
-/obj/item/tank/phoron/attackby(obj/item/W as obj, mob/user as mob)
-	..()
-
-	if (istype(W, /obj/item/flamethrower))
-		var/obj/item/flamethrower/F = W
-		if ((!F.status)||(F.ptank))	return
-		src.master = F
-		F.ptank = src
-		user.remove_from_mob(src)
-		src.loc = F
-	return
+	src.air_contents.adjust_gas(GAS_ID_PHORON, (3*ONE_ATMOSPHERE)*70/(R_IDEAL_GAS_EQUATION*T20C))
 
 /obj/item/tank/vox	//Can't be a child of phoron or the gas amount gets screwey.
 	name = "phoron tank"
@@ -114,23 +102,23 @@
 
 /obj/item/tank/vox/Initialize(mapload)
 	. = ..()
-	air_contents.adjust_gas(/datum/gas/phoron, (10*ONE_ATMOSPHERE)*volume/(R_IDEAL_GAS_EQUATION*T20C))
+	air_contents.adjust_gas(GAS_ID_PHORON, (10*ONE_ATMOSPHERE)*volume/(R_IDEAL_GAS_EQUATION*T20C))
 
 /obj/item/tank/phoron/pressurized
 	name = "fuel can"
 	icon_state = "phoron_vox"
-	w_class = ITEMSIZE_NORMAL
+	w_class = WEIGHT_CLASS_NORMAL
 
-/obj/item/tank/phoron/pressurized/Initialize()
+/obj/item/tank/phoron/pressurized/Initialize(mapload)
 	. = ..()
 	adjust_scale(0.8)
-	air_contents.adjust_gas(/datum/gas/phoron, (7*ONE_ATMOSPHERE)*volume/(R_IDEAL_GAS_EQUATION*T20C))
+	air_contents.adjust_gas(GAS_ID_PHORON, (7*ONE_ATMOSPHERE)*volume/(R_IDEAL_GAS_EQUATION*T20C))
 
 /obj/item/tank/emergency/phoron/double
 	name = "double emergency phoron tank"
 	desc = "Contains dangerous phoron. Do not inhale. Warning: extremely flammable."
 	icon = 'icons/obj/tank_vr.dmi'
-	icon_override = 'icons/mob/belt_vr.dmi'
+	icon_override = 'icons/mob/clothing/belt.dmi'
 	icon_state = "emergency_double_vox"
 	gauge_icon = "indicator_double"
 	gauge_cap = 3
@@ -138,7 +126,7 @@
 
 /obj/item/tank/emergency/phoron/double/Initialize(mapload)
 	. = ..()
-	air_contents.adjust_gas(/datum/gas/phoron, (10*ONE_ATMOSPHERE)*volume/(R_IDEAL_GAS_EQUATION*T20C))
+	air_contents.adjust_gas(GAS_ID_PHORON, (10*ONE_ATMOSPHERE)*volume/(R_IDEAL_GAS_EQUATION*T20C))
 
 /*
  * Emergency Oxygen
@@ -151,10 +139,12 @@
 	gauge_icon = "indicator_emergency"
 	gauge_cap = 3
 	slot_flags = SLOT_BELT
-	w_class = ITEMSIZE_SMALL
-	force = 4
+	w_class = WEIGHT_CLASS_SMALL
+	damage_force = 4
 	distribute_pressure = ONE_ATMOSPHERE*O2STANDARD
 	volume = 2 //Tiny. Real life equivalents only have 21 breaths of oxygen in them. They're EMERGENCY tanks anyway -errorage (dangercon 2011)
+	worth_intrinsic = 25
+	suit_storage_class = SUIT_STORAGE_CLASS_SOFTWEAR | SUIT_STORAGE_CLASS_HARDWEAR
 
 /obj/item/tank/emergency/oxygen
 	name = "emergency oxygen tank"
@@ -166,11 +156,11 @@
 
 /obj/item/tank/emergency/oxygen/Initialize(mapload)
 	. = ..()
-	src.air_contents.adjust_gas(/datum/gas/oxygen, (10*ONE_ATMOSPHERE)*volume/(R_IDEAL_GAS_EQUATION*T20C))
+	src.air_contents.adjust_gas(GAS_ID_OXYGEN, (10*ONE_ATMOSPHERE)*volume/(R_IDEAL_GAS_EQUATION*T20C))
 
-/obj/item/tank/emergency/oxygen/examine(mob/user)
+/obj/item/tank/emergency/oxygen/examine(mob/user, dist)
 	. = ..()
-	if(air_contents.gas[/datum/gas/oxygen] < 0.2 && loc==user)
+	if(air_contents.gas[GAS_ID_OXYGEN] < 0.2 && loc==user)
 		. += "<span class='danger'>The meter on the [src.name] indicates you are almost out of air!</span>"
 		//user.playsound('sound/effects/alert.ogg')
 
@@ -180,6 +170,7 @@
 	icon_state = "emergency_engi"
 	volume = 6
 	gauge_cap = 3
+	worth_intrinsic = 50
 
 /obj/item/tank/emergency/oxygen/double
 	name = "double emergency oxygen tank"
@@ -188,6 +179,7 @@
 	gauge_icon = "indicator_emergency_double"
 	volume = 10
 	gauge_cap = 3
+	worth_intrinsic = 75
 
 /obj/item/tank/stasis/oxygen // Stasis bags need to have initial pressure within safe bounds for human atmospheric pressure (NOT breath pressure)
 	name = "stasis oxygen tank"
@@ -199,19 +191,19 @@
 
 /obj/item/tank/stasis/oxygen/Initialize(mapload)
 	. = ..()
-	src.air_contents.adjust_gas(/datum/gas/oxygen, (3*ONE_ATMOSPHERE)*volume/(R_IDEAL_GAS_EQUATION*T20C))
+	src.air_contents.adjust_gas(GAS_ID_OXYGEN, (3*ONE_ATMOSPHERE)*volume/(R_IDEAL_GAS_EQUATION*T20C))
 
 /obj/item/tank/emergency/nitrogen
 	name = "emergency nitrogen tank"
-	desc = "An emergency air tank hastily painted red."
+	desc = "An emergency air tank, it's coloured red with 'Nitrogen' being spelled in bold letters on it's side ."
 	icon = 'icons/obj/tank_vr.dmi'
-	icon_state = "emergency_nitro"
+	icon_state = "emergency_nitrogen"
 	gauge_icon = "indicator_emergency"
 	gauge_cap = 3
 
 /obj/item/tank/emergency/nitrogen/Initialize(mapload)
 	. = ..()
-	src.air_contents.adjust_gas(/datum/gas/nitrogen, (10*ONE_ATMOSPHERE)*volume/(R_IDEAL_GAS_EQUATION*T20C))
+	src.air_contents.adjust_gas(GAS_ID_NITROGEN, (10*ONE_ATMOSPHERE)*volume/(R_IDEAL_GAS_EQUATION*T20C))
 
 /obj/item/tank/emergency/nitrogen/double
 	name = "double emergency nitrogen tank"
@@ -225,18 +217,18 @@
 	name = "emergency phoron tank"
 	desc = "An emergency air tank hastily painted red."
 	icon = 'icons/obj/tank_vr.dmi'
-	icon_state = "emergency_nitro"
+	icon_state = "emergency_phoron_vox"
 	gauge_icon = "indicator_emergency"
 	volume = 6
 	gauge_cap = 3
 
 /obj/item/tank/emergency/phoron/Initialize(mapload)
 	. = ..()
-	src.air_contents.adjust_gas(/datum/gas/phoron, (10*ONE_ATMOSPHERE)*volume/(R_IDEAL_GAS_EQUATION*T20C))
+	src.air_contents.adjust_gas(GAS_ID_PHORON, (10*ONE_ATMOSPHERE)*volume/(R_IDEAL_GAS_EQUATION*T20C))
 
 /obj/item/tank/emergency/phoron/double
 	name = "double emergency phoron tank"
-	icon_state = "emergency_double_nitro"
+	icon_state = "emergency_double_vox"
 	gauge_icon = "indicator_emergency_double"
 	volume = 10
 
@@ -254,12 +246,11 @@
 /obj/item/tank/nitrogen/Initialize(mapload)
 	. = ..()
 
-	src.air_contents.adjust_gas(/datum/gas/nitrogen, (3*ONE_ATMOSPHERE)*70/(R_IDEAL_GAS_EQUATION*T20C))
+	src.air_contents.adjust_gas(GAS_ID_NITROGEN, (3*ONE_ATMOSPHERE)*70/(R_IDEAL_GAS_EQUATION*T20C))
 
-/obj/item/tank/nitrogen/examine(mob/user)
-	if(air_contents.gas[/datum/gas/nitrogen] < 10)
+/obj/item/tank/nitrogen/examine(mob/user, dist)
+	if(air_contents.gas[GAS_ID_NITROGEN] < 10)
 		. += "<span class='danger'>The meter on \the [src] indicates you are almost out of nitrogen!</span>"
-		playsound(user, 'sound/effects/alert.ogg', 50, 1)
 
 /obj/item/tank/stasis/nitro_cryo // Synthmorph bags need to have initial pressure within safe bounds for human atmospheric pressure, but low temperature to stop unwanted degredation.
 	name = "stasis cryogenic nitrogen tank"
@@ -270,7 +261,7 @@
 
 /obj/item/tank/stasis/nitro_cryo/Initialize(mapload)
 	. = ..()
-	src.air_contents.adjust_gas_temp(/datum/gas/nitrogen, (3*ONE_ATMOSPHERE)*volume/(R_IDEAL_GAS_EQUATION*TN60C), TN60C)
+	src.air_contents.adjust_gas_temp(GAS_ID_NITROGEN, (3*ONE_ATMOSPHERE)*volume/(R_IDEAL_GAS_EQUATION*TN60C), TN60C)
 
 //co2
 /obj/item/tank/carbon_dioxide
@@ -284,7 +275,7 @@
 
 /obj/item/tank/carbon_dioxide/Initialize(mapload)
 	. = ..()
-	air_contents.adjust_gas(/datum/gas/carbon_dioxide, (6*ONE_ATMOSPHERE)*volume/(R_IDEAL_GAS_EQUATION*T20C))
+	air_contents.adjust_gas(GAS_ID_CARBON_DIOXIDE, (6*ONE_ATMOSPHERE)*volume/(R_IDEAL_GAS_EQUATION*T20C))
 
 /obj/item/tank/emergency/carbon_dioxide
 	name = "emergency CO2 tank"
@@ -297,9 +288,9 @@
 
 /obj/item/tank/emergency/carbon_dioxide/Initialize(mapload)
 	. = ..()
-	src.air_contents.adjust_gas(/datum/gas/carbon_dioxide, (10*ONE_ATMOSPHERE)*volume/(R_IDEAL_GAS_EQUATION*T20C))
+	src.air_contents.adjust_gas(GAS_ID_CARBON_DIOXIDE, (10*ONE_ATMOSPHERE)*volume/(R_IDEAL_GAS_EQUATION*T20C))
 
-/obj/item/tank/emergency/carbon_dioxide/examine(mob/user)
-	if(air_contents.gas[/datum/gas/carbon_dioxide] < 0.2 && loc==user)
+/obj/item/tank/emergency/carbon_dioxide/examine(mob/user, dist)
+	if(air_contents.gas[GAS_ID_CARBON_DIOXIDE] < 0.2 && loc==user)
 		. += "<span class='danger'>The meter on the [src.name] indicates you are almost out of air!</span>"
 	//	user.playsound('sound/effects/alert.ogg')

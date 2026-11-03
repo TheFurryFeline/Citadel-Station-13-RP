@@ -13,17 +13,18 @@
 	response_help   = "pets"
 	response_disarm = "swats away"
 	response_harm   = "punches"
-	faction = "wards" // Needed as most human mobs are in neutral faction. The owner is generally except from any ward hostility regardless.
+
+	iff_factions = MOB_IFF_FACTION_HOSTILE // Needed as most human mobs are in neutral faction. The owner is generally except from any ward hostility regardless.
 
 	maxHealth = 15
 	health = 15
-	movement_cooldown = 0
+	movement_base_speed = 7
 	hovering = TRUE
 
 	mob_bump_flag = 0
 
-	melee_damage_lower = 0
-	melee_damage_upper = 0
+	legacy_melee_damage_lower = 0
+	legacy_melee_damage_upper = 0
 
 	ai_holder_type = null
 	var/mob/living/owner = null // The mob that made the ward, if any. Used to ensure the ward does not interfere with its creator.

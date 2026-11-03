@@ -1,4 +1,4 @@
-/obj/item/modular_computer/process(delta_time)
+/obj/item/modular_computer/process()
 	if(!enabled) // The computer is turned off
 		last_power_usage = 0
 		return 0
@@ -41,14 +41,14 @@
 /obj/item/modular_computer/proc/install_default_programs()
 	return 1
 
-/obj/item/modular_computer/Initialize(mapload)
-	. = ..()
+/obj/item/modular_computer/Initialize()
 	START_PROCESSING(SSobj, src)
 	install_default_hardware()
 	if(hard_drive)
 		install_default_programs()
 	update_icon()
 	update_verbs()
+	. = ..()
 
 /obj/item/modular_computer/Destroy()
 	kill_program(1)
@@ -70,22 +70,25 @@
 /obj/item/modular_computer/update_icon()
 	icon_state = icon_state_unpowered
 
-	overlays.Cut()
+	cut_overlays()
+	var/list/overlays_to_add = list()
 	if(bsod)
-		overlays.Add("bsod")
+		add_overlay("bsod")
 		return
 	if(!enabled)
 		if(icon_state_screensaver)
-			overlays.Add(icon_state_screensaver)
+			add_overlay(icon_state_screensaver)
 		set_light(0)
 		return
 	set_light(light_strength)
 	if(active_program)
-		overlays.Add(active_program.program_icon_state ? active_program.program_icon_state : icon_state_menu)
+		overlays_to_add.Add(active_program.program_icon_state ? active_program.program_icon_state : icon_state_menu)
 		if(active_program.program_key_state)
-			overlays.Add(active_program.program_key_state)
+			overlays_to_add.Add(active_program.program_key_state)
 	else
-		overlays.Add(icon_state_menu)
+		overlays_to_add.Add(icon_state_menu)
+
+	add_overlay(overlays_to_add)
 
 /obj/item/modular_computer/proc/turn_on(var/mob/user)
 	if(bsod)
@@ -119,7 +122,7 @@
 		active_program = null
 	var/mob/user = usr
 	if(user && istype(user))
-		nano_ui_interact(user) // Re-open the UI on this computer. It should show the main screen now.
+		ui_interact(user) // Re-open the UI on this computer. It should show the main screen now.
 	update_icon()
 
 // Returns 0 for No Signal, 1 for Low Signal and 2 for Good Signal. 3 is for wired connection (always-on)
@@ -154,7 +157,7 @@
 		run_program(autorun.stored_data)
 
 	if(user)
-		nano_ui_interact(user)
+		ui_interact(user)
 
 /obj/item/modular_computer/proc/minimize_program(mob/user)
 	if(!active_program || !processor_unit)
@@ -162,12 +165,11 @@
 
 	idle_threads.Add(active_program)
 	active_program.program_state = PROGRAM_STATE_BACKGROUND // Should close any existing UIs
-	SSnanoui.close_uis(active_program.NM ? active_program.NM : active_program)
 	SStgui.close_uis(active_program.TM ? active_program.TM : active_program)
 	active_program = null
 	update_icon()
 	if(istype(user))
-		nano_ui_interact(user) // Re-open the UI on this computer. It should show the main screen now.
+		ui_interact(user) // Re-open the UI on this computer. It should show the main screen now.
 
 
 /obj/item/modular_computer/proc/run_program(prog)
@@ -207,24 +209,24 @@
 	return 1
 
 /obj/item/modular_computer/proc/update_uis()
-	if(active_program) //Should we update program ui or computer ui?
-		SSnanoui.update_uis(active_program)
-		if(active_program.NM)
-			SSnanoui.update_uis(active_program.NM)
+	if(active_program)
+		SStgui.update_uis(active_program)
+		if(active_program.TM)
+			SStgui.update_uis(active_program.TM)
 	else
-		SSnanoui.update_uis(src)
+		SStgui.update_uis(src)
 
 /obj/item/modular_computer/proc/check_update_ui_need()
-	var/ui_update_needed = 0
+	var/ui_update_needed = FALSE
 	if(battery_module)
 		var/batery_percent = battery_module.battery.percent()
 		if(last_battery_percent != batery_percent) //Let's update UI on percent change
-			ui_update_needed = 1
+			ui_update_needed = TRUE
 			last_battery_percent = batery_percent
 
 	if(stationtime2text() != last_world_time)
 		last_world_time = stationtime2text()
-		ui_update_needed = 1
+		ui_update_needed = TRUE
 
 	if(idle_threads.len)
 		var/list/current_header_icons = list()
@@ -237,12 +239,12 @@
 
 		else if(!(last_header_icons ~= current_header_icons))
 			last_header_icons = current_header_icons
-			ui_update_needed = 1
+			ui_update_needed = TRUE
 		else
 			for(var/x in last_header_icons|current_header_icons)
 				if(last_header_icons[x]!=current_header_icons[x])
 					last_header_icons = current_header_icons
-					ui_update_needed = 1
+					ui_update_needed = TRUE
 					break
 
 	if(ui_update_needed)

@@ -1,25 +1,25 @@
-/mob/living/simple_mob/Life()
-	..()
+/mob/living/simple_mob/Life(seconds, times_fired)
+	if((. = ..()))
+		return
 
 	//Health
-	updatehealth()
-	if(stat >= DEAD)
-		return FALSE
+	update_health()
 
-	handle_stunned()
-	handle_weakened()
-	handle_paralysed()
-	handle_supernatural()
-	handle_atmos()
+/mob/living/simple_mob/BiologicalLife(seconds, times_fired)
+	if((. = ..()))
+		return
 
-	handle_special()
-	handle_guts()
+	if(!IS_DEAD(src))
 
-	return TRUE
+		handle_supernatural()
+		handle_atmos()
 
+		handle_special()
+
+	handle_guts(seconds)
 
 //Should we be dead?
-/mob/living/simple_mob/updatehealth()
+/mob/living/simple_mob/update_health()
 	health = getMaxHealth() - getFireLoss() - getBruteLoss() - getToxLoss() - getOxyLoss() - getCloneLoss()
 
 	//Alive, becoming dead
@@ -89,32 +89,32 @@
 
 		if(Environment)
 
-			if( abs(Environment.temperature - bodytemperature) > temperature_range )	//VOREStation Edit: heating adjustments
+			if( abs(Environment.temperature - bodytemperature) > temperature_range )
 				bodytemperature += ((Environment.temperature - bodytemperature) / 5)
 
 			if(min_oxy)
-				if(Environment.gas[/datum/gas/oxygen] < min_oxy)
+				if(Environment.gas[GAS_ID_OXYGEN] < min_oxy)
 					atmos_unsuitable = 1
 			if(max_oxy)
-				if(Environment.gas[/datum/gas/oxygen] > max_oxy)
+				if(Environment.gas[GAS_ID_OXYGEN] > max_oxy)
 					atmos_unsuitable = 1
 			if(min_tox)
-				if(Environment.gas[/datum/gas/phoron] < min_tox)
+				if(Environment.gas[GAS_ID_PHORON] < min_tox)
 					atmos_unsuitable = 2
 			if(max_tox)
-				if(Environment.gas[/datum/gas/phoron] > max_tox)
+				if(Environment.gas[GAS_ID_PHORON] > max_tox)
 					atmos_unsuitable = 2
 			if(min_n2)
-				if(Environment.gas[/datum/gas/nitrogen] < min_n2)
+				if(Environment.gas[GAS_ID_NITROGEN] < min_n2)
 					atmos_unsuitable = 1
 			if(max_n2)
-				if(Environment.gas[/datum/gas/nitrogen] > max_n2)
+				if(Environment.gas[GAS_ID_NITROGEN] > max_n2)
 					atmos_unsuitable = 1
 			if(min_co2)
-				if(Environment.gas[/datum/gas/carbon_dioxide] < min_co2)
+				if(Environment.gas[GAS_ID_CARBON_DIOXIDE] < min_co2)
 					atmos_unsuitable = 1
 			if(max_co2)
-				if(Environment.gas[/datum/gas/carbon_dioxide] > max_co2)
+				if(Environment.gas[GAS_ID_CARBON_DIOXIDE] > max_co2)
 					atmos_unsuitable = 1
 
 	//Atmos effect
@@ -142,12 +142,14 @@
 			oxygen.icon_state = "oxy0"
 		adjustOxyLoss(-unsuitable_atoms_damage)
 
-/mob/living/simple_mob/proc/handle_guts()
-	for(var/obj/item/organ/OR in internal_organs)
-		OR.process()
-
-	for(var/obj/item/organ/OR in organs)
-		OR.process()
+/mob/living/simple_mob/proc/handle_guts(dt)
+	switch(stat)
+		if(DEAD)
+			for(var/obj/item/organ/O in organs)
+				O.tick_death(dt)
+		else
+			for(var/obj/item/organ/O in organs)
+				O.tick_life(dt)
 
 /mob/living/simple_mob/proc/handle_supernatural()
 	if(purge)

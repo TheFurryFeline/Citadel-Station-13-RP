@@ -3,7 +3,7 @@
 //
 /obj/machinery/power/shield_generator
 	name = "advanced shield generator"
-	desc = "A heavy-duty shield generator and capacitor, capable of generating energy shields at large distances."
+	desc = "A heavy-duty shield generator and capacitor, capable of generating energy shields at large distances.\n <span class='notice'>\[Accepts Upgrades\]</span>"
 	icon = 'icons/obj/machines/shielding_vr.dmi'
 	icon_state = "generator0"
 	circuit = /obj/item/circuitboard/shield_generator
@@ -41,23 +41,10 @@
 	var/spinup_delay      = 20
 	var/spinup_counter    = 0
 
-/obj/machinery/power/shield_generator/update_icon()
-	if(running)
-		icon_state = "generator1"
-		set_light(1, 2, "#66FFFF")
-	else
-		icon_state = "generator0"
-		set_light(0)
-
-
 /obj/machinery/power/shield_generator/Initialize(mapload)
 	. = ..()
 	if(!wires)
 		wires = new(src)
-	// TODO - Remove this bit once machines are converted to Initialize
-	if(ispath(circuit))
-		circuit = new circuit(src)
-	default_apply_parts()
 	connect_to_network()
 
 	mode_list = list()
@@ -71,21 +58,29 @@
 	field_segments = null
 	damaged_segments = null
 	mode_list = null
-	. = ..()
+	QDEL_NULL(wires)
+	return ..()
 
+/obj/machinery/power/shield_generator/update_icon()
+	if(running)
+		icon_state = "generator1"
+		set_light(1, 2, "#66FFFF")
+	else
+		icon_state = "generator0"
+		set_light(0)
 
 /obj/machinery/power/shield_generator/RefreshParts()
 	max_energy = 0
 	full_shield_strength = 0
 	for(var/obj/item/smes_coil/S in component_parts)
-		full_shield_strength += (S.ChargeCapacity * 5)
+		full_shield_strength += (KWH_TO_WM(S.charge_capacity) * 5)
 	max_energy = full_shield_strength * 20
-	current_energy = between(0, current_energy, max_energy)
+	current_energy = clamp( current_energy, 0,  max_energy)
 
 	mitigation_max = MAX_MITIGATION_BASE + MAX_MITIGATION_RESEARCH * total_component_rating_of_type(/obj/item/stock_parts/capacitor)
-	mitigation_em = between(0, mitigation_em, mitigation_max)
-	mitigation_physical = between(0, mitigation_physical, mitigation_max)
-	mitigation_heat = between(0, mitigation_heat, mitigation_max)
+	mitigation_em = clamp( mitigation_em, 0,  mitigation_max)
+	mitigation_physical = clamp( mitigation_physical, 0,  mitigation_max)
+	mitigation_heat = clamp( mitigation_heat, 0,  mitigation_max)
 	..()
 
 
@@ -221,7 +216,7 @@
 
 		for(var/obj/effect/shield/S in startends)
 			var/adjacent = startends[S]
-			log_debug("Processing startend [S] at [S?.x],[S?.y] adjacent=[adjacent]")
+			log_debug(SPAN_DEBUGINFO("Processing startend [S] at [S?.x],[S?.y] adjacent=[adjacent]"))
 			var/turf/T = get_step(S, adjacent)
 			var/obj/effect/shield/SO = locate() in T
 			S.setDir(SO.dir)
@@ -318,9 +313,9 @@
 			running = SHIELD_RUNNING
 			regenerate_field()
 
-	mitigation_em = between(0, mitigation_em - MITIGATION_LOSS_PASSIVE, mitigation_max)
-	mitigation_heat = between(0, mitigation_heat - MITIGATION_LOSS_PASSIVE, mitigation_max)
-	mitigation_physical = between(0, mitigation_physical - MITIGATION_LOSS_PASSIVE, mitigation_max)
+	mitigation_em = clamp( mitigation_em - MITIGATION_LOSS_PASSIVE, 0,  mitigation_max)
+	mitigation_heat = clamp( mitigation_heat - MITIGATION_LOSS_PASSIVE, 0,  mitigation_max)
+	mitigation_physical = clamp( mitigation_physical - MITIGATION_LOSS_PASSIVE, 0,  mitigation_max)
 
 	if(running == SHIELD_RUNNING)
 		upkeep_power_usage = round((field_segments.len - damaged_segments.len) * ENERGY_UPKEEP_PER_TILE * upkeep_multiplier)
@@ -329,7 +324,7 @@
 
 	if(powernet && (running >= SHIELD_RUNNING) && !input_cut)
 		var/energy_buffer = 0
-		energy_buffer = draw_power(min(upkeep_power_usage, input_cap))
+		energy_buffer = draw_power(min(upkeep_power_usage, input_cap) * 0.001) * 1000
 		power_usage += round(energy_buffer)
 
 		if(energy_buffer < upkeep_power_usage)
@@ -338,10 +333,10 @@
 		// Now try to recharge our internal energy.
 		var/energy_to_demand
 		if(input_cap)
-			energy_to_demand = between(0, max_energy - current_energy, input_cap - energy_buffer)
+			energy_to_demand = clamp( max_energy - current_energy, 0,  input_cap - energy_buffer)
 		else
 			energy_to_demand = max(0, max_energy - current_energy)
-		energy_buffer = draw_power(energy_to_demand)
+		energy_buffer = draw_power(energy_to_demand * 0.001) * 1000
 		power_usage += energy_buffer
 		current_energy += round(energy_buffer)
 	else
@@ -406,7 +401,7 @@
 		ui = new(user, src, "OvermapShieldGenerator", name) // 500, 800
 		ui.open()
 
-/obj/machinery/power/shield_generator/ui_data(mob/user)
+/obj/machinery/power/shield_generator/ui_data(mob/user, datum/tgui/ui)
 	var/list/data = list()
 
 	data["running"] = running
@@ -435,7 +430,7 @@
 
 	return data
 
-/obj/machinery/power/shield_generator/attack_hand(mob/user)
+/obj/machinery/power/shield_generator/attack_hand(mob/user, datum/event_args/actor/clickchain/e_args)
 	if((. = ..()))
 		return
 	if(panel_open && Adjacent(user))
@@ -443,14 +438,14 @@
 		return
 	ui_interact(user)
 
-/obj/machinery/power/shield_generator/ui_status(mob/user)
+/obj/machinery/power/shield_generator/ui_status(mob/user, datum/ui_state/state)
 	if(issilicon(user) && !Adjacent(user) && ai_control_disabled)
 		return UI_UPDATE
 	if(panel_open)
 		return min(..(), UI_DISABLED)
 	return ..()
 
-/obj/machinery/power/shield_generator/ui_act(action, list/params, datum/tgui/ui, datum/ui_state/state)
+/obj/machinery/power/shield_generator/ui_act(action, list/params, datum/tgui/ui, datum/ui_state/state, datum/event_args/actor/actor)
 	if(..())
 		return TRUE
 
@@ -459,7 +454,7 @@
 			if(running < SHIELD_RUNNING) // Discharging or off
 				return
 			var/alert = alert(usr, "Are you sure you wish to do this? It will drain the power inside the internal storage rapidly.", "Are you sure?", "Yes", "No")
-			if(ui_status(usr, state) != UI_INTERACTIVE)
+			if(ui_status(usr, ui.state) != UI_INTERACTIVE)
 				return
 			if(running < SHIELD_RUNNING)
 				return
@@ -508,7 +503,7 @@
 			var/new_range = input(usr, "Enter new field range (1-[world.maxx]). Leave blank to cancel.", "Field Radius Control", field_radius) as num
 			if(!new_range)
 				return TRUE
-			target_radius = between(1, new_range, world.maxx)
+			target_radius = clamp( new_range, 1,  world.maxx)
 			return TRUE
 
 		if("set_input_cap")
@@ -560,9 +555,9 @@
 				mitigation_heat += MITIGATION_HIT_LOSS + MITIGATION_HIT_GAIN
 				energy_to_use *= 1 - (mitigation_heat / 100)
 
-		mitigation_em = between(0, mitigation_em, mitigation_max)
-		mitigation_heat = between(0, mitigation_heat, mitigation_max)
-		mitigation_physical = between(0, mitigation_physical, mitigation_max)
+		mitigation_em = clamp( mitigation_em, 0,  mitigation_max)
+		mitigation_heat = clamp( mitigation_heat, 0,  mitigation_max)
+		mitigation_physical = clamp( mitigation_physical, 0,  mitigation_max)
 
 	current_energy -= energy_to_use
 
@@ -667,40 +662,24 @@
 
 // Returns a list of turfs from which a field will propagate. If multi-Z mode is enabled, this will return a "column" of turfs above and below the generator.
 /obj/machinery/power/shield_generator/proc/get_base_turfs()
-	var/list/turfs = list()
 	var/turf/T = get_turf(src)
 
 	if(!istype(T))
 		return
 
-	turfs.Add(T)
-
 	// Multi-Z mode is disabled
 	if(!check_flag(MODEFLAG_MULTIZ))
-		return turfs
+		return list(T)
 
-	while(HasAbove(T.z))
-		T = GetAbove(T)
-		if(istype(T))
-			turfs.Add(T)
-
-	T = get_turf(src)
-
-	while(HasBelow(T.z))
-		T = GetBelow(T)
-		if(istype(T))
-			turfs.Add(T)
-
-	return turfs
-
+	return SSmapping.spatial_get_turf_stack(T)
 
 // Starts fully charged
-/obj/machinery/power/shield_generator/charged/Initialize()
+/obj/machinery/power/shield_generator/charged/Initialize(mapload)
 	. = ..()
 	current_energy = max_energy
 
 // Starts with the best SMES coil and capacitor (and fully charged)
-/obj/machinery/power/shield_generator/upgraded/Initialize()
+/obj/machinery/power/shield_generator/upgraded/Initialize(mapload)
 	. = ..()
 	for(var/obj/item/smes_coil/sc in component_parts)
 		component_parts -= sc

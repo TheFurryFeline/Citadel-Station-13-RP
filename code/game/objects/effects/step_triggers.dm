@@ -27,65 +27,73 @@
 /* Tosses things in a certain direction */
 
 /obj/effect/step_trigger/thrower
-	var/direction = SOUTH // the direction of throw
-	var/tiles = 3	// if 0: forever until atom hits a stopper
-	var/immobilize = 1 // if nonzero: prevents mobs from moving while they're being flung
-	var/speed = 1	// delay of movement
-	var/facedir = 0 // if 1: atom faces the direction of movement
-	var/nostop = 0 // if 1: will only be stopped by teleporters
+	/// The direction of throw.
+	var/direction = SOUTH
+	/// If 0: forever until atom hits a stopper.
+	var/tiles = 3
+	/// If nonzero: prevents mobs from moving while they're being flung.
+	var/immobilize = 1
+	/// Delay of movement.
+	var/speed = 1
+	/// If 1: atom faces the direction of movement.
+	var/facedir = 0
+	/// If 1: will only be stopped by teleporters.
+	var/nostop = 0
 	var/list/affecting = list()
 
-	Trigger(var/atom/A)
-		if(!A || !istype(A, /atom/movable) || isobserver(A))
+/obj/effect/step_trigger/thrower/Trigger(atom/A)
+	if(!A || !istype(A, /atom/movable) || isobserver(A))
+		return
+	var/atom/movable/AM = A
+	var/curtiles = 0
+	var/stopthrow = 0
+	for(var/obj/effect/step_trigger/thrower/T in orange(2, src))
+		if(AM in T.affecting)
 			return
-		var/atom/movable/AM = A
-		var/curtiles = 0
-		var/stopthrow = 0
-		for(var/obj/effect/step_trigger/thrower/T in orange(2, src))
-			if(AM in T.affecting)
-				return
 
-		if(ismob(AM))
-			var/mob/M = AM
-			if(immobilize)
-				M.canmove = 0
+	if(ismob(AM))
+		var/mob/M = AM
+		if(immobilize)
+			ADD_TRAIT(M, TRAIT_MOBILITY_MOVE_BLOCKED, "__THROWER__")
+			M.update_mobility_blocked()
 
-		affecting.Add(AM)
-		while(AM && !stopthrow)
-			if(tiles)
-				if(curtiles >= tiles)
-					break
-			if(AM.z != src.z)
+	affecting.Add(AM)
+	while(AM && !stopthrow)
+		if(tiles)
+			if(curtiles >= tiles)
 				break
+		if(AM.z != src.z)
+			break
 
-			curtiles++
+		curtiles++
 
-			sleep(speed)
+		sleep(speed)
 
-			// Calculate if we should stop the process
-			if(!nostop)
-				for(var/obj/effect/step_trigger/T in get_step(AM, direction))
-					if(T.stopper && T != src)
-						stopthrow = 1
-			else
-				for(var/obj/effect/step_trigger/teleporter/T in get_step(AM, direction))
-					if(T.stopper)
-						stopthrow = 1
+		// Calculate if we should stop the process
+		if(!nostop)
+			for(var/obj/effect/step_trigger/T in get_step(AM, direction))
+				if(T.stopper && T != src)
+					stopthrow = 1
+		else
+			for(var/obj/effect/step_trigger/teleporter/T in get_step(AM, direction))
+				if(T.stopper)
+					stopthrow = 1
 
-			if(AM)
-				var/predir = AM.dir
-				step(AM, direction)
-				if(!facedir)
-					AM.setDir(predir)
+		if(AM)
+			var/predir = AM.dir
+			step(AM, direction)
+			if(!facedir)
+				AM.setDir(predir)
 
 
 
-		affecting.Remove(AM)
+	affecting.Remove(AM)
 
-		if(ismob(AM))
-			var/mob/M = AM
-			if(immobilize)
-				M.canmove = 1
+	if(ismob(AM))
+		var/mob/M = AM
+		REMOVE_TRAIT(M, TRAIT_MOBILITY_MOVE_BLOCKED, "__THROWER__")
+		if(immobilize)
+			M.update_mobility_blocked()
 
 /* Stops things thrown by a thrower, doesn't do anything */
 
@@ -97,6 +105,21 @@
 	var/teleport_x = 0	// teleportation coordinates (if one is null, then no teleport!)
 	var/teleport_y = 0
 	var/teleport_z = 0
+	/// map path / id to resolve on init for z
+	var/map_level_target
+
+/obj/effect/step_trigger/teleporter/Initialize(mapload)
+	. = ..()
+	if(!isnull(map_level_target))
+		var/datum/map_level/level
+		var/datum/map_level/resolving = map_level_target
+		if(ispath(map_level_target))
+			level = SSmapping.keyed_levels[initial(resolving.id)]
+		else
+			level = SSmapping.keyed_levels[resolving.id]
+		if(isnull(level))
+			CRASH("failed to resolve [map_level_target]")
+		teleport_z = level.z_index
 
 /obj/effect/step_trigger/teleporter/Trigger(atom/movable/AM)
 	if(teleport_x && teleport_y && teleport_z)
@@ -105,7 +128,7 @@
 
 
 /obj/effect/step_trigger/teleporter/proc/move_object(atom/movable/AM, turf/T)
-	if(AM.anchored && !istype(AM, /obj/mecha))
+	if(AM.anchored && !istype(AM, /obj/vehicle/sealed/mecha))
 		return
 
 	if(isliving(AM))
@@ -156,21 +179,21 @@
 	var/teleport_y_offset = 0
 	var/teleport_z_offset = 0
 
-	Trigger(var/atom/movable/A)
-		if(teleport_x && teleport_y && teleport_z)
-			if(teleport_x_offset && teleport_y_offset && teleport_z_offset)
-				var/turf/T = locate(rand(teleport_x, teleport_x_offset), rand(teleport_y, teleport_y_offset), rand(teleport_z, teleport_z_offset))
-				A.forceMove(T)
+/obj/effect/step_trigger/teleporter/random/Trigger(atom/movable/A)
+	if(teleport_x && teleport_y && teleport_z)
+		if(teleport_x_offset && teleport_y_offset && teleport_z_offset)
+			var/turf/T = locate(rand(teleport_x, teleport_x_offset), rand(teleport_y, teleport_y_offset), rand(teleport_z, teleport_z_offset))
+			A.forceMove(T)
 
 /* Teleporter that sends objects stepping on it to a specific landmark. */
 
 /obj/effect/step_trigger/teleporter/landmark
-	var/atom/movable/landmark/the_landmark = null
+	var/obj/landmark/the_landmark = null
 	var/landmark_id = null
 
 /obj/effect/step_trigger/teleporter/landmark/Initialize(mapload)
 	. = ..()
-	for(var/atom/movable/landmark/teleport_mark/mark in tele_landmarks)
+	for(var/obj/landmark/teleport_mark/mark in tele_landmarks)
 		if(mark.landmark_id == landmark_id)
 			the_landmark = mark
 			return
@@ -182,25 +205,26 @@
 
 var/global/list/tele_landmarks = list() // Terrible, but the alternative is looping through world.
 
-/atom/movable/landmark/teleport_mark
+/obj/landmark/teleport_mark
 	var/landmark_id = null
 
-/atom/movable/landmark/teleport_mark/Initialize(mapload)
+/obj/landmark/teleport_mark/Initialize(mapload)
 	. = ..()
 	tele_landmarks += src
 
-/atom/movable/landmark/teleport_mark/Destroy()
+/obj/landmark/teleport_mark/Destroy()
 	tele_landmarks -= src
 	return ..()
 
 /* Teleporter which simulates falling out of the sky. */
 
 /obj/effect/step_trigger/teleporter/planetary_fall
+	var/planet_path
 	var/datum/planet/planet = null
 
 // First time setup, which planet are we aiming for?
 /obj/effect/step_trigger/teleporter/planetary_fall/proc/find_planet()
-	return
+	planet = locate(planet_path) in SSplanets.planets
 
 /obj/effect/step_trigger/teleporter/planetary_fall/Trigger(var/atom/movable/A)
 	if(!planet)
@@ -214,7 +238,7 @@ var/global/list/tele_landmarks = list() // Terrible, but the alternative is loop
 		var/safety = 100 // Infinite loop protection.
 		while(!T && safety)
 			var/turf/simulated/candidate = pick(planet.planet_floors)
-			if(!istype(candidate) || istype(candidate, /turf/simulated/sky))
+			if(!istype(candidate) || istype(candidate, /turf/simulated/fake_sky))
 				safety--
 				continue
 			else if(candidate && !candidate.outdoors)

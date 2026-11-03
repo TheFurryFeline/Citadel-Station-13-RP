@@ -4,7 +4,7 @@
 	var/back_icon = "card_back"
 
 /obj/item/deck
-	w_class = ITEMSIZE_SMALL
+	w_class = WEIGHT_CLASS_SMALL
 	icon = 'icons/obj/playing_cards.dmi'
 	var/list/cards = list()
 	var/cooldown = 0 // to prevent spam shuffle
@@ -67,7 +67,7 @@
 			return
 	..()
 
-/obj/item/deck/attack_hand(mob/user as mob)
+/obj/item/deck/attack_hand(mob/user, datum/event_args/actor/clickchain/e_args)
 	var/mob/living/carbon/human/H = user
 	if(istype(src.loc, /obj/item/storage) || src == H.r_store || src == H.l_store || src.loc == user) // so objects can be removed from storage containers or pockets. also added a catch-all, so if it's in the mob you'll pick it up.
 		..()
@@ -76,7 +76,7 @@
 
 /obj/item/deck/verb/draw_card()
 
-	set category = "Object"
+	set category = VERB_CATEGORY_OBJECT
 	set name = "Draw"
 	set desc = "Draw a card from a deck."
 	set src in view(1)
@@ -85,7 +85,7 @@
 
 	if(usr.stat || !Adjacent(usr)) return
 
-	if(user.hands_are_full()) // Safety check lest the card disappear into oblivion
+	if(user.are_usable_hands_full()) // Safety check lest the card disappear into oblivion
 		to_chat(user,"<span class='notice'>Your hands are full!</span>")
 		return
 
@@ -96,7 +96,7 @@
 		to_chat(user,"<span class='notice'>There are no cards in the deck.</span>")
 		return
 
-	var/obj/item/hand/H = user.get_type_in_hands(/obj/item/hand)
+	var/obj/item/hand/H = user.get_held_item_of_type(/obj/item/hand)
 	if(H && !(H.parentdeck == src))
 		to_chat(user,"<span class='warning'>You can't mix cards from different decks!</span>")
 		return
@@ -105,7 +105,8 @@
 		H = new(get_turf(src))
 		user.put_in_hands(H)
 
-	if(!H || !user) return
+	if(!H || !user)
+		return
 
 	var/datum/playingcard/P = cards[1]
 	H.cards += P
@@ -117,7 +118,7 @@
 
 /obj/item/deck/verb/deal_card()
 
-	set category = "Object"
+	set category = VERB_CATEGORY_OBJECT
 	set name = "Deal"
 	set desc = "Deal a card from a deck."
 	set src in view(1)
@@ -141,7 +142,7 @@
 
 /obj/item/deck/verb/deal_card_multi()
 
-	set category = "Object"
+	set category = VERB_CATEGORY_OBJECT
 	set name = "Deal Multiple Cards"
 	set desc = "Deal multiple cards from a deck."
 	set src in view(1)
@@ -176,11 +177,11 @@
 		H.concealed = 1
 		H.update_icon()
 	if(user==target)
-		var/datum/gender/TU = gender_datums[user.get_visible_gender()]
+		var/datum/gender/TU = GLOB.gender_datums[user.get_visible_gender()]
 		user.visible_message("<span class = 'notice'>\The [user] deals [dcard] card(s) to [TU.himself].</span>")
 	else
 		user.visible_message("<span class = 'notice'>\The [user] deals [dcard] card(s) to \the [target].</span>")
-	H.throw_at(get_step(target,target.dir),10,1,H)
+	H.throw_at_old(get_step(target,target.dir),10,1,H)
 
 
 /obj/item/hand/attackby(obj/O as obj, mob/user as mob)
@@ -202,7 +203,6 @@
 			for(var/datum/playingcard/P in cards)
 				H.cards += P
 			H.concealed = src.concealed
-			user.drop_from_inventory(src)
 			qdel(src)
 			H.update_icon()
 			return
@@ -212,12 +212,15 @@
 
 	..()
 
-/obj/item/deck/attack_self()
+/obj/item/deck/attack_self(mob/user, datum/event_args/actor/actor)
+	. = ..()
+	if(.)
+		return
 	shuffle()
 
 
 /obj/item/deck/verb/verb_shuffle()
-	set category = "Object"
+	set category = VERB_CATEGORY_OBJECT
 	set name = "Shuffle"
 	set desc = "Shuffle the cards in the deck."
 	set src in view(1)
@@ -238,36 +241,21 @@
 	else
 		return
 
-
-/obj/item/deck/MouseDrop(mob/user as mob) // Code from Paper bin, so you can still pick up the deck
+/obj/item/deck/OnMouseDropLegacy(mob/user as mob) // Code from Paper bin, so you can still pick up the deck
 	if((user == usr && (!( usr.restrained() ) && (!( usr.stat ) && (usr.contents.Find(src) || in_range(src, usr))))))
 		if(!istype(usr, /mob/living/simple_mob))
-			if( !usr.get_active_hand() )		//if active hand is empty
-				var/mob/living/carbon/human/H = user
-				var/obj/item/organ/external/temp = H.organs_by_name["r_hand"]
-
-				if (H.hand)
-					temp = H.organs_by_name["l_hand"]
-				if(temp && !temp.is_usable())
-					to_chat(user,"<span class='notice'>You try to move your [temp.name], but cannot!</span>")
+			if( !usr.get_active_held_item() )		//if active hand is empty
+				if(!user.standard_hand_usability_check(src, user.active_hand, HAND_MANIPULATION_GENERAL))
 					return
 
 				to_chat(user,"<span class='notice'>You pick up [src].</span>")
 				user.put_in_hands(src)
 
-	return
-
 /obj/item/deck/verb_pickup(mob/user as mob) // Snowflaked so pick up verb work as intended
 	if((user == usr && (!( usr.restrained() ) && (!( usr.stat ) && (usr.contents.Find(src) || in_range(src, usr))))))
 		if(!istype(usr, /mob/living/simple_mob))
-			if( !usr.get_active_hand() )		//if active hand is empty
-				var/mob/living/carbon/human/H = user
-				var/obj/item/organ/external/temp = H.organs_by_name["r_hand"]
-
-				if (H.hand)
-					temp = H.organs_by_name["l_hand"]
-				if(temp && !temp.is_usable())
-					to_chat(user,"<span class='notice'>You try to move your [temp.name], but cannot!</span>")
+			if( !usr.get_active_held_item() )		//if active hand is empty
+				if(!user.standard_hand_usability_check(src, user.active_hand, HAND_MANIPULATION_GENERAL))
 					return
 
 				to_chat(user,"<span class='notice'>You pick up [src].</span>")
@@ -280,23 +268,24 @@
 
 	icon_state = "card_pack"
 	icon = 'icons/obj/playing_cards.dmi'
-	w_class = ITEMSIZE_TINY
+	w_class = WEIGHT_CLASS_TINY
 	var/list/cards = list()
 	var/parentdeck = null // This variable is added here so that card pack dependent card can be mixed together by defining a "parentdeck" for them
 	drop_sound = 'sound/items/drop/paper.ogg'
 	pickup_sound = 'sound/items/pickup/paper.ogg'
 
 
-/obj/item/pack/attack_self(var/mob/user as mob)
+/obj/item/pack/attack_self(mob/user, datum/event_args/actor/actor)
+	. = ..()
+	if(.)
+		return
 	user.visible_message("<span class ='danger'>[user] rips open \the [src]!</span>")
 	var/obj/item/hand/H = new()
 
 	H.cards += cards
 	H.parentdeck = src.parentdeck
-	cards.Cut();
-	user.drop_item()
+	cards.Cut()
 	qdel(src)
-
 	H.update_icon()
 	user.put_in_active_hand(H)
 
@@ -307,7 +296,7 @@
 	icon_state = "empty"
 	drop_sound = 'sound/items/drop/paper.ogg'
 	pickup_sound = 'sound/items/pickup/paper.ogg'
-	w_class = ITEMSIZE_TINY
+	w_class = WEIGHT_CLASS_TINY
 
 	var/concealed = 0
 	var/list/cards = list()
@@ -315,7 +304,7 @@
 
 /obj/item/hand/verb/discard()
 
-	set category = "Object"
+	set category = VERB_CATEGORY_OBJECT
 	set name = "Discard"
 	set desc = "Place (a) card(s) from your hand in front of you."
 
@@ -348,12 +337,15 @@
 	if(!cards.len)
 		qdel(src)
 
-/obj/item/hand/attack_self(var/mob/user as mob)
+/obj/item/hand/attack_self(mob/user, datum/event_args/actor/actor)
+	. = ..()
+	if(.)
+		return
 	concealed = !concealed
 	update_icon()
 	user.visible_message("<span class = 'notice'>\The [user] [concealed ? "conceals" : "reveals"] their hand.</span>")
 
-/obj/item/hand/examine(mob/user)
+/obj/item/hand/examine(mob/user, dist)
 	. = ..()
 	if((!concealed) && cards.len)
 		. += "It contains: "
@@ -362,7 +354,7 @@
 
 /obj/item/hand/verb/Removecard()
 
-	set category = "Object"
+	set category = VERB_CATEGORY_OBJECT
 	set name = "Remove card"
 	set desc = "Remove a card from the hand."
 	set src in view(1)
@@ -371,7 +363,7 @@
 
 	if(user.stat || !Adjacent(user)) return
 
-	if(user.hands_are_full()) // Safety check lest the card disappear into oblivion
+	if(user.are_usable_hands_full()) // Safety check lest the card disappear into oblivion
 		to_chat(usr,"<span class='danger'>Your hands are full!</span>")
 		return
 
@@ -397,19 +389,17 @@
 		qdel(src)
 	return
 
-/obj/item/hand/update_icon(var/direction = 0)
-
+/obj/item/hand/update_icon(direction = 0)
 	if(!cards.len)
-		qdel(src)
-		return
-	else if(cards.len > 1)
+		return		// about to be deleted
+	if(cards.len > 1)
 		name = "hand of cards"
 		desc = "Some playing cards."
 	else
 		name = "a playing card"
 		desc = "A playing card."
 
-	overlays.Cut()
+	cut_overlays()
 
 
 	if(cards.len == 1)
@@ -417,7 +407,7 @@
 		var/image/I = new(src.icon, (concealed ? "[P.back_icon]" : "[P.card_icon]") )
 		I.pixel_x += (-5+rand(10))
 		I.pixel_y += (-5+rand(10))
-		overlays += I
+		add_overlay(I)
 		return
 
 	var/offset = FLOOR(20/cards.len, 1)
@@ -449,16 +439,16 @@
 			else
 				I.pixel_x = -7+(offset*i)
 		I.transform = M
-		overlays += I
+		add_overlay(I)
 		i++
 
-/obj/item/hand/dropped(mob/user)
+/obj/item/hand/dropped(mob/user, flags, atom/newLoc)
 	. = ..()
 	if(locate(/obj/structure/table, loc))
 		update_icon(user.dir)
 	else
 		update_icon()
 
-/obj/item/hand/pickup(mob/user)
+/obj/item/hand/pickup(mob/user, flags, atom/oldLoc)
 	. = ..()
 	update_icon()

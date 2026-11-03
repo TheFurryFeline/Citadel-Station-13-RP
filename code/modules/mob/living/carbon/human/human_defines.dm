@@ -1,79 +1,135 @@
 /mob/living/carbon/human
-	hud_possible = list(
-		LIFE_HUD,
-		STATUS_HUD,
-		ID_HUD,
-		WANTED_HUD,
-		IMPLOYAL_HUD,
-		IMPTRACK_HUD,
-		IMPCHEM_HUD,
-		ANTAG_HUD
+	name = "unknown"
+	real_name = "unknown"
+	voice_name = "unknown"
+	icon = 'icons/effects/effects.dmi' //We have an ultra-complex update icons that overlays everything, don't load some stupid random male human
+	icon_state = "nothing"
+	low_priority = FALSE	// UH YEA MAYBE STILL TICK THIS?
+	ssd_visible = TRUE
+	blocks_emissive = EMISSIVE_BLOCK_UNIQUE
+	SET_APPEARANCE_FLAGS(TILE_BOUND | PIXEL_SCALE | KEEP_TOGETHER)
+
+	/// To check if we've need to roll for damage on movement while an item is imbedded in us.
+	var/embedded_flag
+	/// This is very not good, but it's much much better than calling get_hardsuit() every update_canmove() call.
+	var/obj/item/hardsuit/wearing_rig
+	/// For human_attackhand.dm, keeps track of the last use of disarm.
+	var/last_push_time
+
+	/// Spitting and spitting related things. Any human based ranged attacks, be it innate or added abilities.
+	var/spitting = FALSE
+	/// Projectile type.
+	var/spit_projectile = null
+	/// String
+	var/spit_name = null
+	/// Timestamp.
+	var/last_spit = 0
+
+	/// Horrible damage (like beheadings) will prevent defibbing organics.
+	var/can_defib = TRUE
+	/// Used for the regenerate proc in human_powers.dm
+	var/active_regen = FALSE
+	var/active_regen_delay = 300
+	/// Throws byond:tm: errors if placed in human/emote, but not here.
+	var/spam_flag = FALSE
+
+	atom_huds_to_initialize = list(
+		/datum/atom_hud_provider/medical_biology,
+		/datum/atom_hud_provider/medical_health,
+		/datum/atom_hud_provider/security_implant,
+		/datum/atom_hud_provider/security_job,
+		/datum/atom_hud_provider/security_status,
+		/datum/atom_hud_provider/special_role,
+		/datum/atom_hud_provider/overriding/world_bender_animals,
 	)
 
-//! ## Hair colour and style
+	//! Buckling - For riding.dm
+	buckle_allowed = TRUE
+	buckle_flags = BUCKLING_NO_DEFAULT_BUCKLE // Custom procs handle that.
+
+	//! LEGACY, TODO TO REMOVE
+	/// current head overlay pixel y offset
+	var/head_spriteacc_offset = 0
+
+	//* Hair colour and style
+	var/h_style = "Bald"
 	var/r_hair = 0
 	var/g_hair = 0
 	var/b_hair = 0
-	var/h_style = "Bald"
 
-//! ## Hair gradients
+	//* Hair gradients
+	var/grad_style = "None"
 	var/r_grad = 0
 	var/g_grad = 0
 	var/b_grad = 0
-	var/grad_style = "None"
 
-//! ## Facial hair colour and style
+	//* Facial hair colour and style
+	var/f_style = "Shaved"
 	var/r_facial = 0
 	var/g_facial = 0
 	var/b_facial = 0
-	var/f_style = "Shaved"
 
-//! ## Eye colour
+	//* Eye colour
 	var/r_eyes = 0
 	var/g_eyes = 0
 	var/b_eyes = 0
 	/// Skin tone
 	var/s_tone = 0
 
-//! ## Skin colour
-	var/r_skin = 238 // TO DO: Set defaults for other races.
-	var/g_skin = 206
-	var/b_skin = 179
+	//* Skin colour
 	/// Skin flag
 	var/skin_state = SKIN_NORMAL
+	var/r_skin = 238 // TODO: Set defaults for other races.
+	var/g_skin = 206
+	var/b_skin = 179
 
-//! ## ears, tails, wings and custom species.
+	//* ears, horns, tails, wings and custom species.
 	var/datum/sprite_accessory/ears/ear_style = null
-	var/r_ears = 30
-	var/g_ears = 30
-	var/b_ears = 30
+	var/r_ears  = 30
+	var/g_ears  = 30
+	var/b_ears  = 30
 	var/r_ears2 = 30
 	var/g_ears2 = 30
 	var/b_ears2 = 30
-	var/r_ears3 = 30 //Trust me, we could always use more colour. No japes.
+	var/r_ears3 = 30 // Trust me, we could always use more colour. No japes.
 	var/g_ears3 = 30
 	var/b_ears3 = 30
 
+	var/datum/sprite_accessory/ears/horn_style = null
+	var/r_horn  = 30
+	var/g_horn  = 30
+	var/b_horn  = 30
+	var/r_horn2 = 30
+	var/g_horn2 = 30
+	var/b_horn2 = 30
+	var/r_horn3 = 30
+	var/g_horn3 = 30
+	var/b_horn3 = 30
+
 	var/datum/sprite_accessory/tail/tail_style = null
-	var/r_tail = 30
-	var/g_tail = 30
-	var/b_tail = 30
+	var/r_tail  = 30
+	var/g_tail  = 30
+	var/b_tail  = 30
 	var/r_tail2 = 30
 	var/g_tail2 = 30
 	var/b_tail2 = 30
 	var/r_tail3 = 30
 	var/g_tail3 = 30
 	var/b_tail3 = 30
+	// pain
+	var/legacy_tail_variation
 
 	var/datum/sprite_accessory/wing/wing_style = null
+	var/grad_wingstyle = "None"
 	var/r_gradwing = 0
 	var/g_gradwing = 0
 	var/b_gradwing = 0
-	var/grad_wingstyle = "None"
+	// pain
+	var/legacy_wing_variation
 
-	var/r_wing = 30
-	var/g_wing = 30
-	var/b_wing = 30
+	var/r_wing  = 30
+	var/g_wing  = 30
+	var/b_wing  = 30
 	var/r_wing2 = 30
 	var/g_wing2 = 30
 	var/b_wing2 = 30
@@ -81,57 +137,59 @@
 	var/g_wing3 = 30
 	var/b_wing3 = 30
 
-	var/wagging = 0 //UGH.
-	var/flapping = 0
-	///What's my status?
+	/// What's my status?
 	var/vantag_pref = VANTAG_NONE
-	///For impersonating a bodytype
+	// todo: REOMVE THIS FOR SPECIES VAR CHANGES
+	/// For impersonating a bodytype.
+	var/impersonate_bodytype_legacy
+	/// for impersonating a bodytype but actually.
 	var/impersonate_bodytype
-	///Shadekin abilities/potentially other species-based?
-	var/ability_flags = 0
-	///Suit sensor loadout pref
+	/// for impersonating a species
+	var/datum/species/impersonate_species_for_iconbase
+	/// Shadekin abilities/potentially other species-based?
+	var/ability_flags = NONE
+	/// Suit sensor loadout pref.
 	var/sensorpref = 5
 
 	var/custom_species
 
-//! ## Synth colors
-	///Lets normally uncolorable synth parts be colorable.
+	//* Synth colors
+	/// Lets normally uncolorable synth parts be colorable.
 	var/synth_color	= 0
-	//Used with synth_color to color synth parts that normaly can't be colored.
+	// Used with synth_color to color synth parts that normaly can't be colored.
 	var/r_synth
 	var/g_synth
 	var/b_synth
-	///Enables/disables markings on synth parts.
+	/// Enables/disables markings on synth parts.
 	var/synth_markings = 0
-	///For adherent coloring....
+	/// For adherent coloring....
 	var/s_base
 
-	///multiplier for the mob's icon size //VOREStation Edit (Moved to /mob/living)
-	//var/size_multiplier = 1
-	///multiplies melee combat damage
+	/// Multiplies melee combat damage.
 	var/damage_multiplier = 1
-	///whether icon updating shall take place
+	/// Whether icon updating shall take place.
 	var/icon_update = 1
 
-	///no lipstick by default- arguably misleading, as it could be used for general makeup
+	/// No lipstick by default- arguably misleading, as it could be used for general makeup.
 	var/lip_style = null
 
-	///Player's age (pure fluff)
+	/// Player's age.
 	var/age = 30
-	///Player's bloodtype
+	/// Player's bloodtype.
 	var/b_type = "A+"
-	///If they are a synthetic (aka synthetic torso). Also holds the datum for the type of robolimb.
+	/// If they are a synthetic (aka synthetic torso). Also holds the datums for the type of robolimb.
 	var/datum/robolimb/synthetic
 
 	var/list/all_underwear = list()
 	var/list/all_underwear_metadata = list()
 	var/list/hide_underwear = list()
-	///Which backpack type the player has chosen.
-	var/backbag = 2
-	///Which PDA type the player has chosen.
+
+	/// Which backpack type the player has chosen.
+	var/backbag   = 2
+	/// Which PDA type the player has chosen.
 	var/pdachoice = 1
 
-//! ## General information
+	//* General information
 	var/home_system = ""
 	var/citizenship = ""
 	var/personal_faction = ""
@@ -139,7 +197,7 @@
 	var/antag_faction = ""
 	var/antag_vis = ""
 
-//! ## Equipment slots
+	//* Equipment slots
 	var/obj/item/wear_suit = null
 	var/obj/item/w_uniform = null
 	var/obj/item/shoes = null
@@ -158,18 +216,16 @@
 	var/skill_specialization = null
 	var/list/skills = list()
 
-	///Instead of new say code calling GetVoice() over and over and over, we're just going to ask this variable, which gets updated in Life()
+	/// Instead of new say code calling GetVoice() over and over and over, we're just going to ask this variable, which gets updated in Life()
 	var/voice = ""
 
-	///Toggle for the mime's abilities. //TODO Readd mime stuff :(
-	//var/miming = null
 	/// For changing our voice. Used by a symptom.
 	var/special_voice = ""
 
-	///Used for determining if we need to process all organs or just some or even none.
+	/// Used for determining if we need to process all organs or just some or even none.
 	var/last_dam = -1
 
-	///For the spoooooooky xylophone cooldown
+	/// For the spoooooooky xylophone cooldown. //TODO: Everyone shouldn't have this.
 	var/xylophone = 0
 
 	var/mob/remoteview_target = null
@@ -204,47 +260,21 @@
 	/// Used by "real" mobs after they leave a VR session
 	var/mob/living/carbon/human/vr_link = null
 
-	///machine that is currently applying visual effects to this mob. Only used for camera monitors currently.
+	/**
+	 * Machine that is currently applying visual effects to this mob.
+	 * Only used for camera monitors currently.
+	 */
 	var/obj/machinery/machine_visual
 
-/mob/living/carbon/human/proc/shadekin_get_energy()
-	var/datum/species/shadekin/SK = species
+	// ignore ssd status
+	var/override_ssd = FALSE
 
-	if(!istype(SK))
-		return 0
+	var/hiding_wings = FALSE
+	var/hiding_tail = FALSE
+	var/hiding_horns = FALSE
 
-	return SK.get_energy(src)
+	var/datum/ability_handler/ab_handler
 
-/mob/living/carbon/human/proc/shadekin_get_max_energy()
-	var/datum/species/shadekin/SK = species
-
-	if(!istype(SK))
-		return 0
-
-	return SK.get_max_energy(src)
-
-/mob/living/carbon/human/proc/shadekin_set_energy(var/new_energy)
-	var/datum/species/shadekin/SK = species
-
-	if(!istype(SK))
-		return 0
-
-	SK.set_energy(src, new_energy)
-
-/mob/living/carbon/human/proc/shadekin_set_max_energy(var/new_max_energy)
-	var/datum/species/shadekin/SK = species
-
-	if(!istype(SK))
-		return 0
-
-	SK.set_max_energy(src, new_max_energy)
-
-/mob/living/carbon/human/proc/shadekin_adjust_energy(var/amount)
-	var/datum/species/shadekin/SK = species
-
-	if(!istype(SK))
-		return 0
-
-	if(amount > 0 || !(SK.check_infinite_energy(src)))
-		var/new_amount = SK.get_energy(src) + amount
-		SK.set_energy(src, new_amount)
+	var/body_alpha = 255
+	var/hair_alpha = 255
+	var/datum/immune_system/immune_system

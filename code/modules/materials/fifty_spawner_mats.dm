@@ -88,6 +88,10 @@
 	name = "stack of hardwood"
 	type_to_spawn = /obj/item/stack/material/wood/hard
 
+/obj/fiftyspawner/ironwood
+	name = "stack of ironwood"
+	type_to_spawn = /obj/item/stack/material/wood/ironwood
+
 /obj/fiftyspawner/log
 	name = "stack of logs"
 	type_to_spawn = /obj/item/stack/material/log
@@ -99,6 +103,10 @@
 /obj/fiftyspawner/hardlog
 	name = "stack of hardwood logs"
 	type_to_spawn = /obj/item/stack/material/log/hard
+
+/obj/fiftyspawner/ironlog
+	name = "stack of ironwood logs"
+	type_to_spawn = /obj/item/stack/material/log/ironwood
 
 /obj/fiftyspawner/cloth
 	name = "stack of cloth"
@@ -152,7 +160,7 @@
 //Sandbag port
 /obj/fiftyspawner/emptysandbag
 	name = "stack of empty sandbags"
-	type_to_spawn = /obj/item/stack/emptysandbag
+	type_to_spawn = /obj/item/stack/sandbag/empty
 
 /obj/fiftyspawner/sandbags
 	name = "stack of sandbags"
@@ -171,6 +179,10 @@
 /obj/fiftyspawner/bone
 	name = "stack of bones"
 	type_to_spawn = /obj/item/stack/material/bone
+
+/obj/fiftyspawner/chitin
+	name = "stack of chitin"
+	type_to_spawn = /obj/item/stack/material/chitin
 
 /obj/fiftyspawner/wax
 	name = "pile of wax"

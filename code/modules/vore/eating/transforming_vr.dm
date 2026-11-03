@@ -93,7 +93,6 @@
 	M.identifying_gender = target_gender
 	if(target_gender == FEMALE)
 		M.f_style = "Shaved"
-	M.dna.SetUIState(DNA_UI_GENDER,M.gender!=MALE,1)
 	M.sync_organ_dna()
 	M.update_icons_body()
 	if(message)
@@ -120,7 +119,7 @@
 	M.g_tail = O.g_tail
 	M.b_tail = O.b_tail
 	M.tail_style = O.tail_style
-	M.update_tail_showing()
+	M.render_spriteacc_tail()
 	if(message)
 		to_chat(M, "<span class='notice'>Your body tingles all over...</span>")
 		to_chat(O, "<span class='notice'>You tingle as you make noticeable changes to your captive's body.</span>")
@@ -138,7 +137,7 @@
 		return
 
 	M.tail_style = O.tail_style
-	M.update_tail_showing()
+	M.render_spriteacc_tail()
 	if(message)
 		to_chat(M, "<span class='notice'>Your body tingles all over...</span>")
 		to_chat(O, "<span class='notice'>You tingle as you make noticeable changes to your captive's body.</span>")
@@ -163,7 +162,7 @@
 	M.g_wing = O.g_wing
 	M.b_wing = O.b_wing
 	M.wing_style = O.wing_style
-	M.update_wing_showing()
+	M.render_spriteacc_wings()
 	if(message)
 		to_chat(M, "<span class='notice'>Your body tingles all over...</span>")
 		to_chat(O, "<span class='notice'>You tingle as you make noticeable changes to your captive's body.</span>")
@@ -181,7 +180,7 @@
 		return
 
 	M.wing_style = O.wing_style
-	M.update_wing_showing()
+	M.render_spriteacc_wings()
 	if(message)
 		to_chat(M, "<span class='notice'>Your body tingles all over...</span>")
 		to_chat(O, "<span class='notice'>You tingle as you make noticeable changes to your captive's body.</span>")
@@ -215,49 +214,21 @@
 	if(!istype(M) || !istype(O))
 		return
 
-	M.verbs -=  M.species.inherent_verbs	//Take away their unique stuff
+	remove_verb(M, M.species.inherent_verbs)	//Take away their unique stuff
 
-	var/list/backup_implants = list()
-	for(var/obj/item/organ/I in M.organs)
-		for(var/obj/item/implant/backup/BI in I.contents)
-			backup_implants += BI
-	if(backup_implants.len)
-		for(var/obj/item/implant/backup/BI in backup_implants)
-			BI.forceMove(src)
 	if(color_action == 1)
-		M.set_species(O.species.name,0,1,M)
+		M.set_species(O.species.name, example = M)
 	else if(color_action == 2)
-		M.set_species(O.species.name,0,1,O)
+		M.set_species(O.species.name, example = O)
 	else
 		M.set_species(O.species.name)
 	M.custom_species = O.custom_species
 
 	M.update_icons_body()
-	M.update_tail_showing()
-
-	if(backup_implants.len)
-		var/obj/item/organ/external/torso = M.get_organ(BP_TORSO)
-		for(var/obj/item/implant/backup/BI in backup_implants)
-			BI.forceMove(torso)
-			torso.implants += BI
-
+	M.render_spriteacc_tail()
 
 	if(message)
 		to_chat(M, "<span class='notice'>You lose sensation of your body, feeling only the warmth of everything around you... </span>")
 		to_chat(O, "<span class='notice'>Your body shifts as you make dramatic changes to your captive's body.</span>")
 
-/obj/belly/proc/put_in_egg(var/atom/movable/M, message=0)
-	var/mob/living/carbon/human/O = owner
-	var/egg_path = /obj/structure/closet/secure_closet/egg
-	var/egg_name = "odd egg"
 
-	if(O.vore_egg_type in tf_vore_egg_types)
-		egg_path = tf_vore_egg_types[O.vore_egg_type]
-		egg_name = "[O.vore_egg_type] egg"
-
-	var/obj/structure/closet/secure_closet/egg/egg = new egg_path(src)
-	M.forceMove(egg)
-	egg.name = egg_name
-	if(message)
-		to_chat(M, "<span class='notice'>You lose sensation of your body, feeling only the warmth around you as you're encased in an egg.</span>")
-		to_chat(O, "<span class='notice'>Your body shifts as you encase [M] in an egg.</span>")

@@ -13,7 +13,7 @@
 	configure_effects()
 	return ..()
 
-/obj/effect/map_effect/interval/effect_emitter/interval/Destroy()
+/obj/effect/map_effect/interval/effect_emitter/Destroy()
 	QDEL_NULL(effect_system)
 	return ..()
 
@@ -76,3 +76,7 @@
 	name = "steam emitter"
 	icon_state = "smoke_emitter"
 	effect_system_type = /datum/effect_system/steam_spread
+
+/obj/effect/map_effect/interval/effect_emitter/steam/atmos_blocker	//Variant to subtly stop atmos from flowing through an area
+	name = "steam emmitter - blocks atmos"
+	CanAtmosPass = ATMOS_PASS_AIR_BLOCKED

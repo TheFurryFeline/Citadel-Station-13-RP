@@ -1,5 +1,5 @@
-#define DOCK_ATTEMPT_TIMEOUT 200	// How long in ticks we wait before assuming the docking controller is broken or blown up.
-
+/// How long in ticks we wait before assuming the docking controller is broken or blown up.
+#define DOCK_ATTEMPT_TIMEOUT 200
 // Subtype of shuttle that handles docking with docking controllers
 // Consists of code pulled down from the old /datum/shuttle and up from /datum/shuttle/ferry
 // Note: Since all known shuttles extend this type, this really could just be built into /datum/shuttle
@@ -33,8 +33,8 @@
 	update_docking_target(current_location)
 	if(active_docking_controller)
 		set_docking_codes(active_docking_controller.docking_codes)
-	else if(GLOB.using_map.use_overmap)
-		var/obj/effect/overmap/visitable/location = get_overmap_sector(get_z(current_location))
+	else if((LEGACY_MAP_DATUM).use_overmap)
+		var/obj/overmap/entity/visitable/location = get_overmap_sector(get_z(current_location))
 		if(location && location.docking_codes)
 			set_docking_codes(location.docking_codes)
 	dock()
@@ -70,7 +70,7 @@
 		current_dock_target = docking_controller_tag
 	shuttle_docking_controller = SSshuttle.docking_registry[current_dock_target]
 	if(current_dock_target && !shuttle_docking_controller)
-		to_world("<span class='danger'>warning: shuttle [src] can't find its controller with tag [current_dock_target]!</span>")
+		TO_WORLD("<span class='danger'>warning: shuttle [src] can't find its controller with tag [current_dock_target]!</span>")
 /*
 	Docking stuff
 */
@@ -222,4 +222,4 @@
 	return	// Do nothing for now
 
 /obj/effect/shuttle_landmark/transit
-	flags = SLANDMARK_FLAG_ZERO_G|SLANDMARK_FLAG_AUTOSET
+	shuttle_landmark_flags = SLANDMARK_FLAG_ZERO_G|SLANDMARK_FLAG_AUTOSET

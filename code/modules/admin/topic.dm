@@ -84,7 +84,7 @@
 
 		var/mob/playermob
 
-		for(var/mob/M in player_list)
+		for(var/mob/M in GLOB.player_list)
 			if(M.ckey == banckey)
 				playermob = M
 				break
@@ -311,9 +311,6 @@
 				alert(usr, "This ban has already been lifted / does not exist.", "Error", "Ok")
 				unbanpanel()
 
-	else if(href_list["warn"])
-		usr.client.warn(href_list["warn"])
-
 	else if(href_list["unbane"])
 		if(!check_rights(R_BAN))	return
 
@@ -376,7 +373,7 @@
 		if(!M.ckey)	//sanity
 			to_chat(usr, "<span class='adminlog'>This mob has no ckey</span>")
 			return
-		if(!job_master)
+		if(!SSjob)
 			to_chat(usr, "<span class='adminlog'>Job Master has not been setup!</span>")
 			return
 
@@ -397,7 +394,7 @@
 		jobs += "<tr align='center' bgcolor='ccccff'><th colspan='[length(SSjob.get_job_titles_in_department(DEPARTMENT_COMMAND))]'><a href='?src=\ref[src];jobban3=commanddept;jobban4=\ref[M]'>Command Positions</a></th></tr><tr align='center'>"
 		for(var/jobPos in SSjob.get_job_titles_in_department(DEPARTMENT_COMMAND))
 			if(!jobPos)	continue
-			var/datum/job/job = job_master.GetJob(jobPos)
+			var/datum/prototype/role/job/job = RSroles.legacy_job_by_title(jobPos)
 			if(!job) continue
 
 			if(jobban_isbanned(M, job.title))
@@ -418,7 +415,7 @@
 		jobs += "<tr bgcolor='ffddf0'><th colspan='[length(SSjob.get_job_titles_in_department(DEPARTMENT_SECURITY))]'><a href='?src=\ref[src];jobban3=securitydept;jobban4=\ref[M]'>Security Positions</a></th></tr><tr align='center'>"
 		for(var/jobPos in SSjob.get_job_titles_in_department(DEPARTMENT_SECURITY))
 			if(!jobPos)	continue
-			var/datum/job/job = job_master.GetJob(jobPos)
+			var/datum/prototype/role/job/job = RSroles.legacy_job_by_title(jobPos)
 			if(!job) continue
 
 			if(jobban_isbanned(M, job.title))
@@ -439,7 +436,7 @@
 		jobs += "<tr bgcolor='fff5cc'><th colspan='[length(SSjob.get_job_titles_in_department(DEPARTMENT_ENGINEERING))]'><a href='?src=\ref[src];jobban3=engineeringdept;jobban4=\ref[M]'>Engineering Positions</a></th></tr><tr align='center'>"
 		for(var/jobPos in SSjob.get_job_titles_in_department(DEPARTMENT_ENGINEERING))
 			if(!jobPos)	continue
-			var/datum/job/job = job_master.GetJob(jobPos)
+			var/datum/prototype/role/job/job = RSroles.legacy_job_by_title(jobPos)
 			if(!job) continue
 
 			if(jobban_isbanned(M, job.title))
@@ -460,7 +457,7 @@
 		jobs += "<tr bgcolor='fff5cc'><th colspan='[length(SSjob.get_job_titles_in_department(DEPARTMENT_CARGO))]'><a href='?src=\ref[src];jobban3=cargodept;jobban4=\ref[M]'>Cargo Positions</a></th></tr><tr align='center'>"
 		for(var/jobPos in SSjob.get_job_titles_in_department(DEPARTMENT_CARGO))
 			if(!jobPos)	continue
-			var/datum/job/job = job_master.GetJob(jobPos)
+			var/datum/prototype/role/job/job = RSroles.legacy_job_by_title(jobPos)
 			if(!job) continue
 
 			if(jobban_isbanned(M, job.title))
@@ -481,7 +478,7 @@
 		jobs += "<tr bgcolor='ffeef0'><th colspan='[length(SSjob.get_job_titles_in_department(DEPARTMENT_MEDICAL))]'><a href='?src=\ref[src];jobban3=medicaldept;jobban4=\ref[M]'>Medical Positions</a></th></tr><tr align='center'>"
 		for(var/jobPos in SSjob.get_job_titles_in_department(DEPARTMENT_MEDICAL))
 			if(!jobPos)	continue
-			var/datum/job/job = job_master.GetJob(jobPos)
+			var/datum/prototype/role/job/job = RSroles.legacy_job_by_title(jobPos)
 			if(!job) continue
 
 			if(jobban_isbanned(M, job.title))
@@ -502,7 +499,7 @@
 		jobs += "<tr bgcolor='e79fff'><th colspan='[length(SSjob.get_job_titles_in_department(DEPARTMENT_RESEARCH))]'><a href='?src=\ref[src];jobban3=sciencedept;jobban4=\ref[M]'>Science Positions</a></th></tr><tr align='center'>"
 		for(var/jobPos in SSjob.get_job_titles_in_department(DEPARTMENT_RESEARCH))
 			if(!jobPos)	continue
-			var/datum/job/job = job_master.GetJob(jobPos)
+			var/datum/prototype/role/job/job = RSroles.legacy_job_by_title(jobPos)
 			if(!job) continue
 
 			if(jobban_isbanned(M, job.title))
@@ -516,14 +513,13 @@
 				jobs += "</tr><tr align='center'>"
 				counter = 0
 		jobs += "</tr></table>"
-	//VOREStation Edit Start
 	//Exploration (Purple)
 		counter = 0
 		jobs += "<table cellpadding='1' cellspacing='0' width='100%'>"
 		jobs += "<tr bgcolor='e79fff'><th colspan='[length(SSjob.get_job_titles_in_department(DEPARTMENT_PLANET))]'><a href='?src=\ref[src];jobban3=sciencedept;jobban4=\ref[M]'>Science Positions</a></th></tr><tr align='center'>"
 		for(var/jobPos in SSjob.get_job_titles_in_department(DEPARTMENT_PLANET))
 			if(!jobPos)	continue
-			var/datum/job/job = job_master.GetJob(jobPos)
+			var/datum/prototype/role/job/job = RSroles.legacy_job_by_title(jobPos)
 			if(!job) continue
 
 			if(jobban_isbanned(M, job.title))
@@ -537,14 +533,13 @@
 				jobs += "</tr><tr align='center'>"
 				counter = 0
 		jobs += "</tr></table>"
-	//VOREstation Edit End
 	//Civilian (Grey)
 		counter = 0
 		jobs += "<table cellpadding='1' cellspacing='0' width='100%'>"
 		jobs += "<tr bgcolor='dddddd'><th colspan='[length(SSjob.get_job_titles_in_department(DEPARTMENT_CIVILIAN))]'><a href='?src=\ref[src];jobban3=civiliandept;jobban4=\ref[M]'>Civilian Positions</a></th></tr><tr align='center'>"
 		for(var/jobPos in SSjob.get_job_titles_in_department(DEPARTMENT_CIVILIAN))
 			if(!jobPos)	continue
-			var/datum/job/job = job_master.GetJob(jobPos)
+			var/datum/prototype/role/job/job = RSroles.legacy_job_by_title(jobPos)
 			if(!job) continue
 
 			if(jobban_isbanned(M, job.title))
@@ -571,7 +566,7 @@
 		jobs += "<tr bgcolor='ccffcc'><th colspan='[length(SSjob.get_job_titles_in_department(DEPARTMENT_SYNTHETIC))+1]'><a href='?src=\ref[src];jobban3=nonhumandept;jobban4=\ref[M]'>Non-human Positions</a></th></tr><tr align='center'>"
 		for(var/jobPos in SSjob.get_job_titles_in_department(DEPARTMENT_SYNTHETIC))
 			if(!jobPos)	continue
-			var/datum/job/job = job_master.GetJob(jobPos)
+			var/datum/prototype/role/job/job = RSroles.legacy_job_by_title(jobPos)
 			if(!job) continue
 
 			if(jobban_isbanned(M, job.title))
@@ -625,17 +620,13 @@
 				jobs += "</tr></table>"
 		body = "<body>[jobs]</body>"
 		dat = "<tt>[header][body]</tt>"
-		usr << browse(dat, "window=jobban2;size=800x490")
+		usr << browse(HTML_SKELETON(dat), "window=jobban2;size=800x490")
 		return
 
 	//JOBBAN'S INNARDS
 	else if(href_list["jobban3"])
 		if(!check_rights(R_MOD,0) && !check_rights(R_ADMIN,0))
 			to_chat(usr, "<span class='adminlog warning'>You do not have the appropriate permissions to add job bans!</span>")
-			return
-
-		if(check_rights(R_MOD,0) && !check_rights(R_ADMIN,0) && !config_legacy.mods_can_job_tempban) // If mod and tempban disabled
-			to_chat(usr, "<span class='adminlog warning'>Mod jobbanning is disabled!</span>")
 			return
 
 		var/mob/M = locate(href_list["jobban4"])
@@ -648,7 +639,7 @@
 				alert("You cannot perform this action. You must be of a higher administrative rank!")
 				return
 
-		if(!job_master)
+		if(!SSjob)
 			to_chat(usr, "<span class='adminlog'>Job Master has not been setup!</span>")
 			return
 
@@ -658,58 +649,56 @@
 			if("commanddept")
 				for(var/jobPos in SSjob.get_job_titles_in_department(DEPARTMENT_COMMAND))
 					if(!jobPos)	continue
-					var/datum/job/temp = job_master.GetJob(jobPos)
+					var/datum/prototype/role/job/temp = RSroles.legacy_job_by_title(jobPos)
 					if(!temp) continue
 					joblist += temp.title
 			if("securitydept")
 				for(var/jobPos in SSjob.get_job_titles_in_department(DEPARTMENT_SECURITY))
 					if(!jobPos)	continue
-					var/datum/job/temp = job_master.GetJob(jobPos)
+					var/datum/prototype/role/job/temp = RSroles.legacy_job_by_title(jobPos)
 					if(!temp) continue
 					joblist += temp.title
 			if("engineeringdept")
 				for(var/jobPos in SSjob.get_job_titles_in_department(DEPARTMENT_ENGINEERING))
 					if(!jobPos)	continue
-					var/datum/job/temp = job_master.GetJob(jobPos)
+					var/datum/prototype/role/job/temp = RSroles.legacy_job_by_title(jobPos)
 					if(!temp) continue
 					joblist += temp.title
 			if("cargodept")
 				for(var/jobPos in SSjob.get_job_titles_in_department(DEPARTMENT_CARGO))
 					if(!jobPos)	continue
-					var/datum/job/temp = job_master.GetJob(jobPos)
+					var/datum/prototype/role/job/temp = RSroles.legacy_job_by_title(jobPos)
 					if(!temp) continue
 					joblist += temp.title
 			if("medicaldept")
 				for(var/jobPos in SSjob.get_job_titles_in_department(DEPARTMENT_MEDICAL))
 					if(!jobPos)	continue
-					var/datum/job/temp = job_master.GetJob(jobPos)
+					var/datum/prototype/role/job/temp = RSroles.legacy_job_by_title(jobPos)
 					if(!temp) continue
 					joblist += temp.title
 			if("sciencedept")
 				for(var/jobPos in SSjob.get_job_titles_in_department(DEPARTMENT_RESEARCH))
 					if(!jobPos)	continue
-					var/datum/job/temp = job_master.GetJob(jobPos)
+					var/datum/prototype/role/job/temp = RSroles.legacy_job_by_title(jobPos)
 					if(!temp) continue
 					joblist += temp.title
-			//VOREStation Edit Start
 			if("explorationdept")
 				for(var/jobPos in SSjob.get_job_titles_in_department(DEPARTMENT_PLANET))
 					if(!jobPos)	continue
-					var/datum/job/temp = job_master.GetJob(jobPos)
+					var/datum/prototype/role/job/temp = RSroles.legacy_job_by_title(jobPos)
 					if(!temp) continue
 					joblist += temp.title
-			//VOREStation Edit End
 			if("civiliandept")
 				for(var/jobPos in SSjob.get_job_titles_in_department(DEPARTMENT_CIVILIAN))
 					if(!jobPos)	continue
-					var/datum/job/temp = job_master.GetJob(jobPos)
+					var/datum/prototype/role/job/temp = RSroles.legacy_job_by_title(jobPos)
 					if(!temp) continue
 					joblist += temp.title
 			if("nonhumandept")
 				joblist += "pAI"
 				for(var/jobPos in SSjob.get_job_titles_in_department(DEPARTMENT_SYNTHETIC))
 					if(!jobPos)	continue
-					var/datum/job/temp = job_master.GetJob(jobPos)
+					var/datum/prototype/role/job/temp = RSroles.legacy_job_by_title(jobPos)
 					if(!temp) continue
 					joblist += temp.title
 			else
@@ -733,9 +722,6 @@
 						return
 					var/mins = input(usr,"How long (in minutes)?","Ban time",1440) as num|null
 					if(!mins)
-						return
-					if(check_rights(R_MOD, 0) && !check_rights(R_BAN, 0) && mins > config_legacy.mod_job_tempban_max)
-						to_chat(usr, "<span class='adminlog warning'> Moderators can only job tempban up to [config_legacy.mod_job_tempban_max] minutes!</span>")
 						return
 					var/reason = sanitize(input(usr,"Reason?","Please State Reason","") as text|null)
 					if(!reason)
@@ -844,13 +830,63 @@
 				var/job = t_split[2]
 				DB_ban_unban(ckey(key), BANTYPE_JOB_PERMA, job)
 
-	else if(href_list["newban"])
+	else if(href_list["oocban"])
+
 		if(!check_rights(R_MOD,0) && !check_rights(R_BAN, 0))
 			to_chat(usr, "<span class='warning'>You do not have the appropriate permissions to add bans!</span>")
 			return
 
-		if(check_rights(R_MOD,0) && !check_rights(R_ADMIN, 0) && !config_legacy.mods_can_job_tempban) // If mod and tempban disabled
-			to_chat(usr, "<span class='warning'>Mod jobbanning is disabled!</span>")
+		var/target_ckey = href_list["oocban"]
+		// clients can gc at any time, do not use this outside of getting existing mob
+		var/client/_existing_client = GLOB.directory[target_ckey]
+		// i lied check it first
+		if(_existing_client?.holder)
+			// if you have to be ooc banned as an admin you should just be de-adminned?
+			// we'll add the function later when we overhaul banning
+			return
+
+		if(SSbans.t_is_role_banned_ckey(target_ckey, role = BAN_ROLE_OOC))
+			to_chat(usr, SPAN_WARNING("[target_ckey] is already OOC banned. Use Unban-Panel to unban them."))
+			return
+
+		switch(alert(usr, "Temporary OOC Ban?", "OOC Ban", "Yes", "No", "Cancel"))
+			if("Yes")
+				var/minutes = input(usr, "How long in minutes?", "OOC Ban", 1440) as num|null
+				if(minutes <= 0)
+					return
+				var/reason = sanitize(input(usr, "Reason?", "OOC Ban") as text|null)
+				if(!reason)
+					return
+				SSbans.t_role_ban_ckey(target_ckey, role = BAN_ROLE_OOC, minutes = minutes, reason = reason, admin = src)
+				// incase they switched mobs
+				var/client/target_client = GLOB.directory[target_ckey]
+				notes_add(target_ckey, "[usr.ckey] has banned has banned [target_ckey] from OOC. Reason: [reason]. This will be removed in [minutes] minutes.")
+				message_admins("<font color=#4F49AF>[usr.ckey] has banned has banned [target_ckey] from OOC. Reason: [reason]. This will be removed in [minutes] minutes.</font>")
+				log_admin("[usr.ckey] has banned has banned [target_ckey] from OOC. Reason: [reason]. This will be removed in [minutes] minutes.")
+				to_chat(target_client, SPAN_BIG(SPAN_BOLDWARNING("You have been banned from OOC by [usr.ckey]. Reason: [reason]. This will be removed in [minutes] minutes.")))
+
+			if("No")
+				var/reason = sanitize(input(usr, "Reason?", "OOC Ban") as text|null)
+				if(!reason)
+					return
+				SSbans.t_role_ban_ckey(target_ckey, role = BAN_ROLE_OOC, reason = reason, admin = src)
+				// incase they switched mobs
+				var/client/target_client = GLOB.directory[target_ckey]
+				notes_add(target_ckey, "[usr.ckey] has banned has banned [target_ckey] from OOC. Reason: [reason].")
+				message_admins("<font color=#4F49AF>[usr.ckey] has banned has banned [target_ckey] from OOC. Reason: [reason].</font>")
+				log_admin("[usr.ckey] has banned has banned [target_ckey] from OOC. Reason: [reason].")
+				to_chat(target_client, SPAN_BIG(SPAN_BOLDWARNING("You have been banned from OOC by [usr.ckey]. Reason: [reason].")))
+
+			if("Cancel")
+				return
+
+		// todo: i'm not going to put feedback gathering in right now for this
+		//       because this verb needs redone later anyways
+		//       and our feedback system is frankly a mess
+
+	else if(href_list["newban"])
+		if(!check_rights(R_MOD,0) && !check_rights(R_BAN, 0))
+			to_chat(usr, "<span class='warning'>You do not have the appropriate permissions to add bans!</span>")
 			return
 
 		var/mob/M = locate(href_list["newban"])
@@ -862,9 +898,6 @@
 			if("Yes")
 				var/mins = input(usr,"How long (in minutes)?","Ban time",1440) as num|null
 				if(!mins)
-					return
-				if(check_rights(R_MOD, 0) && !check_rights(R_BAN, 0) && mins > config_legacy.mod_tempban_max)
-					to_chat(usr, "<span class='warning'>Moderators can only job tempban up to [config_legacy.mod_tempban_max] minutes!</span>")
 					return
 				if(mins >= 525600) mins = 525599
 				var/reason = sanitize(input(usr,"Reason?","reason","Griefer") as text|null)
@@ -1024,46 +1057,6 @@
 		log_admin("[key_name(usr)] forced [key_name(M)] to say: [speech]")
 		message_admins("<font color=#4F49AF>[key_name_admin(usr)] forced [key_name_admin(M)] to say: [speech]</font>")
 
-	else if(href_list["sendtoprison"])
-		if(!check_rights(R_ADMIN))	return
-
-		if(alert(usr, "Send to admin prison for the round?", "Message", "Yes", "No") != "Yes")
-			return
-
-		var/mob/M = locate(href_list["sendtoprison"])
-		if(!ismob(M))
-			to_chat(usr, "This can only be used on instances of type /mob")
-			return
-		if(istype(M, /mob/living/silicon/ai))
-			to_chat(usr, "This cannot be used on instances of type /mob/living/silicon/ai")
-			return
-
-		var/turf/prison_cell = pick(prisonwarp)
-		if(!prison_cell)	return
-
-		var/obj/structure/closet/secure_closet/brig/locker = new /obj/structure/closet/secure_closet/brig(prison_cell)
-		locker.opened = 0
-		locker.locked = 1
-
-		//strip their stuff and stick it in the crate
-		for(var/obj/item/I in M)
-			M.drop_from_inventory(I, locker)
-
-		//so they black out before warping
-		M.Paralyse(5)
-		sleep(5)
-		if(!M)	return
-
-		M.loc = prison_cell
-		if(istype(M, /mob/living/carbon/human))
-			var/mob/living/carbon/human/prisoner = M
-			prisoner.equip_to_slot_or_del(new /obj/item/clothing/under/color/prison(prisoner), slot_w_uniform)
-			prisoner.equip_to_slot_or_del(new /obj/item/clothing/shoes/orange(prisoner), slot_shoes)
-
-		to_chat(M, "<font color='red'>You have been sent to the prison station!</font>")
-		log_admin("[key_name(usr)] sent [key_name(M)] to the prison station.")
-		message_admins("<font color=#4F49AF>[key_name_admin(usr)] sent [key_name_admin(M)] to the prison station.</font>", 1)
-
 	else if(href_list["tdome1"])
 		if(!check_rights(R_FUN))	return
 
@@ -1078,10 +1071,10 @@
 			to_chat(usr, "This cannot be used on instances of type /mob/living/silicon/ai")
 			return
 
-		for(var/obj/item/I in M)
-			M.drop_from_inventory(I)
+		for(var/obj/item/I in M.get_equipped_items(TRUE, TRUE))
+			M.drop_item_to_ground(I, INV_OP_FORCE)
 
-		M.Paralyse(5)
+		M.afflict_unconscious(20 * 5)
 		sleep(5)
 		M.loc = pick(tdome1)
 		spawn(50)
@@ -1103,10 +1096,10 @@
 			to_chat(usr, "This cannot be used on instances of type /mob/living/silicon/ai")
 			return
 
-		for(var/obj/item/I in M)
-			M.drop_from_inventory(I)
+		for(var/obj/item/I in M.get_equipped_items(TRUE, TRUE))
+			M.drop_item_to_ground(I, INV_OP_FORCE)
 
-		M.Paralyse(5)
+		M.afflict_unconscious(20 * 5)
 		sleep(5)
 		M.loc = pick(tdome2)
 		spawn(50)
@@ -1128,7 +1121,7 @@
 			to_chat(usr, "This cannot be used on instances of type /mob/living/silicon/ai")
 			return
 
-		M.Paralyse(5)
+		M.afflict_unconscious(20 * 5)
 		sleep(5)
 		M.loc = pick(tdomeadmin)
 		spawn(50)
@@ -1150,14 +1143,14 @@
 			to_chat(usr, "This cannot be used on instances of type /mob/living/silicon/ai")
 			return
 
-		for(var/obj/item/I in M)
-			M.drop_from_inventory(I)
+		for(var/obj/item/I in M.get_equipped_items(TRUE, TRUE))
+			M.drop_item_to_ground(I, INV_OP_FORCE)
 
 		if(istype(M, /mob/living/carbon/human))
 			var/mob/living/carbon/human/observer = M
-			observer.equip_to_slot_or_del(new /obj/item/clothing/under/suit_jacket(observer), slot_w_uniform)
-			observer.equip_to_slot_or_del(new /obj/item/clothing/shoes/black(observer), slot_shoes)
-		M.Paralyse(5)
+			observer.equip_to_slot_or_del(new /obj/item/clothing/under/suit_jacket(observer), SLOT_ID_UNIFORM)
+			observer.equip_to_slot_or_del(new /obj/item/clothing/shoes/black(observer), SLOT_ID_SHOES)
+		M.afflict_unconscious(20 * 5)
 		sleep(5)
 		M.loc = pick(tdomeobserve)
 		spawn(50)
@@ -1173,12 +1166,10 @@
 			to_chat(usr, "This can only be used on instances of type /mob/living")
 			return
 
-		if(config_legacy.allow_admin_rev)
-			L.revive()
-			message_admins("<font color='red'>Admin [key_name_admin(usr)] healed / revived [key_name_admin(L)]!</font>", 1)
-			log_admin("[key_name(usr)] healed / Rrvived [key_name(L)]")
-		else
-			to_chat(usr, "Admin Rejuvinates have been disabled")
+		L.revive(full_heal = TRUE)
+		L.remove_all_restraints()
+		message_admins("<font color='red'>Admin [key_name_admin(usr)] healed / revived [key_name_admin(L)]!</font>", 1)
+		log_admin("[key_name(usr)] healed / Rrvived [key_name(L)]")
 
 	else if(href_list["makeai"])
 		if(!check_rights(R_SPAWN))	return
@@ -1282,11 +1273,10 @@
 		var/mob/M = locate(href_list["take_question"])
 		if(ismob(M))
 			var/take_msg = "<span class='notice'><b>ADMINHELP</b>: <b>[key_name(usr.client)]</b> is attending to <b>[key_name(M)]'s</b> adminhelp, please don't dogpile them.</span>"
-			for(var/client/X in admins)
+			for(var/client/X in GLOB.admins)
 				if((R_ADMIN|R_MOD|R_EVENT|R_SERVER) & X.holder.rights)
 					to_chat(X, take_msg)
 			to_chat(M, "<span class='notice'><b>Your adminhelp is being attended to by [usr.client]. Thanks for your patience!</b></span>")
-			// VoreStation Edit Start
 			if (config_legacy.chat_webhook_url)
 				spawn(0)
 					var/query_string = "type=admintake"
@@ -1294,7 +1284,6 @@
 					query_string += "&admin=[url_encode(key_name(usr.client))]"
 					query_string += "&user=[url_encode(key_name(M))]"
 					world.Export("[config_legacy.chat_webhook_url]?[query_string]")
-			// VoreStation Edit End
 		else
 			to_chat(usr, "<span class='warning'>Unable to locate mob.</span>")
 
@@ -1315,9 +1304,9 @@
 		output_ai_laws()
 
 	else if(href_list["adminmoreinfo"])
-		var/mob/M = locate(href_list["adminmoreinfo"])
+		var/mob/M = locate(href_list["adminmoreinfo"]) in GLOB.mob_list
 		if(!ismob(M))
-			to_chat(usr, "This can only be used on instances of type /mob")
+			to_chat(usr, "This can only be used on instances of type /mob.", confidential = TRUE)
 			return
 
 		var/location_description = ""
@@ -1344,9 +1333,13 @@
 			var/mob/living/L = M
 			var/status
 			switch (M.stat)
-				if (0) status = "Alive"
-				if (1) status = "<font color='orange'><b>Unconscious</b></font>"
-				if (2) status = "<font color='red'><b>Dead</b></font>"
+				if(CONSCIOUS)
+					status = "Alive"
+				if(UNCONSCIOUS)
+					status = "<font color='orange'><b>Unconscious</b></font>"
+				if(DEAD)
+					status = "<font color='red'><b>Dead</b></font>"
+
 			health_description = "Status = [status]"
 			health_description += "<BR>Oxy: [L.getOxyLoss()] - Tox: [L.getToxLoss()] - Fire: [L.getFireLoss()] - Brute: [L.getBruteLoss()] - Clone: [L.getCloneLoss()] - Brain: [L.getBrainLoss()]"
 		else
@@ -1354,15 +1347,17 @@
 
 		//Gener
 		switch(M.gender)
-			if(MALE,FEMALE)	gender_description = "[M.gender]"
-			else			gender_description = "<font color='red'><b>[M.gender]</b></font>"
+			if(MALE, FEMALE, PLURAL)
+				gender_description = "[M.gender]"
+			else
+				gender_description = "<font color='red'><b>[M.gender]</b></font>"
 
-		to_chat(src.owner, "<b>Info about [M.name]:</b> ")
-		to_chat(src.owner, "Mob type = [M.type]; Gender = [gender_description] Damage = [health_description]")
-		to_chat(src.owner, "Name = <b>[M.name]</b>; Real_name = [M.real_name]; Mind_name = [M.mind?"[M.mind.name]":""]; Key = <b>[M.key]</b>;")
-		to_chat(src.owner, "Location = [location_description];")
-		to_chat(src.owner, "[special_role_description]")
-		to_chat(src.owner, "(<a href='?src=\ref[usr];priv_msg=\ref[M]'>PM</a>) (<A HREF='?src=\ref[src];adminplayeropts=\ref[M]'>PP</A>) (<A HREF='?_src_=vars;Vars=\ref[M]'>VV</A>) (<A HREF='?src=\ref[src];subtlemessage=\ref[M]'>SM</A>) ([admin_jump_link(M, src)]) (<A HREF='?src=\ref[src];secretsadmin=check_antagonist'>CA</A>)")
+		to_chat(src.owner, "<b>Info about [M.name]:</b> ", confidential = TRUE)
+		to_chat(src.owner, "Mob type = [M.type]; Gender = [gender_description] Damage = [health_description]", confidential = TRUE)
+		to_chat(src.owner, "Name = <b>[M.name]</b>; Real_name = [M.real_name]; Mind_name = [M.mind?"[M.mind.name]":""]; Key = <b>[M.key]</b>;", confidential = TRUE)
+		to_chat(src.owner, "Location = [location_description];", confidential = TRUE)
+		to_chat(src.owner, "[special_role_description]", confidential = TRUE)
+		to_chat(src.owner, ADMIN_FULLMONTY_NONAME(M), confidential = TRUE)
 
 	else if(href_list["adminspawncookie"])
 		if(!check_rights(R_ADMIN|R_FUN))	return
@@ -1372,17 +1367,12 @@
 			to_chat(usr, "This can only be used on instances of type /mob/living/carbon/human")
 			return
 
-		H.equip_to_slot_or_del( new /obj/item/reagent_containers/food/snacks/cookie(H), slot_l_hand )
-		if(!(istype(H.l_hand,/obj/item/reagent_containers/food/snacks/cookie)))
-			H.equip_to_slot_or_del( new /obj/item/reagent_containers/food/snacks/cookie(H), slot_r_hand )
-			if(!(istype(H.r_hand,/obj/item/reagent_containers/food/snacks/cookie)))
-				log_admin("[key_name(H)] has their hands full, so they did not receive their cookie, spawned by [key_name(src.owner)].")
-				message_admins("[key_name(H)] has their hands full, so they did not receive their cookie, spawned by [key_name(src.owner)].")
-				return
-			else
-				H.update_inv_r_hand()//To ensure the icon appears in the HUD
-		else
-			H.update_inv_l_hand()
+		var/obj/item/reagent_containers/food/snacks/cookie/C = new(H)
+		if(!H.put_in_hands_or_del(C))
+			log_admin("[key_name(H)] has their hands full, so they did not receive their cookie, spawned by [key_name(src.owner)].")
+			message_admins("[key_name(H)] has their hands full, so they did not receive their cookie, spawned by [key_name(src.owner)].")
+			return
+
 		log_admin("[key_name(H)] got their cookie, spawned by [key_name(src.owner)]")
 		message_admins("[key_name(H)] got their cookie, spawned by [key_name(src.owner)]")
 		feedback_inc("admin_cookies_spawned",1)
@@ -1396,17 +1386,12 @@
 			to_chat(usr, "This can only be used on instances of type /mob/living/carbon/human")
 			return
 
-		H.equip_to_slot_or_del( new /obj/item/reagent_containers/food/snacks/dtreat(H), slot_l_hand )
-		if(!(istype(H.l_hand,/obj/item/reagent_containers/food/snacks/dtreat)))
-			H.equip_to_slot_or_del( new /obj/item/reagent_containers/food/snacks/dtreat(H), slot_r_hand )
-			if(!(istype(H.r_hand,/obj/item/reagent_containers/food/snacks/dtreat)))
-				log_admin("[key_name(H)] has their hands full, so they did not receive their treat, spawned by [key_name(src.owner)].")
-				message_admins("[key_name(H)] has their hands full, so they did not receive their treat, spawned by [key_name(src.owner)].")
-				return
-			else
-				H.update_inv_r_hand()//To ensure the icon appears in the HUD
-		else
-			H.update_inv_l_hand()
+		var/obj/item/reagent_containers/food/snacks/dtreat/C = new(H)
+		if(!H.put_in_hands_or_del(C))
+			log_admin("[key_name(H)] has their hands full, so they did not receive their treat, spawned by [key_name(src.owner)].")
+			message_admins("[key_name(H)] has their hands full, so they did not receive their treat, spawned by [key_name(src.owner)].")
+			return
+
 		log_admin("[key_name(H)] got their treat, spawned by [key_name(src.owner)]")
 		message_admins("[key_name(H)] got their treat, spawned by [key_name(src.owner)]")
 		feedback_inc("admin_cookies_spawned",1)
@@ -1549,7 +1534,7 @@
 		if(!check_rights(R_ADMIN))	return
 
 		var/mob/M = locate(href_list["narrateto"])
-		usr.client.cmd_admin_direct_narrate(M)
+		usr.client.holder.open_admin_modal(/datum/admin_modal/admin_narrate, M)
 
 	else if(href_list["subtlemessage"])
 		if(!check_rights(R_MOD,0) && !check_rights(R_ADMIN))  return
@@ -1612,11 +1597,11 @@
 			else if(!ispath(path, /obj) && !ispath(path, /turf) && !ispath(path, /mob))
 				removed_paths += dirty_path
 				continue
-			else if(ispath(path, /obj/item/gun/energy/pulse_rifle))
+			else if(ispath(path, /obj/item/gun/projectile/energy/nt_pulse/rifle))
 				if(!check_rights(R_FUN,0))
 					removed_paths += dirty_path
 					continue
-			else if(ispath(path, /obj/item/melee/energy/blade))//Not an item one should be able to spawn./N
+			else if(ispath(path, /obj/item/melee/ninja_energy_blade))//Not an item one should be able to spawn./N
 				if(!check_rights(R_FUN,0))
 					removed_paths += dirty_path
 					continue
@@ -1657,7 +1642,7 @@
 			if ( !( ishuman(usr) || issmall(usr) ) )
 				to_chat(usr, "Can only spawn in hand when you're a human or a monkey.")
 				where = "onfloor"
-			else if ( usr.get_active_hand() )
+			else if ( usr.get_active_held_item() )
 				to_chat(usr, "Your active hand is full. Spawning on floor.")
 				where = "onfloor"
 
@@ -1913,7 +1898,7 @@
 				to_chat(usr, "[M] is illegal type, must be /mob!")
 				return
 			var/lang2toggle = href_list["lang"]
-			var/datum/language/L = GLOB.all_languages[lang2toggle]
+			var/datum/prototype/language/L = RSlanguages.legacy_resolve_language_name(lang2toggle)
 
 			if(L in M.languages)
 				if(!M.remove_language(lang2toggle))
@@ -1927,7 +1912,7 @@
 	else if(href_list["cryoplayer"])
 		if(!check_rights(R_ADMIN))	return
 
-		var/mob/living/carbon/M = locate(href_list["cryoplayer"]) //VOREStation edit from just an all mob check to mob/living/carbon
+		var/mob/living/carbon/M = locate(href_list["cryoplayer"])
 		if(!istype(M))
 			to_chat(usr,"<span class='warning'>Mob doesn't exist!</span>")
 			return

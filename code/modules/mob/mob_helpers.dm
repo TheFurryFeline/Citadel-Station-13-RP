@@ -15,11 +15,6 @@
 /proc/mob_size_difference(var/mob_size_A, var/mob_size_B)
 	return round(log(2, mob_size_A/mob_size_B), 1)
 
-/mob/proc/can_wield_item(obj/item/W)
-	if(W.w_class >= ITEMSIZE_LARGE && issmall(src))
-		return FALSE //M is too small to wield this
-	return TRUE
-
 /proc/istiny(A)
 	if(A && istype(A, /mob/living))
 		var/mob/living/L = A
@@ -42,10 +37,10 @@
 /mob/living/carbon/human/isMonkey()
 	return istype(species, /datum/species/monkey)
 
-proc/isdeaf(A)
+/proc/isdeaf(A)
 	if(istype(A, /mob))
 		var/mob/M = A
-		return (M.sdisabilities & DEAF) || M.ear_deaf
+		return (M.sdisabilities & SDISABILITY_DEAF) || M.ear_deaf
 	return 0
 
 /mob/proc/get_ear_protection()
@@ -57,24 +52,24 @@ proc/isdeaf(A)
 /mob/proc/is_cloaked()
 	return FALSE
 
-proc/hasorgans(A) // Fucking really??
+/proc/hasorgans(A) // Fucking really??
 	return ishuman(A)
 
-proc/iscuffed(A)
+/proc/iscuffed(A)
 	if(istype(A, /mob/living/carbon))
 		var/mob/living/carbon/C = A
 		if(C.handcuffed)
 			return 1
 	return 0
 
-proc/hassensorlevel(A, var/level)
+/proc/hassensorlevel(A, var/level)
 	var/mob/living/carbon/human/H = A
 	if(istype(H) && istype(H.w_uniform, /obj/item/clothing/under))
 		var/obj/item/clothing/under/U = H.w_uniform
 		return U.sensor_mode >= level
 	return 0
 
-proc/getsensorlevel(A)
+/proc/getsensorlevel(A)
 	var/mob/living/carbon/human/H = A
 	if(istype(H) && istype(H.w_uniform, /obj/item/clothing/under))
 		var/obj/item/clothing/under/U = H.w_uniform
@@ -87,8 +82,9 @@ proc/getsensorlevel(A)
 
 /**
  * Returns true if the user should have admin AI level access
+ *! TO-BE-DEPRICATED
  */
-/proc/IsAdminGhost(var/mob/user)
+/proc/IsAdminGhost(mob/user)
 	if(!user)		//Are they a mob? Auto interface updates call this with a null src
 		return
 	if(!user.client) // Do they have a client?
@@ -96,6 +92,26 @@ proc/getsensorlevel(A)
 	if(!isobserver(user)) // Are they a ghost?
 		return
 	if(!check_rights(R_ADMIN, 0, user)) // Are they allowed?
+		return
+	if(!user.client.AI_Interact) // Do they have it enabled?
+		return
+	return TRUE
+
+/// Is the passed in mob a ghost with admin powers, doesn't check for AI interact like isAdminGhost() used to
+/proc/isAdminObserver(mob/user)
+	if(!user) //Are they a mob? Auto interface updates call this with a null src
+		return
+	if(!user.client) // Do they have a client?
+		return
+	if(!isobserver(user)) // Are they a ghost?
+		return
+	if(!check_rights_for(user.client, R_ADMIN)) // Are they allowed?
+		return
+	return TRUE
+
+/// Is the passed in mob an admin ghost WITH AI INTERACT enabled
+/proc/isAdminGhostAI(mob/user)
+	if(!isAdminObserver(user))
 		return
 	if(!user.client.AI_Interact) // Do they have it enabled?
 		return
@@ -178,12 +194,15 @@ proc/getsensorlevel(A)
 
 /proc/findname(msg)
 	for(var/mob/M in GLOB.mob_list)
-		if (M.real_name == text("[msg]"))
+		if (M.real_name == "[msg]")
 			return 1
 	return 0
 
-/mob/proc/abiotic(var/full_body = 0)
-	return 0
+/mob/proc/abiotic(full_body)
+	return FALSE
+
+/mob/proc/item_considered_abiotic(obj/item/I)
+	return I && (I.item_flags & ITEM_ABSTRACT)
 
 //converts intent-strings into numbers and back
 var/list/intents = list(INTENT_HELP,INTENT_DISARM,INTENT_GRAB,INTENT_HARM)
@@ -239,10 +258,10 @@ var/list/intents = list(INTENT_HELP,INTENT_DISARM,INTENT_GRAB,INTENT_HARM)
 			else
 				hud_used.action_intent.icon_state = INTENT_HELP
 
-proc/is_blind(A)
+/proc/is_blind(A)
 	if(istype(A, /mob/living/carbon))
 		var/mob/living/carbon/C = A
-		if(C.sdisabilities & BLIND || C.blinded)
+		if(C.has_status_effect(/datum/status_effect/sight/blindness))
 			return 1
 	return 0
 
@@ -261,8 +280,8 @@ proc/is_blind(A)
 	var/keyname
 	if(subject && subject.client)
 		var/client/C = subject.client
-		keyname = (C.holder && C.holder.fakekey) ? C.holder.fakekey : C.key
-		if(C.mob) //Most of the time this is the dead/observer mob; we can totally use him if there is no better name
+		keyname = C.get_public_key()
+		if(C.mob) //Most of the time this is the observer/dead mob; we can totally use him if there is no better name
 			var/mindname
 			var/realname = C.mob.real_name
 			if(C.mob.mind)
@@ -277,8 +296,8 @@ proc/is_blind(A)
 	if(subject && subject.forbid_seeing_deadchat && !subject.client.holder)
 		return // Can't talk in deadchat if you can't see it.
 
-	for(var/mob/M in player_list)
-		if(M.client && ((!istype(M, /mob/new_player) && M.stat == DEAD) || (M.client.holder && M.client.holder.rights)) && M.is_preference_enabled(/datum/client_preference/show_dsay))
+	for(var/mob/M in GLOB.player_list)
+		if(M.client && ((!istype(M, /mob/new_player) && M.stat == DEAD) || (M.client.holder && M.client.holder.rights)) && M.get_preference_toggle(/datum/game_preference_toggle/chat/dsay))
 			var/follow
 			var/lname
 			if(M.forbid_seeing_deadchat && !M.client.holder)
@@ -294,7 +313,7 @@ proc/is_blind(A)
 				var/mob/observer/dead/DM
 				if(istype(subject, /mob/observer/dead))
 					DM = subject
-				var/anonsay = DM?.is_preference_enabled(/datum/client_preference/anonymous_ghost_chat)
+				var/anonsay = DM?.get_preference_toggle(/datum/game_preference_toggle/presence/anonymous_ghost_chat)
 				if(M.client.holder) 							// What admins see
 					lname = "[keyname][(anonsay) ? "*" : (DM ? "" : "^")] ([name])"
 				else
@@ -308,8 +327,8 @@ proc/is_blind(A)
 			to_chat(M, "<span class='deadsay'>" + "<b>DEAD:</b> "+ "[lname][follow][message]</span>")
 
 /proc/say_dead_object(var/message, var/obj/subject = null)
-	for(var/mob/M in player_list)
-		if(M.client && ((!istype(M, /mob/new_player) && M.stat == DEAD) || (M.client.holder && M.client.holder.rights)) && M.is_preference_enabled(/datum/client_preference/show_dsay))
+	for(var/mob/M in GLOB.player_list)
+		if(M.client && ((!istype(M, /mob/new_player) && M.stat == DEAD) || (M.client.holder && M.client.holder.rights)) && M.get_preference_toggle(/datum/game_preference_toggle/chat/dsay))
 			var/follow
 			var/lname = "Game Master"
 			if(M.forbid_seeing_deadchat && !M.client.holder)
@@ -339,7 +358,7 @@ proc/is_blind(A)
 			C = M.original.client
 
 	if(C)
-		if(!isnull(C.holder?.fakekey) || !C.is_preference_enabled(/datum/client_preference/announce_ghost_joinleave))
+		if(C.is_under_stealthmin() || !C.get_preference_toggle(/datum/game_preference_toggle/presence/announce_ghost_joinleave))
 			return
 		var/name
 		if(C.mob)
@@ -352,7 +371,7 @@ proc/is_blind(A)
 				else
 					name = M.real_name
 		if(!name)
-			name = (C.holder && C.holder.fakekey) ? C.holder.fakekey : C.key
+			name = C.get_public_key()
 		if(joined_ghosts)
 			say_dead_direct("The ghost of <span class='name'>[name]</span> now [pick("skulks","lurks","prowls","creeps","stalks")] among [pick("the dead","the spirits","the graveyard","the deceased","us")]. [message]")
 		else
@@ -364,9 +383,10 @@ proc/is_blind(A)
  * ignore_key, ignore_dnr_observers will NOT work!
  */
 /proc/notify_ghosts(message, ghost_sound, enter_link, atom/source, mutable_appearance/alert_overlay, action = NOTIFY_JUMP, flashwindow = TRUE, ignore_mapload = TRUE, ignore_key, ignore_dnr_observers = FALSE, header) //Easy notification of ghosts.
-	if(ignore_mapload && SSatoms.subsystem_initialized != INITIALIZATION_INNEW_REGULAR)	//don't notify for objects created during a map load
+	// Don't notify for objects created during a mapload.
+	if(ignore_mapload && SSatoms.atom_init_status != ATOM_INIT_IN_NEW_REGULAR)
 		return
-	for(var/mob/observer/dead/O in player_list)
+	for(var/mob/observer/dead/O in GLOB.player_list)
 		if(!O.client)
 			continue
 		to_chat(O, "<span class='ghostalert'>[message][(enter_link) ? " [enter_link]" : ""]</span>")
@@ -377,8 +397,8 @@ proc/is_blind(A)
 		if(source)
 			var/atom/movable/screen/alert/notify_action/A = O.throw_alert("[REF(source)]_notify_action", /atom/movable/screen/alert/notify_action)
 			if(A)
-				if(O.client.prefs && O.client.prefs.UI_style)
-					A.icon = ui_style2icon(O.client.prefs.UI_style)
+				if(O.get_preference_entry(/datum/game_preference_entry/dropdown/hud_style))
+					A.icon = ui_style2icon(O.get_preference_entry(/datum/game_preference_entry/dropdown/hud_style))
 				if (header)
 					A.name = header
 				A.desc = message
@@ -390,48 +410,45 @@ proc/is_blind(A)
 				alert_overlay.plane = FLOAT_PLANE
 				A.add_overlay(alert_overlay)
 
-/mob/proc/switch_to_camera(var/obj/machinery/camera/C)
-	if (!C.can_use() || stat || (get_dist(C, src) > 1 || machine != src || blinded || !canmove))
-		return 0
-	check_eye(src)
-	return 1
+/mob/proc/switch_to_camera(obj/machinery/camera/C)
+	return FALSE
 
-/mob/living/silicon/ai/switch_to_camera(var/obj/machinery/camera/C)
+/mob/living/silicon/ai/switch_to_camera(obj/machinery/camera/C)
 	if(!C.can_use() || !is_in_chassis())
-		return 0
+		return FALSE
 
 	eyeobj.setLoc(C)
-	return 1
+	return TRUE
 
-// Returns true if the mob has a client which has been active in the last given X minutes.
-/mob/proc/is_client_active(var/active = 1)
+/// Returns TRUE if the mob has a client which has been active in the last given X minutes.
+/mob/proc/is_client_active(active = TRUE)
 	return client && client.inactivity < active MINUTES
 
 /mob/proc/can_eat()
-	return 1
+	return TRUE
 
 /mob/proc/can_force_feed()
-	return 1
+	return TRUE
 
 #define SAFE_PERP -50
-/mob/living/proc/assess_perp(var/obj/access_obj, var/check_access, var/auth_weapons, var/check_records, var/check_arrest)
+/mob/living/proc/assess_perp(obj/access_obj, check_access, auth_weapons, check_records, check_arrest)
 	if(stat == DEAD)
 		return SAFE_PERP
 
-	return 0
+	return FALSE
 
-/mob/living/carbon/assess_perp(var/obj/access_obj, var/check_access, var/auth_weapons, var/check_records, var/check_arrest)
+/mob/living/carbon/assess_perp(obj/access_obj, check_access, auth_weapons, check_records, check_arrest)
 	if(handcuffed)
 		return SAFE_PERP
 
 	return ..()
 
-/mob/living/carbon/human/assess_perp(var/obj/access_obj, var/check_access, var/auth_weapons, var/check_records, var/check_arrest)
+/mob/living/carbon/human/assess_perp(obj/access_obj, check_access, auth_weapons, check_records, check_arrest)
 	var/threatcount = ..()
 	if(. == SAFE_PERP)
 		return SAFE_PERP
 
-	//Agent cards lower threatlevel.
+	// Agent cards lower threatlevel.
 	var/obj/item/card/id/id = GetIdCard()
 	if(id && istype(id, /obj/item/card/id/syndicate))
 		threatcount -= 2
@@ -443,11 +460,11 @@ proc/is_blind(A)
 		threatcount += 4
 
 	if(auth_weapons && !access_obj.allowed(src))
-		if(istype(l_hand, /obj/item/gun) || istype(l_hand, /obj/item/melee))
-			threatcount += 4
-
-		if(istype(r_hand, /obj/item/gun) || istype(r_hand, /obj/item/melee))
-			threatcount += 4
+		for(var/obj/item/held as anything in get_held_items())
+			if(istype(held, /obj/item/melee))
+				threatcount += 4
+			if(istype(held, /obj/item/gun))
+				threatcount += 4
 
 		if(istype(belt, /obj/item/gun) || istype(belt, /obj/item/melee))
 			threatcount += 2
@@ -469,17 +486,21 @@ proc/is_blind(A)
 
 	return threatcount
 
-/mob/living/simple_mob/assess_perp(var/obj/access_obj, var/check_access, var/auth_weapons, var/check_records, var/check_arrest)
+/mob/living/simple_mob/assess_perp(obj/access_obj, check_access, auth_weapons, check_records, check_arrest)
 	var/threatcount = ..()
 	if(. == SAFE_PERP)
 		return SAFE_PERP
 
-	if(has_AI() && ai_holder.hostile && faction != "neutral") // Otherwise Runtime gets killed.
+	// Otherwise Runtime gets killed.
+	if(!istype(src.ai_holder, /datum/ai_holder/polaris))
+		return SAFE_PERP
+	var/datum/ai_holder/polaris/ai_holder = src.ai_holder
+	if(has_polaris_AI() && ai_holder.hostile && !has_iff_faction(MOB_IFF_FACTION_NEUTRAL))
 		threatcount += 4
 	return threatcount
 
-// Beepsky will (try to) only beat 'bad' slimes.
-/mob/living/simple_mob/slime/xenobio/assess_perp(var/obj/access_obj, var/check_access, var/auth_weapons, var/check_records, var/check_arrest)
+/// Beepsky will (try to) only beat 'bad' slimes.
+/mob/living/simple_mob/slime/xenobio/assess_perp(obj/access_obj, check_access, auth_weapons, check_records, check_arrest)
 	var/threatcount = 0
 
 	if(stat == DEAD)
@@ -498,8 +519,8 @@ proc/is_blind(A)
 	if(victim)
 		threatcount += 4
 */
-	if(has_AI())
-		var/datum/ai_holder/simple_mob/xenobio_slime/AI = ai_holder
+	if(has_polaris_AI())
+		var/datum/ai_holder/polaris/simple_mob/xenobio_slime/AI = ai_holder
 		if(AI.rabid)
 			threatcount = 10
 
@@ -510,79 +531,107 @@ proc/is_blind(A)
 
 //TODO: Integrate defence zones and targeting body parts with the actual organ system, move these into organ definitions.
 
-///The base miss chance for the different defence zones
+/// The base miss chance for the different defence zones
 var/list/global/base_miss_chance = list(
-	BP_HEAD = 40,
-	BP_CHEST = 10,
-	BP_GROIN = 20,
-	BP_L_LEG = 30,
-	BP_R_LEG = 30,
-	BP_L_ARM = 30,
-	BP_R_ARM = 30,
+	BP_HEAD   = 40,
+	BP_TORSO  = 10,
+	BP_GROIN  = 20,
+	BP_L_LEG  = 30,
+	BP_R_LEG  = 30,
+	BP_L_ARM  = 30,
+	BP_R_ARM  = 30,
 	BP_L_HAND = 50,
 	BP_R_HAND = 50,
 	BP_L_FOOT = 50,
 	BP_R_FOOT = 50,
 )
 
-///Used to weight organs when an organ is hit randomly (i.e. not a directed, aimed attack).
-///Also used to weight the protection value that armour provides for covering that body part when calculating protection from full-body effects.
+/**
+ * Used to weight organs when an organ is hit randomly (i.e. not a directed, aimed attack).
+ * Also used to weight the protection value that armour provides for covering that body part when calculating protection from full-body effects.
+ */
 var/list/global/organ_rel_size = list(
-	BP_HEAD = 25,
-	BP_CHEST = 70,
-	BP_GROIN = 30,
-	BP_L_LEG = 25,
-	BP_R_LEG = 25,
-	BP_L_ARM = 25,
-	BP_R_ARM = 25,
+	BP_HEAD   = 25,
+	BP_TORSO  = 70,
+	BP_GROIN  = 30,
+	BP_L_LEG  = 25,
+	BP_R_LEG  = 25,
+	BP_L_ARM  = 25,
+	BP_R_ARM  = 25,
 	BP_L_HAND = 10,
 	BP_R_HAND = 10,
 	BP_L_FOOT = 10,
 	BP_R_FOOT = 10,
 )
+//* Keep this up to date with organ_rel_size. This is all of them added together.
+GLOBAL_VAR_INIT(organ_combined_size, 25 + 70 + 30 + 25 + 25 + 25 + 25 + 10 + 10 + 10 + 10)
 
 /mob/proc/flash_eyes(intensity = FLASH_PROTECTION_MODERATE, override_blindness_check = FALSE, affect_silicon = FALSE, visual = FALSE, type = /atom/movable/screen/fullscreen/tiled/flash)
 	return
 
-//Recalculates what planes this mob can see using their plane_holder, for humans this is checking slots, for others, could be whatever.
+/// Recalculates what planes this mob can see using their plane_holder, for humans this is checking slots, for others, could be whatever.
 /mob/proc/recalculate_vis()
 	return
 
-//General HUD updates done regularly (health puppet things, etc)
+/// General HUD updates done regularly (health puppet things, etc)
 /mob/proc/handle_regular_hud_updates()
 	return
 
-//Handle eye things like the Byond SEE_TURFS, SEE_OBJS, etc.
+/// Handle eye things like the Byond SEE_TURFS, SEE_OBJS, etc.
 /mob/proc/handle_vision()
 	return
 
-/mob/proc/get_sound_env(var/pressure_factor)
+/mob/proc/get_sound_env(pressure_factor)
 	if (pressure_factor < 0.5)
 		return SPACE
 	else
 		var/area/A = get_area(src)
 		return A.sound_env
 
-/mob/proc/position_hud_item(var/obj/item/item, var/slot)
-	if(!istype(hud_used) || !slot || !LAZYLEN(hud_used.slot_info))
-		return
-
-	//They may have hidden their entire hud but the hands
-	if(!hud_used.hud_shown && slot > slot_r_hand)
-		item.screen_loc = null
-		return
-
-	//They may have hidden the icons in the bottom left with the hide button
-	if(!hud_used.inventory_shown && slot > slot_r_store)
-		item.screen_loc = null
-		return
-
-	var/screen_place = hud_used.slot_info["[slot]"]
-	if(!screen_place)
-		item.screen_loc = null
-		return
-
-	item.screen_loc = screen_place
-
 /mob/proc/can_see_reagents()
-	return stat == DEAD || issilicon(src) //Dead guys and silicons can always see reagents
+	// Dead guys and silicons can always see reagents.
+	return stat == DEAD || issilicon(src)
+
+/// Ingnores the possibility of breaking tags.
+/proc/stars_no_html(text, pr, re_encode)
+	// We don't want to screw up escaped characters.
+	text = html_decode(text)
+	. = list()
+	for(var/i = 1, i <= length_char(text), i++)
+		var/char = copytext_char(text, i, i+1)
+		if(char == " " || prob(pr))
+			. += char
+		else
+			. += "*"
+	. = JOINTEXT(.)
+	if(re_encode)
+		. = html_encode(.)
+
+/// if sufficent nutrition is present, take it and return true, otherwise just return false
+/mob/proc/try_take_nutrition(var/amount)
+	if(nutrition >= amount)
+		nutrition = nutrition - amount
+		return TRUE
+	else
+		return FALSE
+
+// asks ghosts to take control of a mob, ported from cit main
+/proc/offer_control(mob/M,ignore_category=null)
+	if(usr)
+		log_admin("[key_name(usr)] has offered control of ([key_name(M)]) to ghosts.")
+		message_admins("[key_name_admin(usr)] has offered control of ([ADMIN_LOOKUPFLW(M)]) to ghosts")
+
+	var/datum/ghost_query/admin/query = new()
+	query.wait_time = 15 SECONDS
+	var/mob_name = M.real_name ? M.real_name : M.name
+	query.role_name = mob_name
+	query.question = "Do you want to play as [mob_name]?"
+	spawn(0)
+		query.query()
+		if(LAZYLEN(query.candidates))
+			var/mob/C = pick(query.candidates)
+			message_admins("[key_name_admin(C)] has taken control of ([key_name_admin(M)])")
+			M.ghostize(FALSE, TRUE)
+			C.transfer_client_to(M, FALSE)
+		else
+			message_admins("No ghosts were willing to take control of [ADMIN_LOOKUPFLW(M)])")

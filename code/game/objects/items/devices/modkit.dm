@@ -15,16 +15,17 @@
 		/obj/item/clothing/suit/space/void
 		)
 
-/obj/item/modkit/afterattack(obj/item/O, mob/user as mob, proximity)
-	if(!proximity)
+/obj/item/modkit/afterattack(atom/target, mob/user, clickchain_flags, list/params)
+	if(!(clickchain_flags & CLICKCHAIN_HAS_PROXIMITY))
 		return
-
+	var/obj/item/O = target
+	if(!istype(O))
+		return
 	if (!target_species)
 		return	//it shouldn't be null, okay?
 
 	if(!parts)
 		to_chat(user, "<span class='warning'>This kit has no parts for this modification left.</span>")
-		user.drop_from_inventory(src)
 		qdel(src)
 		return
 
@@ -48,7 +49,7 @@
 		to_chat(user, "<span class='warning'>[O] must be safely placed on the ground for modification.</span>")
 		return
 
-	playsound(src.loc, O.usesound, 100, 1)
+	playsound(src.loc, O.tool_sound, 100, 1)
 
 	user.visible_message("<span class='notice'>\The [user] opens \the [src] and modifies \the [O].</span>","<span class='notice'>You open \the [src] and modify \the [O].</span>")
 
@@ -60,10 +61,9 @@
 		parts &= ~MODKIT_SUIT
 
 	if(!parts)
-		user.drop_from_inventory(src)
 		qdel(src)
 
-/obj/item/modkit/examine(mob/user)
+/obj/item/modkit/examine(mob/user, dist)
 	. = ..()
 	. += "<span class = 'notice'>It looks as though it modifies hardsuits to fit [target_species] users.</span>"
 

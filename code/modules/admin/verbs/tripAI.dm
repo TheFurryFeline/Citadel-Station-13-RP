@@ -7,7 +7,7 @@
 		return
 
 	if(SSjob && SSticker)
-		var/datum/job/job = job_master.GetJob("AI")
+		var/datum/prototype/role/job/job = RSroles.legacy_job_by_title("AI")
 		if(!job)
 			to_chat(usr, "Unable to locate the AI job")
 			return

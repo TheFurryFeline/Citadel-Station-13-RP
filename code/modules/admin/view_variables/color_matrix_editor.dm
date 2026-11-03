@@ -60,7 +60,7 @@ INITIALIZE_IMMEDIATE(/atom/movable/screen/color_matrix_proxy_view)
 	else if(istext(_target?.color))
 		current_color = color_hex2color_matrix(_target.color)
 	else
-		current_color = color_matrix_identity()
+		current_color = COLOR_MATRIX_IDENTITY
 	proxy_view = new
 	if(_target)
 		target = WEAKREF(_target)
@@ -75,16 +75,16 @@ INITIALIZE_IMMEDIATE(/atom/movable/screen/color_matrix_proxy_view)
 	QDEL_NULL(proxy_view)
 	return ..()
 
-/datum/color_matrix_editor/ui_state(mob/user)
-	return GLOB.admin_state
+/datum/color_matrix_editor/ui_state()
+	return ADMIN_STATE(NONE)
 
-/datum/color_matrix_editor/ui_static_data(mob/user)
+/datum/color_matrix_editor/ui_static_data(mob/user, datum/tgui/ui)
 	var/list/data = list()
 	data["mapRef"] = proxy_view.assigned_map
 
 	return data
 
-/datum/color_matrix_editor/ui_data(mob/user)
+/datum/color_matrix_editor/ui_data(mob/user, datum/tgui/ui)
 	var/list/data = list()
 	data["currentColor"] = current_color
 
@@ -96,7 +96,7 @@ INITIALIZE_IMMEDIATE(/atom/movable/screen/color_matrix_proxy_view)
 		ui = new(user, src, "ColorMatrixEditor")
 		ui.open()
 
-/datum/color_matrix_editor/ui_act(action, list/params, datum/tgui/ui, datum/ui_state/state)
+/datum/color_matrix_editor/ui_act(action, list/params, datum/tgui/ui, datum/ui_state/state, datum/event_args/actor/actor)
 	. = ..()
 	if(.)
 		return
@@ -108,7 +108,7 @@ INITIALIZE_IMMEDIATE(/atom/movable/screen/color_matrix_proxy_view)
 			on_confirm()
 			SStgui.close_uis(src)
 
-/datum/color_matrix_editor/ui_close(mob/user)
+/datum/color_matrix_editor/on_ui_close(mob/user, datum/tgui/ui, embedded)
 	. = ..()
 	closed = TRUE
 

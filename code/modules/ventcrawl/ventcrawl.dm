@@ -1,6 +1,6 @@
 var/list/ventcrawl_machinery = list(
-	/obj/machinery/atmospherics/unary/vent_pump,
-	/obj/machinery/atmospherics/unary/vent_scrubber
+	/obj/machinery/atmospherics/component/unary/vent_pump,
+	/obj/machinery/atmospherics/component/unary/vent_scrubber
 	)
 
 // Vent crawling whitelisted items, whoo
@@ -12,9 +12,6 @@ var/list/ventcrawl_machinery = list(
 	/obj/belly,
 	/atom/movable/screen
 	)
-	//VOREStation Edit : added /obj/belly, to this list, travis is complaining about this in his indentation check
-	//mob/living/simple_mob/borer, //VORESTATION AI TEMPORARY REMOVAL REPLACE BACK IN LIST WHEN RESOLVED //VOREStation Edit
-
 /mob/living/var/list/icon/pipes_shown = list()
 /mob/living/var/last_played_vent
 /mob/living/var/is_ventcrawling = 0
@@ -38,6 +35,7 @@ var/list/ventcrawl_machinery = list(
 	if(is_ventcrawling && istype(loc, /obj/machinery/atmospherics)) //attach us back into the pipes
 		remove_ventcrawl()
 		add_ventcrawl(loc)
+		update_perspective()
 		client.screen += GLOB.global_hud.centermarker
 
 /mob/living/simple_mob/slime/xenobio/can_ventcrawl()
@@ -59,7 +57,7 @@ var/list/ventcrawl_machinery = list(
 			break
 
 	//Only allow it if it's "IN" the mob, not equipped on/being held
-	if(listed && !get_inventory_slot(carried_item))
+	if((listed && !is_holding(carried_item)) || !is_in_inventory(carried_item))
 		return 1
 
 /mob/living/carbon/is_allowed_vent_crawl_item(var/obj/item/carried_item)
@@ -79,16 +77,17 @@ var/list/ventcrawl_machinery = list(
 			return FALSE
 	return TRUE
 
-/mob/living/AltClickOn(var/atom/A)
+/mob/living/alt_click_on(atom/target, location, control, list/params)
+	var/atom/A = target
 	if(is_type_in_list(A,ventcrawl_machinery))
 		handle_ventcrawl(A)
-		return 1
+		return TRUE
 	return ..()
 
 /mob/proc/start_ventcrawl()
 	var/atom/pipe
 	var/list/pipes = list()
-	for(var/obj/machinery/atmospherics/unary/U in range(1))
+	for(var/obj/machinery/atmospherics/component/unary/U in range(1))
 		if(is_type_in_list(U,ventcrawl_machinery) && Adjacent(U) && !U.welded)
 			pipes |= U
 	if(!pipes || !pipes.len)
@@ -98,7 +97,7 @@ var/list/ventcrawl_machinery = list(
 		pipe = pipes[1]
 	else
 		pipe = input("Crawl Through Vent", "Pick a pipe") as null|anything in pipes
-	if(canmove && pipe)
+	if(CHECK_MOBILITY(src, MOBILITY_CAN_MOVE) && pipe)
 		return pipe
 
 /mob/living/carbon/alien/ventcrawl_carry()
@@ -110,7 +109,7 @@ var/list/ventcrawl_machinery = list(
 	if(!can_ventcrawl() || prepping_to_ventcrawl)
 		return
 
-	var/obj/machinery/atmospherics/unary/vent_found
+	var/obj/machinery/atmospherics/component/unary/vent_found
 	if(clicked_on && Adjacent(clicked_on))
 		vent_found = clicked_on
 		if(!istype(vent_found) || !vent_found.can_crawl_through())
@@ -134,13 +133,13 @@ var/list/ventcrawl_machinery = list(
 			if(vent_found.air_contents && !issilicon(src))
 
 				switch(vent_found.air_contents.temperature)
-					if(0 to BODYTEMP_COLD_DAMAGE_LIMIT)
+					if(0 to LEGACY_BODYTEMP_COLD_DAMAGE_THRESHOLD)
 						to_chat(src, "<span class='danger'>You feel a painful freeze coming from the vent!</span>")
-					if(BODYTEMP_COLD_DAMAGE_LIMIT to T0C)
+					if(LEGACY_BODYTEMP_COLD_DAMAGE_THRESHOLD to T0C)
 						to_chat(src, "<span class='warning'>You feel an icy chill coming from the vent.</span>")
-					if(T0C + 40 to BODYTEMP_HEAT_DAMAGE_LIMIT)
+					if(T0C + 40 to LEGACY_BODYTEMP_HEAT_DAMAGE_THRESHOLD)
 						to_chat(src, "<span class='warning'>You feel a hot wash coming from the vent.</span>")
-					if(BODYTEMP_HEAT_DAMAGE_LIMIT to INFINITY)
+					if(LEGACY_BODYTEMP_HEAT_DAMAGE_THRESHOLD to INFINITY)
 						to_chat(src, "<span class='danger'>You feel a searing heat coming from the vent!</span>")
 
 				switch(vent_found.air_contents.return_pressure())
@@ -166,6 +165,7 @@ var/list/ventcrawl_machinery = list(
 
 			forceMove(vent_found)
 			add_ventcrawl(vent_found)
+			update_perspective()
 
 		else
 			to_chat(src, "This vent is not connected to anything.")
@@ -196,5 +196,4 @@ var/list/ventcrawl_machinery = list(
 		for(var/image/current_image in pipes_shown)
 			client.images -= current_image
 		client.screen -= GLOB.global_hud.centermarker
-	update_perspective()
 	pipes_shown.len = 0

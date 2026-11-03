@@ -23,7 +23,7 @@
 	tt_desc = "S Felidae fluctursora"
 	catalogue_data = list(/datum/category_item/catalogue/fauna/kururak)
 
-	faction = "kururak"
+	iff_factions = MOB_IFF_FACTION_BIND_TO_MAP
 
 	icon_state = "bigcat"
 	icon_living = "bigcat"
@@ -31,7 +31,7 @@
 	icon_rest = "bigcat_rest"
 	icon = 'icons/mob/64x64.dmi'
 
-	default_pixel_x = -16
+	base_pixel_x = -16
 	pixel_x = -16
 
 	maxHealth = 200
@@ -40,36 +40,29 @@
 
 	universal_understand = 1
 
-	movement_cooldown = 1
+	movement_base_speed = 10 / 1
 
-	melee_damage_lower = 15
-	melee_damage_upper = 25
+	legacy_melee_damage_lower = 15
+	legacy_melee_damage_upper = 25
 	attack_armor_pen = 40
 	base_attack_cooldown = 2 SECONDS
 	attacktext = list("gouged", "bit", "cut", "clawed", "whipped")
 
-	armor = list(
+	armor_legacy_mob = list(
 		"melee" = 30,
+		"melee_soak" = 5,
 		"bullet" = 15,
+		"bullet_soak" = 5,
 		"laser" = 5,
+		"laser_soak" = 5,
 		"energy" = 0,
 		"bomb" = 10,
 		"bio" = 100,
 		"rad" = 100
 		)
 
-	armor_soak = list(
-		"melee" = 5,
-		"bullet" = 5,
-		"laser" = 5,
-		"energy" = 0,
-		"bomb" = 0,
-		"bio" = 0,
-		"rad" = 0
-		)
-
 	say_list_type = /datum/say_list/kururak
-	ai_holder_type = /datum/ai_holder/simple_mob/intentional/kururak
+	ai_holder_type = /datum/ai_holder/polaris/simple_mob/intentional/kururak
 
 	special_attack_min_range = 0
 	special_attack_max_range = 4
@@ -107,13 +100,13 @@
 			return FALSE
 		if(ishuman(L))	// Might be metal, but they're humanoid shaped.
 			var/mob/living/carbon/human/H = L
-			if(H.get_active_hand())
-				var/obj/item/I = H.get_active_hand()
-				if(I.force >= 1.20 * melee_damage_upper)
+			if(H.get_active_held_item())
+				var/obj/item/I = H.get_active_held_item()
+				if(I.damage_force >= 1.20 * legacy_melee_damage_upper)
 					return TRUE
 		else if(istype(L, /mob/living/simple_mob))
 			var/mob/living/simple_mob/S = L
-			if(S.melee_damage_upper > 1.20 * melee_damage_upper)
+			if(S.legacy_melee_damage_upper > 1.20 * legacy_melee_damage_upper)
 				return TRUE
 
 /mob/living/simple_mob/animal/sif/kururak/handle_special()
@@ -163,7 +156,7 @@
 			if(src.Adjacent(C))
 				choices += C
 
-		for(var/obj/mecha/M in view(1,src))
+		for(var/obj/vehicle/sealed/mecha/M in view(1,src))
 			if(src.Adjacent(M))
 				choices += M
 
@@ -188,17 +181,17 @@
 						if(flash_strength > 0)
 							to_chat(H, SPAN_ALIEN("You are disoriented by \the [src]!"))
 							H.Confuse(flash_strength + 5)
-							H.Blind(flash_strength)
+							H.apply_status_effect(/datum/status_effect/sight/blindness, flash_strength)
 							H.eye_blurry = max(H.eye_blurry, flash_strength + 5)
 							H.flash_eyes()
 							H.adjustHalLoss(flash_strength / 5)
-							H.apply_damage(flash_strength * H.species.flash_burn/5, BURN, BP_HEAD, 0, 0, "Photon burns")
+							H.apply_damage(flash_strength * H.species.flash_burn/5, DAMAGE_TYPE_BURN, BP_HEAD, 0, 0, "Photon burns")
 
 		else if(issilicon(L))
 			if(isrobot(L))
 				var/flashfail = FALSE
 				var/mob/living/silicon/robot/R = L
-				if(R.has_active_type(/obj/item/borg/combat/shield))
+				if(R.get_held_item_of_type(/obj/item/borg/combat/shield))
 					var/obj/item/borg/combat/shield/shield = locate() in R
 					if(shield)
 						if(shield.active)
@@ -217,10 +210,10 @@
 		for(var/mob/living/carbon/C in oviewers(special_attack_max_range, null))
 			var/safety = C.eyecheck()
 			if(!safety)
-				if(!C.blinded)
+				if(!C.has_status_effect(/datum/status_effect/sight/blindness))
 					C.flash_eyes()
 		for(var/mob/living/silicon/robot/R in oviewers(special_attack_max_range, null))
-			if(R.has_active_type(/obj/item/borg/combat/shield))
+			if(R.get_held_item_of_type(/obj/item/borg/combat/shield))
 				var/obj/item/borg/combat/shield/shield = locate() in R
 				if(shield)
 					if(shield.active)
@@ -250,7 +243,7 @@
 			if(src.Adjacent(C))
 				choices += C
 
-		for(var/obj/mecha/M in view(1,src))
+		for(var/obj/vehicle/sealed/mecha/M in view(1,src))
 			if(src.Adjacent(M))
 				choices += M
 
@@ -264,26 +257,26 @@
 
 	if(!(src.Adjacent(A))) return
 
-	var/damage_to_apply = rand(melee_damage_lower, melee_damage_upper) + 10
+	var/damage_to_apply = rand(legacy_melee_damage_lower, legacy_melee_damage_upper) + 10
 	if(isliving(A))
 		visible_message(SPAN_DANGER("\The [src] rakes its claws across [A]."))
 		var/mob/living/L = A
 		if(ishuman(L))
 			var/mob/living/carbon/human/H = L
-			H.apply_damage(damage_to_apply, BRUTE, BP_TORSO, 0, 0, "Animal claws")
+			H.apply_damage(damage_to_apply, DAMAGE_TYPE_BRUTE, BP_TORSO, 0, 0, "Animal claws")
 
 		else
 			L.adjustBruteLoss(damage_to_apply)
 
 		L.add_modifier(/datum/modifier/grievous_wounds, 60 SECONDS)
 
-	else if(istype(A, /obj/mecha))
+	else if(istype(A, /obj/vehicle/sealed/mecha))
 		visible_message(SPAN_DANGER("\The [src] rakes its claws against \the [A]."))
-		var/obj/mecha/M = A
-		M.take_damage(damage_to_apply)
-		if(prob(3) && do_after(src, 5))
-			visible_message(SPAN_CRITICAL("\The [src]'s strike ripped \the [M]'s access hatch open, allowing it to drag [M.occupant] out!"))
-			M.go_out()
+		var/obj/vehicle/sealed/mecha/M = A
+		M.take_damage_legacy(damage_to_apply)
+		if(prob(3) && M.occupant_legacy && do_after(src, 5))
+			visible_message(SPAN_CRITICAL("\The [src]'s strike ripped \the [M]'s access hatch open, allowing it to drag [M.occupant_legacy] out!"))
+			M.mob_exit(M.occupant_legacy)
 
 	else
 		A.attack_generic(src, damage_to_apply, "rakes its claws against")	// Well it's not a mob, and it's not a mech.
@@ -299,9 +292,9 @@
 				continue
 			if(!K.ai_holder)
 				continue
-			if(K.faction != src.faction)
+			if(!K.shares_iff_faction(src))
 				continue
-			var/datum/ai_holder/AI = K.ai_holder
+			var/datum/ai_holder/polaris/AI = K.ai_holder
 			to_chat(K, SPAN_NOTICE("The pack leader wishes for you to follow them."))
 			AI.set_follow(src)
 
@@ -330,14 +323,14 @@
 	else
 		remove_modifiers_of_type(/datum/modifier/ace)
 
-/datum/ai_holder/simple_mob/intentional/kururak
+/datum/ai_holder/polaris/simple_mob/intentional/kururak
 	hostile = FALSE
 	retaliate = TRUE
 	cooperative = TRUE
 	can_flee = TRUE
 	flee_when_dying = TRUE
 
-/datum/ai_holder/simple_mob/intentional/kururak/handle_special_strategical()
+/datum/ai_holder/polaris/simple_mob/intentional/kururak/handle_special_strategical()
 	follow_distance = rand(initial(follow_distance), initial(follow_distance) + 2)
 	var/mob/living/simple_mob/animal/sif/kururak/K = holder
 
@@ -360,7 +353,7 @@
 	else
 		hostile = initial(hostile)
 
-/datum/ai_holder/simple_mob/intentional/kururak/pre_special_attack(atom/A)
+/datum/ai_holder/polaris/simple_mob/intentional/kururak/pre_special_attack(atom/A)
 	holder.a_intent = INTENT_HARM
 	if(isliving(A))
 		var/mob/living/L = A
@@ -376,10 +369,10 @@
 		if(issilicon(L) && holder.a_intent != INTENT_GRAB)
 			holder.a_intent = INTENT_DISARM
 
-	else if(istype(A, /obj/mecha))
+	else if(istype(A, /obj/vehicle/sealed/mecha))
 		holder.a_intent = INTENT_GRAB
 
-/datum/ai_holder/simple_mob/intentional/kururak/post_melee_attack()
+/datum/ai_holder/polaris/simple_mob/intentional/kururak/post_melee_attack()
 	if(holder.has_modifier_of_type(/datum/modifier/ace))
 		request_help()
 

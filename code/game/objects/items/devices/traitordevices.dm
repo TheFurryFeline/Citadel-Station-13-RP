@@ -18,8 +18,8 @@ effective or pretty fucking useless.
 	name = "mind batterer"
 	desc = "A strange device with twin antennas."
 	icon_state = "batterer"
-	throwforce = 5
-	w_class = ITEMSIZE_TINY
+	throw_force = 5
+	w_class = WEIGHT_CLASS_TINY
 	throw_speed = 4
 	throw_range = 10
 	item_state = "electronic"
@@ -28,7 +28,7 @@ effective or pretty fucking useless.
 	var/times_used = 0 //Number of times it's been used.
 	var/max_uses = 2
 
-/obj/item/batterer/attack_self(mob/living/carbon/user as mob, flag = 0, emp = 0)
+/obj/item/batterer/attack_self(mob/user, datum/event_args/actor/actor)
 	if(!user) 	return
 	if(times_used >= max_uses)
 		to_chat(user, "<span class='warning'>The mind batterer has been burnt out!</span>")
@@ -40,9 +40,9 @@ effective or pretty fucking useless.
 		spawn()
 			if(prob(50))
 
-				M.Weaken(rand(10,20))
+				M.afflict_paralyze(20 * rand(10,20))
 				if(prob(25))
-					M.Stun(rand(5,10))
+					M.afflict_stun(20 * rand(5,10))
 				to_chat(M, "<span class='danger'>You feel a tremendous, paralyzing wave flood your mind.</span>")
 
 			else

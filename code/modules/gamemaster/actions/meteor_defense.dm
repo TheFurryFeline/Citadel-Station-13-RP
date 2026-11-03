@@ -23,9 +23,7 @@
 	return weight
 
 /datum/gm_action/meteor_defense/set_up()
-	severity = pickweight(EVENT_LEVEL_MUNDANE = 10,
-	EVENT_LEVEL_MODERATE = 3
-	)
+	severity = pick_weight(mundande_weight = 10, moderate_weight = 3, major_weight = 0)
 
 	switch(severity)
 		if(EVENT_LEVEL_MUNDANE)
@@ -63,7 +61,7 @@
 		while(waves)
 			message_admins("[waves] more wave\s of meteors remain.")
 			spawn(1) // Dir is reversed because the direction describes where meteors are going, not what side it's gonna hit.
-				spawn_meteors(rand(8, 12), meteors_threatening, GLOB.reverse_dir[direction])
+				spawn_meteors(rand(8, 12), meteors_threatening, global.reverse_dir[direction])
 			waves--
 			sleep(30 SECONDS)
 		announcement = "The station has cleared the incoming debris."

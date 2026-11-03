@@ -1,26 +1,3 @@
-/*
-* Returns a byond list that can be passed to the "deserialize" proc
-* to bring a new instance of this atom to its original state
-*
-* If we want to store this info, we can pass it to `json_encode` or some other
-* interface that suits our fancy, to make it into an easily-handled string
-*/
-/datum/proc/serialize()
-	var/data = list("type" = "[type]")
-	return data
-
-/*
-* This is given the byond list from above, to bring this atom to the state
-* described in the list.
-* This will be called after `New` but before `initialize`, so linking and stuff
-* would probably be handled in `initialize`
-*
-* Also, this should only be called by `list_to_object` in persistence.dm - at least
-* with current plans - that way it can actually initialize the type from the list
-*/
-/datum/proc/deserialize(var/list/data)
-	return
-
 /atom
 	// This var isn't actually used for anything, but is present so that
 	// DM's map reader doesn't forfeit on reading a JSON-serialized map
@@ -42,7 +19,12 @@
 /area/vars_to_save()
 	return list("name")
 
-/atom/serialize()
+/datum/proc/serialize_vr()
+	return list("type" = type)
+
+/datum/proc/deserialize_vr(list/data)
+
+/atom/serialize_vr()
 	var/list/data = ..()
 	for(var/thing in vars_to_save())
 		if(vars[thing] != initial(vars[thing]))
@@ -50,12 +32,11 @@
 	return data
 
 
-/atom/deserialize(var/list/data)
+/atom/deserialize_vr(var/list/data)
 	for(var/thing in vars_to_save())
 		if(thing in data)
 			vars[thing] = data[thing]
 	..()
-
 
 /*
 Whoops, forgot to put documentation here.
@@ -71,7 +52,7 @@ some objects, like humans, are dependent that certain extra things are defined
 in their list
 */
 /proc/object_to_json(var/atom/movable/thing)
-	return json_encode(thing.serialize())
+	return json_encode(thing.serialize_vr())
 
 /proc/json_to_object(var/json_data, var/loc)
 	return list_to_object(json_decode(json_data), loc)
@@ -86,5 +67,5 @@ in their list
 		throw EXCEPTION("Path not found: [path]")
 
 	var/atom/movable/thing = new path(loc)
-	thing.deserialize(data)
+	thing.deserialize_vr(data)
 	return thing

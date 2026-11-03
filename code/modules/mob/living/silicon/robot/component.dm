@@ -39,7 +39,7 @@
 	installed = -1
 	uninstall()
 
-/datum/robot_component/proc/take_damage(brute, electronics, sharp, edge)
+/datum/robot_component/proc/take_damage_legacy(brute, electronics)
 	if(installed != 1) return
 
 	brute_damage += brute
@@ -63,7 +63,7 @@
 		powered = 0
 		return
 	if(owner.cell && owner.cell.charge >= idle_usage)
-		owner.cell_use_power(idle_usage)
+		owner.legacy_cell_use_power(idle_usage)
 		powered = 1
 	else
 		powered = 0
@@ -208,7 +208,7 @@
 	name = "broken component"
 	icon = 'icons/obj/robot_component.dmi'
 	icon_state = "broken"
-	matter = list(MAT_STEEL = 1000)
+	materials_base = list(MAT_STEEL = 1000)
 
 /obj/item/broken_device/random
 	var/static/list/possible_icons = list("binradio_broken",

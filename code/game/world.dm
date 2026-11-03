@@ -1,67 +1,130 @@
-//Byond is a shit. That's why this is here.
-/*
-	The initialization of the game happens roughly like this:
+#define RESTART_COUNTER_PATH "data/round_counter.txt"
+/// Load byond-tracy. If USE_BYOND_TRACY is defined, then this is ignored and byond-tracy is always loaded.
+#define USE_TRACY_PARAMETER "tracy"
 
-	1. All global variables are initialized (including the global_init instance).
-	2. The map is initialized, and map objects are created.
-	3. world/New() runs, creating the process scheduler (and the old master controller) and spawning their setup.
-	4. processScheduler/setup() runs, creating all the processes. game_controller/setup() runs, calling initialize() on all movable atoms in the world.
-	5. The gameSSticker is created.
-
-*/
-
-GLOBAL_VAR_INIT(tgs_initialized, FALSE)
-
+GLOBAL_VAR(restart_counter)
+GLOBAL_VAR_INIT(hub_visibility, TRUE)
 GLOBAL_VAR(topic_status_lastcache)
 GLOBAL_LIST(topic_status_cache)
 
-//This happens after the Master subsystem new(s) (it's a global datum)
-//So subsystems globals exist, but are not initialised
-/world/New()
-	var/debug_server = world.GetConfig("env", "AUXTOOLS_DEBUG_DLL")
-	if (debug_server)
-		call(debug_server, "auxtools_init")()
-		enable_debugging()
+/**
+ * WORLD INITIALIZATION
+ * THIS IS THE INIT ORDER:
+ *
+ * BYOND =>
+ * - (secret init native) =>
+ *   - world.init_byond_tracy()
+ *   - (Start native profiling)
+ *   - Master => <- gets initialized as soon as we enter the master = new block
+ *     - config *unloaded
+ *     - (all subsystems) PreInit()
+ *     - GLOB =>
+ *       - make_datum_reference_lists()
+ *   - (/static variable inits, reverse declaration order)
+ * - (all pre-mapped atoms) /atom/New()
+ * - config.Load()
+ * - world.InitTgs() =>
+ *   - TgsNew() *may sleep
+ *   - GLOB.rev_data.load_tgs_info()
+ * - world.ConfigLoaded() =>
+ *   - SSdbcore.InitializeRound()
+ *   - world.SetupLogs()
+ *   - load_admins()
+ *   - ...
+ * - Master.Initialize() =>
+ *   - (all subsystems) Initialize()
+ *   - Master.StartProcessing() =>
+ *     - Master.Loop() =>
+ *       - Failsafe
+ * - world.RunUnattendedFunctions()
+ */
 
-	log_world("World loaded at [TIME_STAMP("hh:mm:ss", FALSE)]!")
+/**
+ * THIS !!!SINGLE!!! PROC IS WHERE ANY FORM OF INIITIALIZATION THAT CAN'T BE PERFORMED IN SUBSYSTEMS OR WORLD/NEW IS DONE
+ * NOWHERE THE FUCK ELSE
+ * I DON'T CARE HOW MANY LAYERS OF DEBUG/PROFILE/TRACE WE HAVE, YOU JUST HAVE TO DEAL WITH THIS PROC EXISTING
+ * I'M NOT EVEN GOING TO TELL YOU WHERE IT'S CALLED FROM BECAUSE I'M DECLARING THAT FORBIDDEN KNOWLEDGE
+ * SO HELP ME GOD IF I FIND ABSTRACTION LAYERS OVER THIS!
+ */
+/world/proc/Genesis(tracy_initialized = FALSE)
+	if(!tracy_initialized)
+		Tracy = new
+#ifdef USE_BYOND_TRACY
+		if(Tracy.enable("USE_BYOND_TRACY defined"))
+			Genesis(tracy_initialized = TRUE)
+			return
+#else
+		var/tracy_enable_reason
+		if(USE_TRACY_PARAMETER in params)
+			tracy_enable_reason = "world.params"
+		if(fexists(TRACY_ENABLE_PATH))
+			tracy_enable_reason ||= "enabled for round"
+			SEND_TEXT(world.log, "[TRACY_ENABLE_PATH] exists, initializing byond-tracy!")
+			fdel(TRACY_ENABLE_PATH)
+		if(!isnull(tracy_enable_reason) && Tracy.enable(tracy_enable_reason))
+			Genesis(tracy_initialized = TRUE)
+			return
+#endif
 
+	// Init the debugger first because are you insane ofcourse you initialize the DEBUGGER first
+	global.Debugger = new
+	// Logs and shit
+	global.world_log_shunter = new
+	global.world_init_options = new
+
+	Profile(PROFILE_RESTART)
+	Profile(PROFILE_RESTART, type = "sendmaps")
+
+	// Write everything to this log file until we get to SetupLogs() later
 	var/tempfile = "data/logs/config_error.[GUID()].log"	//temporary file used to record errors with loading config, moved to log directory once logging is set
 	// citadel edit: world runtime log removed due to world.log shunt doing that for us
 	GLOB.config_error_log = GLOB.world_href_log = GLOB.world_map_error_log = GLOB.world_attack_log = GLOB.world_game_log = tempfile
 
-	world.Profile(PROFILE_START)
-	make_datum_reference_lists()	//initialises global lists for referencing frequently used datums (so that we only ever do it once)
-	setupgenetics()
+	// THAT'S IT, WE'RE DONE, THE. FUCKING. END.
+	Master = new
 
-	GLOB.revdata = new
+/**
+ * World creation
+ *
+ * Here is where a round itself is actually begun and setup.
+ * * db connection setup
+ * * config loaded from files
+ * * loads admins
+ * * Sets up the dynamic menu system
+ * * and most importantly, calls initialize on the master subsystem, starting the game loop that causes the rest of the game to begin processing and setting up
+ *
+ *
+ * Nothing happens until something moves. ~Albert Einstein
+ *
+ * For clarity, this proc gets triggered later in the initialization pipeline, it is not the first thing to happen, as it might seem.
+ *
+ * Initialization Pipeline:
+ * Global vars are new()'ed, (including config, glob, and the master controller will also new and preinit all subsystems when it gets new()ed)
+ * Compiled in maps are loaded (mainly centcom). all areas/turfs/objs/mobs(ATOMs) in these maps will be new()ed
+ * world/New() (You are here)
+ * Once world/New() returns, client's can connect.
+ * 1 second sleep
+ * Master Controller initialization.
+ * Subsystem initialization.
+ * Non-compiled-in maps are maploaded, all atoms are new()ed
+ * All atoms in both compiled and uncompiled maps are initialized()
+ */
+/world/New()
+	log_world("World loaded at [time_stamp()]!")
 
+	// First possible sleep()
 	InitTgs()
 
+	setupgenetics()
+
+	// load configuration
+	load_legacy_configuration()
 	config.Load(params[OVERRIDE_CONFIG_DIRECTORY_PARAMETER])
 
-	SetupLogs()
-
-// #ifndef USE_CUSTOM_ERROR_HANDLER
-// 	world.log = file("[GLOB.log_directory]/dd.log")
-// #else
-// 	if (TgsAvailable())
-// 		world.log = file("[GLOB.log_directory]/dd.log") //not all runtimes trigger world/Error, so this is the only way to ensure we can see all of them.
-// #endif
+	ConfigLoaded()
 
 	// shunt redirected world log from Master's init back into world log proper, now that logging has been set up.
 	shunt_redirected_log()
-
-	config_legacy.post_load()
-
-	if(config && config_legacy.server_name != null && config_legacy.server_suffix && world.port > 0)
-		// dumb and hardcoded but I don't care~
-		config_legacy.server_name += " #[(world.port % 1000) / 100]"
-
-	// TODO - Figure out what this is. Can you assign to world.log?
-	// if(config && config_legacy.log_runtime)
-	// 	log = file("data/logs/runtime/[time2text(world.realtime,"YYYY-MM-DD-(hh-mm-ss)")]-runtime.log")
-
-	GLOB.timezoneOffset = get_timezone_offset()
 
 	callHook("startup")
 	//Emergency Fix
@@ -70,83 +133,63 @@ GLOBAL_LIST(topic_status_cache)
 
 	src.update_status()
 
+	// Someone make it so this call isn't necessary
+	make_datum_reference_lists()
+
 	. = ..()
-
-	// *sighs*
-	job_master = new
-	job_master.SetupOccupations()
-
-	// This is kinda important. Set up details of what the hell things are made of.
-	populate_material_list()
 
 	// Create frame types.
 	populate_frame_types()
 
-	// Create floor types.
-	populate_flooring_types()
-
 	// Create robolimbs for chargen.
 	populate_robolimb_list()
 
-	//Must be done now, otherwise ZAS zones and lighting overlays need to be recreated.
-	createRandomZlevel()
+	if(NO_INIT_PARAMETER in params)
+		return
 
-	Master.Initialize(10, FALSE)
+	Master.Initialize(10, FALSE, TRUE)
 
+	RunUnattendedFunctions()
+
+/// Initializes TGS and loads the returned revising info into GLOB.revdata
+/world/proc/InitTgs()
+	TgsNew(new /datum/tgs_event_handler/impl, TGS_SECURITY_TRUSTED)
+	GLOB.revdata.load_tgs_info()
+
+/// Runs after config is loaded but before Master is initialized
+/world/proc/ConfigLoaded()
+	config.update_world_viewsize()	//! Since world.view is immutable, we load it here.
+	Configuration.Initialize()
+
+	// pretend these 2 ssdbcore funcs are InitializeRound()
+	SSdbcore.CheckSchemaVersion()
+	SSdbcore.SetRoundID()
+
+	SetupLogs()
+
+	load_admins()
+
+	// legacy shit
+	if(config && config_legacy.server_name != null && config_legacy.server_suffix && world.port > 0)
+		// dumb and hardcoded but I don't care~
+		config_legacy.server_name += " #[(world.port % 1000) / 100]"
+
+	if(fexists(RESTART_COUNTER_PATH))
+		GLOB.restart_counter = text2num(trim(file2text(RESTART_COUNTER_PATH)))
+		fdel(RESTART_COUNTER_PATH)
+
+/// Runs after the call to Master.Initialize, but before the delay kicks in. Used to turn the world execution into some single function then exit
+/world/proc/RunUnattendedFunctions()
 	#ifdef UNIT_TESTS
 	HandleTestRun()
 	#endif
 
+	#ifdef PERFORMANCE_TESTS
+	queue_performance_tests()
+	#endif
+	// this is horrible
 	if(config_legacy.ToRban)
-		addtimer(CALLBACK(GLOBAL_PROC, .proc/ToRban_autoupdate), 5 MINUTES)
-
-/world/proc/InitTgs()
-	TgsNew(new /datum/tgs_event_handler/impl, TGS_SECURITY_TRUSTED)
-	GLOB.revdata.load_tgs_info()
-	GLOB.tgs_initialized = TRUE
-
-GLOBAL_REAL_VAR(world_log_redirected) = FALSE
-
-/**
- * so it turns out that if GLOB init or something before world.log redirect runtimes we have no way of catching it in CI
- * which is really bad?? because we kind of need it??
- * therefore
- */
-/world/proc/ensure_logging_active()
-// if we're unit testing do not ever redirect world.log or the test won't show output.
-#ifndef UNIT_TESTS
-	// we already know, we don't care
-	if(params[OVERRIDE_LOG_DIRECTORY_PARAMETER])
-		world.log = file("data/logs/[params[OVERRIDE_LOG_DIRECTORY_PARAMETER]]/dd.log")
-		return
-	if(global.world_log_redirected)
-		return
-	global.world_log_redirected = TRUE
-	if(fexists("data/logs/world_init_temporary.log"))
-		fdel("data/logs/world_init_temporary.log")
-	world.log = file("data/logs/world_init_temporary.log")
-#endif
-
-/**
- * world/New is running, shunt all of the output back.
- */
-/world/proc/shunt_redirected_log()
-// if we're unit testing do not ever redirect world.log or the test won't show output.
-#ifndef UNIT_TESTS
-	if(params[OVERRIDE_LOG_DIRECTORY_PARAMETER])
-		return		// already done above
-	world.log = file("[GLOB.log_directory]/dd.log")
-	if(!fexists("data/logs/world_init_temporary.log"))
-		log_world("No preinit logs detected, shunt skipped.")
-		return
-	log_world("Shunting preinit logs as follows:")
-	for(var/line in world.file2list("data/logs/world_init_temporary.log"))
-		line = trim(line)
-		if(!length(line))
-			continue
-		log_world(line)
-	fdel("data/logs/world_init/temporary.log")
-#endif
+		addtimer(CALLBACK(GLOBAL_PROC, GLOBAL_PROC_REF(ToRban_autoupdate)), 5 MINUTES)
 
 /world/proc/HandleTestRun()
 	//trigger things to run the whole process
@@ -155,58 +198,75 @@ GLOBAL_REAL_VAR(world_log_redirected) = FALSE
 	CONFIG_SET(number/round_end_countdown, 0)
 	var/datum/callback/cb
 #ifdef UNIT_TESTS
-	cb = CALLBACK(GLOBAL_PROC, /proc/RunUnitTests)
+	cb = CALLBACK(GLOBAL_PROC, GLOBAL_PROC_REF(RunUnitTests))
 #else
 	cb = VARSET_CALLBACK(SSticker, force_ending, TRUE)
 #endif
-	SSticker.OnRoundstart(CALLBACK(GLOBAL_PROC, /proc/_addtimer, cb, 10 SECONDS))
+	SSticker.OnRoundstart(CALLBACK(GLOBAL_PROC, GLOBAL_PROC_REF(_addtimer), cb, 10 SECONDS))
+
+/world/proc/queue_performance_tests()
+	//trigger things to run the whole process
+	Master.sleep_offline_after_initializations = FALSE
+	SSticker.start_immediately = TRUE
+	var/datum/callback/cb = CALLBACK(src, PROC_REF(run_performance_tests))
+	SSticker.OnRoundstart(CALLBACK(GLOBAL_PROC, GLOBAL_PROC_REF(_addtimer), cb, 10 SECONDS))
+
+/// Stub proc intended to be filled with code that does some test, profiles it, and logs that test.
+/// Intended to be used with line by line macros, but you should live your truth
+/world/proc/run_performance_tests()
+	// In case we do somethin that could otherwise end the round
+	SSticker.delay_end = TRUE
+	// Your code goes here
+
+	// Logging goes here
+	// (sample line by line) stat_tracking_export_to_csv_later("file_name.csv", GLOB.cost_list, GLOB.count_list)
+	SSticker.delay_end = FALSE
+	shutdown()
 
 /world/proc/SetupLogs()
 	var/override_dir = params[OVERRIDE_LOG_DIRECTORY_PARAMETER]
 	if(!override_dir)
 		var/realtime = world.realtime
-		var/texttime = time2text(realtime, "YYYY/MM/DD")
+		var/texttime = time2text(realtime, "YYYY/MM/DD", TIMEZONE_UTC)
 		GLOB.log_directory = "data/logs/[texttime]/round-"
-		GLOB.picture_logging_prefix = "L_[time2text(realtime, "YYYYMMDD")]_"
-		GLOB.picture_log_directory = "data/picture_logs/[texttime]/round-"
 		if(GLOB.round_id)
 			GLOB.log_directory += "[GLOB.round_id]"
-			GLOB.picture_logging_prefix += "R_[GLOB.round_id]_"
-			GLOB.picture_log_directory += "[GLOB.round_id]"
 		else
-			var/timestamp = replacetext(TIME_STAMP("hh:mm:ss", FALSE), ":", ".")
+			var/timestamp = replacetext(time_stamp(), ":", ".")
 			GLOB.log_directory += "[timestamp]"
-			GLOB.picture_log_directory += "[timestamp]"
-			GLOB.picture_logging_prefix += "T_[timestamp]_"
 	else
 		GLOB.log_directory = "data/logs/[override_dir]"
-		GLOB.picture_logging_prefix = "O_[override_dir]_"
-		GLOB.picture_log_directory = "data/picture_logs/[override_dir]"
 
 	GLOB.world_game_log = "[GLOB.log_directory]/game.log"
 	GLOB.world_asset_log = "[GLOB.log_directory]/asset.log"
 	GLOB.world_attack_log = "[GLOB.log_directory]/attack.log"
 	GLOB.world_href_log = "[GLOB.log_directory]/hrefs.log"
 	GLOB.world_qdel_log = "[GLOB.log_directory]/qdel.log"
+	GLOB.sql_error_log = "[GLOB.log_directory]/sql.log"
 	GLOB.world_map_error_log = "[GLOB.log_directory]/map_errors.log"
 	GLOB.world_runtime_log = "[GLOB.log_directory]/runtime.log"
 	GLOB.tgui_log = "[GLOB.log_directory]/tgui.log"
+	GLOB.world_reagent_log = "[GLOB.log_directory]/reagents.log"
 	GLOB.subsystem_log = "[GLOB.log_directory]/subsystem.log"
 
 #ifdef UNIT_TESTS
 	GLOB.test_log = file("[GLOB.log_directory]/tests.log")
 	start_log(GLOB.test_log)
 #endif
+	_setup_logs_boilerplate()
 	start_log(GLOB.world_game_log)
 	start_log(GLOB.world_attack_log)
 	start_log(GLOB.world_href_log)
+	start_log(GLOB.sql_error_log)
 	start_log(GLOB.world_qdel_log)
 	start_log(GLOB.world_map_error_log)
 	start_log(GLOB.world_runtime_log)
 	start_log(GLOB.tgui_log)
 	start_log(GLOB.subsystem_log)
 
-	GLOB.changelog_hash = md5('html/changelog.html') //for telling if the changelog has changed recently
+	var/latest_changelog = file("[global.config.directory]/../html/changelogs/archive/" + time2text(world.timeofday, "YYYY-MM", TIMEZONE_UTC) + ".yml")
+	GLOB.changelog_hash = fexists(latest_changelog) ? md5(latest_changelog) : 0 //for telling if the changelog has changed recently
+
 	if(fexists(GLOB.config_error_log))
 		fcopy(GLOB.config_error_log, "[GLOB.log_directory]/config_error.log")
 		fdel(GLOB.config_error_log)
@@ -218,6 +278,17 @@ GLOBAL_REAL_VAR(world_log_redirected) = FALSE
 	// but those are both private, so let's put the commit info in the runtime
 	// log which is ultimately public.
 	log_runtime(GLOB.revdata.get_log_message())
+
+	global.event_logger.setup_logger(GLOB.log_directory)
+
+#ifndef USE_CUSTOM_ERROR_HANDLER
+	world.log = file("[GLOB.log_directory]/dd.log")
+#else
+	if (TgsAvailable()) // why
+		world.log = file("[GLOB.log_directory]/dd.log") //not all runtimes trigger world/Error, so this is the only way to ensure we can see all of them.
+#endif
+
+/world/proc/_setup_logs_boilerplate()
 
 /world/Topic(T, addr, master, key)
 	TGS_TOPIC	//redirect to server tools if necessary
@@ -252,8 +323,8 @@ GLOBAL_REAL_VAR(world_log_redirected) = FALSE
 	set waitfor = FALSE
 	var/list/fail_reasons
 	if(GLOB)
-		if(global.total_runtimes != 0)
-			fail_reasons = list("Total runtimes: [global.total_runtimes] - if you don't see any runtimes above, launch locally with `dreamseeker -trusted -verbose vorestation.dmb` after compile and check Options and Messages. Inform a maintainer too, if this happens..")
+		if(GLOB.total_runtimes != 0)
+			fail_reasons = list("Total runtimes: [GLOB.total_runtimes]")
 #ifdef UNIT_TESTS
 		if(GLOB.failed_any_test)
 			LAZYADD(fail_reasons, "Unit Tests failed!")
@@ -266,64 +337,79 @@ GLOBAL_REAL_VAR(world_log_redirected) = FALSE
 		text2file("Success!", "[GLOB.log_directory]/clean_run.lk")
 	else
 		log_world("Test run failed!\n[fail_reasons.Join("\n")]")
-	sleep(0)	//yes, 0, this'll let Reboot finish and prevent byond memes
-	qdel(src)	//shut it down
+	sleep(0) //yes, 0, this'll let Reboot finish and prevent byond memes
+	qdel(src) //shut it down
 
+/// Returns TRUE if the world should do a TGS hard reboot.
+/world/proc/check_hard_reboot()
+	if(!TgsAvailable())
+		return FALSE
+	var/ruhr = CONFIG_GET(number/rounds_until_hard_restart)
+	switch(ruhr)
+		if(-1)
+			return FALSE
+		if(0)
+			return TRUE
+		else
+			if(GLOB.restart_counter >= ruhr)
+				return TRUE
+			else
+				text2file("[++GLOB.restart_counter]", RESTART_COUNTER_PATH)
+				return FALSE
+
+/**
+ * byond reboot proc
+ *
+ * @params
+ * * reason - this will be non-0 if initiated via byond admin tooling. we will always block this if a 'usr' exists and we are not OOM'd,
+ *            as we want to force admin verb usage
+ * * fast_track - skip normal shutdown processes, immediately reboot. data will be lost.
+ */
 /world/Reboot(reason = 0, fast_track = FALSE)
 	if (reason || fast_track) //special reboot, do none of the normal stuff
-		if (usr)
-			log_admin("[key_name(usr)] Has requested an immediate world restart via client side debugging tools")
-			message_admins("[key_name_admin(usr)] Has requested an immediate world restart via client side debugging tools")
-		to_chat(world, "<span class='boldannounce'>Rebooting World immediately due to host request</span>")
+		if (reason && usr && Master && GLOB) // why && Master / GLOB? if OOM, MC gets erased :D
+			message_admins("Blocked reboot request from [key_name_admin(usr)]. Please use the Reboot World verb.")
+			return // no thank you
+			// log_admin("[key_name(usr)] Has requested an immediate world restart via client side debugging tools")
+			// message_admins("[key_name_admin(usr)] Has requested an immediate world restart via client side debugging tools")
+		to_chat(world, SPAN_BOLDANNOUNCE("Rebooting World immediately due to host request."))
 	else
-		to_chat(world, "<span class='boldannounce'>Rebooting world...</span>")
-		//POLARIS START
+		to_chat(world, SPAN_BOLDANNOUNCE("Rebooting world..."))
 		if(blackbox)
 			blackbox.save_all_data_to_sql()
-		//END
-		Master.Shutdown()	//run SS shutdowns
-
-	TgsReboot()
+		Master.Shutdown() //run SS shutdowns
 
 	#ifdef UNIT_TESTS
 	FinishTestRun()
 	return
 	#endif
 
-/*
-	if(TgsAvailable())
-		var/do_hard_reboot
-		// check the hard reboot counter
-		var/ruhr = CONFIG_GET(number/rounds_until_hard_restart)
-		switch(ruhr)
-			if(-1)
-				do_hard_reboot = FALSE
-			if(0)
-				do_hard_reboot = TRUE
-			else
-				if(GLOB.restart_counter >= ruhr)
-					do_hard_reboot = TRUE
-				else
-					text2file("[++GLOB.restart_counter]", RESTART_COUNTER_PATH)
-					do_hard_reboot = FALSE
-
-		if(do_hard_reboot)
-			log_world("World hard rebooted at [time_stamp()]")
-			shutdown_logging() // See comment below.
-			TgsEndProcess()
-*/
+	if(check_hard_reboot())
+		log_world("World hard rebooted at [time_stamp()]")
+		shutdown_logging() // See comment below.
+		QDEL_NULL(Tracy)
+		QDEL_NULL(Debugger)
+		TgsEndProcess()
+		return ..()
 
 	log_world("World rebooted at [time_stamp()]")
+
 	shutdown_logging() // Past this point, no logging procs can be used, at risk of data loss.
+	QDEL_NULL(Tracy)
+	QDEL_NULL(Debugger)
+
+	//! Finale
+	// hmmm let's sleep for one (1) second incase rust_g threads are running for whatever reason
+	// sleep(1 SECONDS) no, rustg should cease beyond this point (no logging)
+
 	..()
 
 /world/Del()
-	var/debug_server = world.GetConfig("env", "AUXTOOLS_DEBUG_DLL")
-	if (debug_server)
-		call(debug_server, "auxtools_shutdown")()
-	..()
+	QDEL_NULL(Tracy)
+	QDEL_NULL(Debugger)
+	. = ..()
 
-/hook/startup/proc/loadMode()
+/legacy_hook/startup/proc/loadMode()
 	world.load_mode()
 	return 1
 
@@ -332,7 +418,7 @@ GLOBAL_REAL_VAR(world_log_redirected) = FALSE
 		return
 
 
-	var/list/Lines = file2list("data/mode.txt")
+	var/list/Lines = world.file2list("data/mode.txt")
 	if(Lines.len)
 		if(Lines[1])
 			master_mode = Lines[1]
@@ -343,7 +429,7 @@ GLOBAL_REAL_VAR(world_log_redirected) = FALSE
 	fdel(F)
 	F << the_mode
 
-/hook/startup/proc/loadMods()
+/legacy_hook/startup/proc/loadMods()
 	world.load_mods()
 	world.load_mentors() // no need to write another hook.
 	return 1
@@ -352,7 +438,7 @@ GLOBAL_REAL_VAR(world_log_redirected) = FALSE
 	if(config_legacy.admin_legacy_system)
 		var/text = file2text("config/moderators.txt")
 		if (!text)
-			log_world("Failed to load config/mods.txt")
+			log_world("Failed to load config/moderators.txt")
 		else
 			var/list/lines = splittext(text, "\n")
 			for(var/line in lines)
@@ -398,7 +484,7 @@ GLOBAL_REAL_VAR(world_log_redirected) = FALSE
 	// ---Hub title---
 	var/servername = config_legacy?.server_name
 	var/stationname = station_name()
-	var/defaultstation = GLOB.using_map ? GLOB.using_map.station_name : stationname
+	var/defaultstation = (LEGACY_MAP_DATUM) ? (LEGACY_MAP_DATUM).station_name : stationname
 	if(servername || stationname != defaultstation)
 		. += (servername ? "<b>[servername]" : "<b>")
 		. += (stationname != defaultstation ? "[servername ? " - " : ""][stationname]</b>\] " : "</b>\] ")
@@ -417,132 +503,179 @@ GLOBAL_REAL_VAR(world_log_redirected) = FALSE
 
 	// ---Hub footer---
 	. += "\["
-	if(GLOB.using_map)
-		. += "[GLOB.using_map.station_short], "
+	if((LEGACY_MAP_DATUM))
+		. += "[(LEGACY_MAP_DATUM).station_short], "
 
 	. += "[get_security_level()] alert, "
-	
+
 	. += "[GLOB.clients.len] players"
 
 	status = .
 
-#define FAILED_DB_CONNECTION_CUTOFF 5
-var/failed_db_connections = 0
-var/failed_old_db_connections = 0
-
-/hook/startup/proc/connectDB()
-	if(!config_legacy.sql_enabled)
-		log_world("SQL connection disabled in config_legacy.")
-	else if(!setup_database_connection())
-		log_world("Your server failed to establish a connection with the feedback database.")
-	else
-		log_world("Feedback database connection established.")
-	return 1
-
-proc/setup_database_connection()
-
-	if(failed_db_connections > FAILED_DB_CONNECTION_CUTOFF)	//If it failed to establish a connection more than 5 times in a row, don't bother attempting to conenct anymore.
-		return 0
-
-	if(!dbcon)
-		dbcon = new()
-
-	var/user = sqlfdbklogin
-	var/pass = sqlfdbkpass
-	var/db = sqlfdbkdb
-	var/address = sqladdress
-	var/port = sqlport
-
-	dbcon.Connect("dbi:mysql:[db]:[address]:[port]","[user]","[pass]")
-	. = dbcon.IsConnected()
-	if ( . )
-		failed_db_connections = 0	//If this connection succeeded, reset the failed connections counter.
-	else
-		failed_db_connections++		//If it failed, increase the failed connections counter.
-		world.log << dbcon.ErrorMsg()
-
-	return .
-
-//This proc ensures that the connection to the feedback database (global variable dbcon) is established
-proc/establish_db_connection()
-	if(failed_db_connections > FAILED_DB_CONNECTION_CUTOFF)
-		return 0
-
-	if(!dbcon || !dbcon.IsConnected())
-		return setup_database_connection()
-	else
-		return 1
-
-
-/hook/startup/proc/connectOldDB()
-	if(!config_legacy.sql_enabled)
-		log_world("SQL connection disabled in config_legacy.")
-	else if(!setup_old_database_connection())
-		log_world("Your server failed to establish a connection with the SQL database.")
-	else
-		log_world("SQL database connection established.")
-	return 1
-
-//These two procs are for the old database, while it's being phased out. See the tgstation.sql file in the SQL folder for more information.
-proc/setup_old_database_connection()
-
-	if(failed_old_db_connections > FAILED_DB_CONNECTION_CUTOFF)	//If it failed to establish a connection more than 5 times in a row, don't bother attempting to conenct anymore.
-		return 0
-
-	if(!dbcon_old)
-		dbcon_old = new()
-
-	var/user = sqllogin
-	var/pass = sqlpass
-	var/db = sqldb
-	var/address = sqladdress
-	var/port = sqlport
-
-	dbcon_old.Connect("dbi:mysql:[db]:[address]:[port]","[user]","[pass]")
-	. = dbcon_old.IsConnected()
-	if ( . )
-		failed_old_db_connections = 0	//If this connection succeeded, reset the failed connections counter.
-	else
-		failed_old_db_connections++		//If it failed, increase the failed connections counter.
-		world.log << dbcon.ErrorMsg()
-
-	return .
-
-//This proc ensures that the connection to the feedback database (global variable dbcon) is established
-proc/establish_old_db_connection()
-	if(failed_old_db_connections > FAILED_DB_CONNECTION_CUTOFF)
-		return 0
-
-	if(!dbcon_old || !dbcon_old.IsConnected())
-		return setup_old_database_connection()
-	else
-		return 1
-
-#undef FAILED_DB_CONNECTION_CUTOFF
-
-/world/proc/update_hub_visibility(new_value)					//CITADEL PROC: TG's method of changing visibility
-	if(new_value)				//I'm lazy so this is how I wrap it to a bool number
-		new_value = TRUE
-	else
-		new_value = FALSE
-	if(new_value == visibility)
+/**
+ * Sets whether or not we're visible on the hub.
+ * * This is the only place where `hub_password` should be touched!
+ * * Never, ever modify `hub` or `visibility`.
+ */
+/world/proc/update_hub_visibility(new_visibility)
+	new_visibility = !!new_visibility
+	if(new_visibility == GLOB.hub_visibility)
 		return
-
-	visibility = new_value
-	if(visibility)
+	GLOB.hub_visibility = new_visibility
+	if(GLOB.hub_visibility)
 		hub_password = "kMZy3U5jJHSiBQjr"
 	else
 		hub_password = "SORRYNOPASSWORD"
 
 // Things to do when a new z-level was just made.
-/world/proc/max_z_changed()
-	if(!istype(GLOB.players_by_zlevel, /list))
-		GLOB.players_by_zlevel = new /list(world.maxz, 0)
+/world/proc/max_z_changed(old_z_count, new_z_count)
+	assert_players_by_zlevel_list()
+	assert_gps_level_list()
+	assert_high_altitude_signal_list()
+	for(var/datum/controller/subsystem/S in Master.subsystems)
+		S.on_max_z_changed(old_z_count, new_z_count)
+
+/proc/assert_players_by_zlevel_list()
+	if(!islist(GLOB.players_by_zlevel))
+		GLOB.players_by_zlevel = list()
 	while(GLOB.players_by_zlevel.len < world.maxz)
-		GLOB.players_by_zlevel.len++
-		GLOB.players_by_zlevel[GLOB.players_by_zlevel.len] = list()
+		GLOB.players_by_zlevel[++GLOB.players_by_zlevel.len] = list()
 
 // Call this to make a new blank z-level, don't modify maxz directly.
 /world/proc/increment_max_z()
-	maxz++
-	max_z_changed()
+	. = ++maxz
+	max_z_changed(. - 1, .)
+
+//* Ticklag / FPS *//
+
+/// Set FPS
+/world/proc/set_fps(fps)
+	// This isn't just here to avoid duplicate code.
+	// Setting world.tick_lag is a lot more accurate than setting world.fps.
+	// Do not ever set FPs directly.
+	set_ticklag(10 / fps)
+	return world.fps
+
+/// Set ticklag
+/world/proc/set_ticklag(ticklag)
+	// 0.1 is 100 fps.
+	// Round to nearest 1 fps.
+	// We divide 10 by it becuase BYOND measures time in deciseconds, so each second has 10.
+	var/fps = 10 / ticklag
+	fps = clamp(round(fps, 1), 1, 100)
+
+	// FPS that result in repeating decimals for world.time not allowed.
+	// Using them results in floating point inaccuracy within high-precision timing systems.
+	// That's very bad, and causes stuff like timers to infinitely loop or worse.
+	// Not only that, world.time is, as far as I can see, internally rounded
+
+	// terminating decimals are of the form
+	//
+	// k (2**n * 5**m), where
+	//
+	// k = integer
+	// n = some power
+	// m = some power
+
+	// our conversion from FPS to ticklag is conveniently 10 / fps
+	// thus with k = 10,
+	// we try to check for termination on fps
+	if(!is_terminating_fraction(10, fps))
+		// it's not.
+		// yell at them.
+		stack_trace("someone just set ticklag to non-terminating ticklag [ticklag]. this might result in fatal imprecision.")
+
+	// Convert back into ticklag
+	ticklag = 10 / fps
+
+	set_ticklag_impl(ticklag)
+
+/// OH GOD WHAT ARE YOU DOING
+/// this is just here for debugging/admins
+/// because sometimes we want to intentionally make 'bad' ticklags to see
+/// how things react.
+/world/proc/set_ticklag_impl(ticklag)
+	PRIVATE_PROC(TRUE)
+
+	// set
+	var/old = src.tick_lag
+	src.tick_lag = ticklag
+
+	// update
+	for(var/datum/controller/subsystem/subsystem in Master.subsystems)
+		subsystem.on_ticklag_changed(old, ticklag)
+	for(var/mob/mob in GLOB.mob_list)
+		mob.update_movespeed()
+
+//* Log Shunter *//
+
+//! LOG SHUNTER STUFF, LEAVE THIS ALONE
+// well maybe have a genisis proc so master is 100% initialized (with globals) which makes it impossible to not exist when we are new()ing stuff
+/**
+ * so it turns out that if GLOB init or something before world.log redirect runtimes we have no way of catching it in CI
+ * which is really bad?? because we kind of need it??
+ * therefore
+ */
+/world/proc/ensure_logging_active()
+// if we're unit testing do not ever redirect world.log or the test won't show output.
+#ifndef UNIT_TESTS
+	// we already know, we don't care
+	if(global.world_log_shunter_active)
+		return
+	// we're not running in tgs, do not redirect world.log
+	if(!world.params["server_service_version"])
+		return
+	global.world_log_shunter_active = TRUE
+	if(fexists("data/logs/world_init_temporary.log"))
+		fdel("data/logs/world_init_temporary.log")
+	world.log = file("data/logs/world_init_temporary.log")
+	SEND_TEXT(world.log, "Shunting preinit logs as following...")
+#endif
+
+/**
+ * world/New is running, shunt all of the output back.
+ */
+/world/proc/shunt_redirected_log()
+// if we're unit testing do not ever redirect world.log or the test won't show output.
+#ifndef UNIT_TESTS
+	// we're not running in tgs, do not redirect world.log
+	if(!world.params["server_service_version"])
+		return
+	// if logs are to be redirected, send it to that folder
+	if(!(OVERRIDE_LOG_DIRECTORY_PARAMETER in params))
+		world.log = file("[GLOB.log_directory]/dd.log")
+	// handle pre-init log redirection
+	if(!world_log_shunter_active)
+		log_world("World log shunt never happened. Something has gone wrong!")
+		return
+	else if(!fexists("data/logs/world_init_temporary.log"))
+		log_world("No preinit logs detected, shunt skipped. Something has gone wrong!")
+		return
+	for(var/line in world.file2list("data/logs/world_init_temporary.log"))
+		line = trim(line)
+		if(!length(line))
+			continue
+		log_world(line)
+	fdel("data/logs/world_init_temporary.log")
+#endif
+//! END
+
+//* Byond-Tracy *//
+
+/world/proc/init_byond_tracy()
+	var/library
+
+	switch (system_type)
+		if (MS_WINDOWS)
+			library = "prof.dll"
+		if (UNIX)
+			library = "libprof.so"
+		else
+			CRASH("Unsupported platform: [system_type]")
+
+	var/init_result = call(library, "init")()
+	if (init_result != "0")
+		CRASH("Error initializing byond-tracy: [init_result]")
+
+#undef USE_TRACY_PARAMETER
+#undef RESTART_COUNTER_PATH

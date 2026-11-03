@@ -3,7 +3,7 @@
 	desc = "A small disk used for carrying data on plant genetics."
 	icon = 'icons/obj/hydroponics_machines.dmi'
 	icon_state = "disk"
-	w_class = ITEMSIZE_TINY
+	w_class = WEIGHT_CLASS_TINY
 
 	var/list/genes = list()
 	var/genesource = "unknown"
@@ -13,7 +13,10 @@
 	pixel_x = rand(-5,5)
 	pixel_y = rand(-5,5)
 
-/obj/item/disk/botany/attack_self(var/mob/user as mob)
+/obj/item/disk/botany/attack_self(mob/user, datum/event_args/actor/actor)
+	. = ..()
+	if(.)
+		return
 	if(genes.len)
 		var/choice = alert(user, "Are you sure you want to wipe the disk?", "Xenobotany Data", "No", "Yes")
 		if(src && user && genes && choice && choice == "Yes" && user.Adjacent(get_turf(src)))
@@ -27,7 +30,7 @@
 	name = "flora disk box"
 	desc = "A box of flora data disks, apparently."
 
-/obj/item/storage/box/botanydisk/PopulateContents()
+/obj/item/storage/box/botanydisk/legacy_spawn_contents()
 	for(var/i = 0;i<7;i++)
 		new /obj/item/disk/botany(src)
 
@@ -60,7 +63,7 @@
 /obj/machinery/botany/attack_ai(mob/user as mob)
 	return attack_hand(user)
 
-/obj/machinery/botany/attack_hand(mob/user as mob)
+/obj/machinery/botany/attack_hand(mob/user, datum/event_args/actor/clickchain/e_args)
 	ui_interact(user)
 
 /obj/machinery/botany/proc/finished_task()
@@ -87,8 +90,8 @@
 		if(S.seed && S.seed.get_trait(TRAIT_IMMUTABLE) > 0)
 			to_chat(user, "That seed is not compatible with our genetics technology.")
 		else
-			user.drop_from_inventory(W)
-			W.loc = src
+			if(!user.attempt_insert_item_for_installation(W, src))
+				return
 			seed = W
 			to_chat(user, "You load [W] into [src].")
 		return
@@ -97,7 +100,7 @@
 	if(default_deconstruction_screwdriver(user, W))
 		return
 	if(W.is_wrench())
-		playsound(src, W.usesound, 100, 1)
+		playsound(src, W.tool_sound, 100, 1)
 		to_chat(user, "<span class='notice'>You [anchored ? "un" : ""]secure \the [src].</span>")
 		anchored = !anchored
 		return
@@ -118,9 +121,8 @@
 				if(disk_needs_genes)
 					to_chat(user, "That disk does not have any gene data loaded.")
 					return
-
-			user.drop_from_inventory(W)
-			W.loc = src
+			if(!user.attempt_insert_item_for_installation(W, src))
+				return
 			loaded_disk = W
 			to_chat(user, "You load [W] into [src].")
 
@@ -141,7 +143,7 @@
 		ui = new(user, src, "BotanyIsolator", name)
 		ui.open()
 
-/obj/machinery/botany/extractor/ui_data(mob/user)
+/obj/machinery/botany/extractor/ui_data(mob/user, datum/tgui/ui)
 	var/list/data = ..()
 
 	var/list/geneMasks = SSplants.gene_masked_list
@@ -171,7 +173,7 @@
 
 	return data
 
-/obj/machinery/botany/ui_act(action, list/params, datum/tgui/ui, datum/ui_state/state)
+/obj/machinery/botany/ui_act(action, list/params, datum/tgui/ui, datum/ui_state/state, datum/event_args/actor/actor)
 	if(..())
 		return TRUE
 
@@ -202,7 +204,7 @@
 			loaded_disk = null
 			return TRUE
 
-/obj/machinery/botany/extractor/ui_act(action, list/params, datum/tgui/ui, datum/ui_state/state)
+/obj/machinery/botany/extractor/ui_act(action, list/params, datum/tgui/ui, datum/ui_state/state, datum/event_args/actor/actor)
 	if(..())
 		return TRUE
 
@@ -269,7 +271,7 @@
 		ui = new(user, src, "BotanyEditor", name)
 		ui.open()
 
-/obj/machinery/botany/editor/ui_data(mob/user, datum/tgui/ui, datum/ui_state/state)
+/obj/machinery/botany/editor/ui_data(mob/user, datum/tgui/ui)
 	var/list/data = ..()
 
 	data["activity"] = active
@@ -300,7 +302,7 @@
 
 	return data
 
-/obj/machinery/botany/editor/ui_act(action, list/params, datum/tgui/ui, datum/ui_state/state)
+/obj/machinery/botany/editor/ui_act(action, list/params, datum/tgui/ui, datum/ui_state/state, datum/event_args/actor/actor)
 	if(..())
 		return TRUE
 

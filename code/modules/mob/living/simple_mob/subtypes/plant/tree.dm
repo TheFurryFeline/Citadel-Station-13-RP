@@ -18,7 +18,11 @@
 
 	mob_class = MOB_CLASS_PLANT
 
-	faction = "plants"
+	iff_factions = list(
+		MOB_IFF_FACTION_BIND_TO_MAP,
+		MOB_IFF_FACTION_PLANT,
+	)
+
 	maxHealth = 250
 	health = 250
 	poison_resist = 1.0
@@ -28,8 +32,8 @@
 	response_harm = "hits"
 
 	harm_intent_damage = 5
-	melee_damage_lower = 8
-	melee_damage_upper = 12
+	legacy_melee_damage_lower = 8
+	legacy_melee_damage_upper = 12
 	attacktext = list("bitten")
 	attack_sound = 'sound/weapons/bite.ogg'
 
@@ -42,7 +46,7 @@
 	if(isliving(A))
 		var/mob/living/L = A
 		if(prob(15))
-			L.Weaken(3)
+			L.afflict_paralyze(20 * 3)
 			L.visible_message(SPAN_DANGER("\The [src] knocks down \the [L]!"))
 
 /mob/living/simple_mob/animal/space/tree/death()

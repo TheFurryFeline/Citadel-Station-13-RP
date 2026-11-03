@@ -26,12 +26,12 @@
 	return
 
 /obj/machinery/keycard_auth/attackby(obj/item/W as obj, mob/user as mob)
-	if(stat & (NOPOWER|BROKEN))
+	if(machine_stat & (NOPOWER|BROKEN))
 		to_chat(user, "This device is not powered.")
 		return
 	if(istype(W,/obj/item/card/id))
 		var/obj/item/card/id/ID = W
-		if(access_keycard_auth in ID.access)
+		if(ACCESS_COMMAND_KEYAUTH in ID.access)
 			if(active == 1)
 				//This is not the device that made the initial request. It is the device confirming the request.
 				if(event_source)
@@ -43,8 +43,8 @@
 
 	if(W.is_screwdriver())
 		to_chat(user, "You begin removing the faceplate from the [src]")
-		playsound(src, W.usesound, 50, 1)
-		if(do_after(user, 10 * W.toolspeed))
+		playsound(src, W.tool_sound, 50, 1)
+		if(do_after(user, 10 * W.tool_speed))
 			to_chat(user, "You remove the faceplate from the [src]")
 			var/obj/structure/frame/A = new /obj/structure/frame(loc)
 			var/obj/item/circuitboard/M = new circuit(A)
@@ -59,17 +59,17 @@
 				C.forceMove(loc)
 			A.state = 3
 			A.update_icon()
-			M.deconstruct(src)
+			M.after_deconstruct(src)
 			qdel(src)
 			return
 
 /obj/machinery/keycard_auth/power_change()
 	..()
-	if(stat &NOPOWER)
+	if(machine_stat & NOPOWER)
 		icon_state = "auth_off"
 
-/obj/machinery/keycard_auth/attack_hand(mob/user as mob)
-	if(user.stat || stat & (NOPOWER|BROKEN))
+/obj/machinery/keycard_auth/attack_hand(mob/user, datum/event_args/actor/clickchain/e_args)
+	if(user.stat || machine_stat & (NOPOWER|BROKEN))
 		to_chat(user, "This device is not powered.")
 		return
 	if(!user.IsAdvancedToolUser())
@@ -94,11 +94,11 @@
 		dat += "<li><A href='?src=\ref[src];triggerevent=Grant Emergency Maintenance Access'>Grant Emergency Maintenance Access</A></li>"
 		dat += "<li><A href='?src=\ref[src];triggerevent=Revoke Emergency Maintenance Access'>Revoke Emergency Maintenance Access</A></li>"
 		dat += "</ul>"
-		user << browse(dat, "window=keycard_auth;size=500x250")
+		user << browse(HTML_SKELETON(dat), "window=keycard_auth;size=500x250")
 	if(screen == 2)
 		dat += "Please swipe your card to authorize the following event: <b>[event]</b>"
 		dat += "<p><A href='?src=\ref[src];reset=1'>Back</A>"
-		user << browse(dat, "window=keycard_auth;size=500x250")
+		user << browse(HTML_SKELETON(dat), "window=keycard_auth;size=500x250")
 	return
 
 
@@ -107,7 +107,7 @@
 	if(busy)
 		to_chat(usr, "This device is busy.")
 		return
-	if(usr.stat || stat & (BROKEN|NOPOWER))
+	if(usr.stat || machine_stat & (BROKEN|NOPOWER))
 		to_chat(usr, "This device is without power.")
 		return
 	if(href_list["triggerevent"])
@@ -131,7 +131,7 @@
 
 /obj/machinery/keycard_auth/proc/broadcast_request()
 	icon_state = "auth_on"
-	for(var/obj/machinery/keycard_auth/KA in machines)
+	for(var/obj/machinery/keycard_auth/KA in GLOB.machines)
 		if(KA == src) continue
 		KA.reset()
 		spawn()
@@ -145,8 +145,8 @@
 		message_admins("[key_name(event_triggered_by)] triggered and [key_name(event_confirmed_by)] confirmed event [event]", 1)
 	reset()
 
-/obj/machinery/keycard_auth/proc/receive_request(var/obj/machinery/keycard_auth/source)
-	if(stat & (BROKEN|NOPOWER))
+/obj/machinery/keycard_auth/proc/receive_request(obj/machinery/keycard_auth/source)
+	if(machine_stat & (BROKEN|NOPOWER))
 		return
 	event_source = source
 	busy = 1
@@ -196,6 +196,6 @@ var/global/maint_all_access = 0
 	to_chat(world, "<font color='red'>The maintenance access requirement has been readded on all maintenance airlocks.</font>")
 
 /obj/machinery/door/airlock/allowed(mob/M)
-	if(maint_all_access && src.check_access_list(list(access_maint_tunnels)))
+	if(maint_all_access && src.check_access_list(list(ACCESS_ENGINEERING_MAINT)))
 		return 1
 	return ..(M)

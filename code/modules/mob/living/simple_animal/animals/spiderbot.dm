@@ -9,7 +9,7 @@
 	name = "spider-bot"
 	desc = "A skittering robotic friend!"
 	tt_desc = "Maintenance Robot"
-	icon = 'icons/mob/robots.dmi'
+	icon = 'icons/mob/robot-legacy.dmi'
 	icon_state = "spiderbot-chassis"
 	icon_living = "spiderbot-chassis"
 	icon_dead = "spiderbot-smashed"
@@ -21,15 +21,15 @@
 
 	wander = 0
 	speed = -1                    //Spiderbots gotta go fast.
-	pass_flags = PASSTABLE
+	pass_flags = ATOM_PASS_TABLE
 	mob_size = MOB_SMALL
 
 	response_help  = "pets"
 	response_disarm = "shoos"
 	response_harm   = "stomps on"
 
-	melee_damage_lower = 1
-	melee_damage_upper = 3
+	legacy_melee_damage_lower = 1
+	legacy_melee_damage_upper = 3
 	attacktext = list("shocked")
 
 	min_oxy = 0
@@ -46,7 +46,7 @@
 	var/obj/item/cell/cell = null
 	var/obj/machinery/camera/camera = null
 	var/obj/item/mmi/mmi = null
-	var/list/req_access = list(access_robotics) //Access needed to pop out the brain.
+	var/list/req_access = list(ACCESS_SCIENCE_ROBOTICS) //Access needed to pop out the brain.
 	var/positronic
 
 	can_enter_vent_with = list(
@@ -64,9 +64,9 @@
 /mob/living/simple_mob/spiderbot/Initialize(mapload)
 	. = ..()
 	add_language(LANGUAGE_GALCOM)
-	default_language = GLOB.all_languages[LANGUAGE_GALCOM]
-	verbs |= /mob/living/proc/ventcrawl
-	verbs |= /mob/living/proc/hide
+	default_language = RSlanguages.legacy_resolve_language_name(LANGUAGE_GALCOM)
+	add_verb(src, /mob/living/proc/ventcrawl)
+	add_verb(src, /mob/living/proc/hide)
 
 /mob/living/simple_mob/spiderbot/attackby(var/obj/item/O as obj, var/mob/user as mob)
 
@@ -81,7 +81,7 @@
 		if(!B.brainmob.key)
 			var/ghost_can_reenter = 0
 			if(B.brainmob.mind)
-				for(var/mob/observer/dead/G in player_list)
+				for(var/mob/observer/dead/G in GLOB.player_list)
 					if(G.can_reenter_corpse && G.mind == B.brainmob.mind)
 						ghost_can_reenter = 1
 						break
@@ -138,7 +138,7 @@
 			var/obj/item/pda/pda = O
 			id_card = pda.id
 
-		if(access_robotics in id_card.access)
+		if(ACCESS_SCIENCE_ROBOTICS in id_card.access)
 			to_chat(user, "<span class='notice'>You swipe your access card and pop the brain out of \the [src].</span>")
 			eject_brain()
 			if(held_item)
@@ -150,7 +150,7 @@
 			return 0
 
 	else
-		O.attack(src, user, user.zone_sel.selecting)
+		O.lazy_melee_interaction_chain(src, user, user.zone_sel.selecting)
 
 /mob/living/simple_mob/spiderbot/emag_act(var/remaining_charges, var/mob/user)
 	if (emagged)
@@ -168,7 +168,7 @@
 
 		src.mind = M.brainmob.mind
 		src.mind.key = M.brainmob.key
-		src.ckey = M.brainmob.ckey
+		set_ckey(M.brainmob.ckey)
 		src.name = "spider-bot ([M.brainmob.name])"
 		src.languages = M.brainmob.languages
 
@@ -195,7 +195,7 @@
 		var/turf/T = get_turf(loc)
 		if(T)
 			mmi.forceMove(T)
-		if(mind)	mind.transfer_to(mmi.brainmob)
+		if(mind)	mind.transfer(mmi.brainmob)
 		mmi = null
 		real_name = initial(real_name)
 		name = real_name
@@ -276,7 +276,7 @@
 
 	var/list/items = list()
 	for(var/obj/item/I in view(1,src))
-		if(I.loc != src && I.w_class <= ITEMSIZE_SMALL && I.Adjacent(src) )
+		if(I.loc != src && I.w_class <= WEIGHT_CLASS_SMALL && I.Adjacent(src) )
 			items.Add(I)
 
 	var/obj/selection = input("Select an item.", "Pickup") in items
@@ -296,7 +296,7 @@
 	to_chat(src, "<span class='warning'>There is nothing of interest to take.</span>")
 	return 0
 
-/mob/living/simple_mob/spiderbot/examine(mob/user)
+/mob/living/simple_mob/spiderbot/examine(mob/user, dist)
 	. = ..()
 	if(src.held_item)
 		. += "It is carrying [icon2html(thing = src, target = world)] \a [src.held_item]."

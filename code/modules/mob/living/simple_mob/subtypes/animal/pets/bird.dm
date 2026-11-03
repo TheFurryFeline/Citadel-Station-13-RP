@@ -21,15 +21,15 @@
 	icon_rest = "parrot-held"
 	icon_dead = "parrot-dead"
 
-	pass_flags = PASSTABLE
+	pass_flags = ATOM_PASS_TABLE
 
 	health = 30
 	maxHealth = 30
-	melee_damage_lower = 3
-	melee_damage_upper = 3
+	legacy_melee_damage_lower = 3
+	legacy_melee_damage_upper = 3
 	randomized = TRUE
 
-	movement_cooldown = 0
+	movement_base_speed = 6.66
 	hovering = TRUE // Birds can fly.
 	softfall = TRUE
 	parachuting = TRUE
@@ -57,7 +57,7 @@
 	desc = "It's a bird!"
 	icon_state = null
 	item_icons = null
-	w_class = ITEMSIZE_SMALL
+	w_class = WEIGHT_CLASS_SMALL
 
 /obj/item/holder/bird/sync(var/mob/living/simple_mob/SM)
 	..()

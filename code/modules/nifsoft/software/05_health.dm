@@ -2,7 +2,7 @@
 	name = "Medichines"
 	desc = "An internal swarm of nanites to make sure you stay in good shape and to promote healing, or to preserve you if you are critically injured."
 	list_pos = NIF_ORGANIC_HEAL
-	cost = 1250
+	cost = 500
 	p_drain = 0.05
 	a_drain = 0.1 //This is messed with manually below.
 	wear = 2
@@ -23,7 +23,7 @@
 		mode = initial(mode)
 		nif.human.Stasis(0)
 
-/datum/nifsoft/medichines_org/life()
+/datum/nifsoft/medichines_org/on_life()
 	if((. = ..()))
 		var/mob/living/carbon/human/H = nif.human
 		var/HP_percent = H.health/H.getMaxHealth()
@@ -75,7 +75,7 @@
 	name = "Medichines"
 	desc = "A swarm of mechanical repair nanites, able to repair relatively minor damage to synthetic bodies. Large repairs must still be performed manually."
 	list_pos = NIF_SYNTH_HEAL
-	cost = 1250
+	cost = 500
 	p_drain = 0.05
 	a_drain = 0.00 //This is manually drained below.
 	wear = 2
@@ -94,7 +94,7 @@
 	if((. = ..()))
 		mode = 0
 
-/datum/nifsoft/medichines_syn/life()
+/datum/nifsoft/medichines_syn/on_life()
 	if((. = ..()))
 		//We're good!
 		if(!nif.human.bad_external_organs.len)
@@ -109,13 +109,12 @@
 
 		for(var/eo in nif.human.bad_external_organs)
 			var/obj/item/organ/external/EO = eo
-			for(var/w in EO.wounds)
-				var/datum/wound/W = w
+			for(var/datum/wound/W as anything in EO.wounds)
 				if(W.damage <= 5)
 					W.heal_damage(0.1)
 					EO.update_damages()
 					if(EO.update_icon())
-						nif.human.UpdateDamageIcon(1)
+						nif.human.update_damage_overlay(1)
 					nif.use_charge(0.1)
 					return TRUE //Return entirely, we only heal one at a time.
 				else if(mode == 1)
@@ -128,7 +127,7 @@
 	name = "Respirocytes"
 	desc = "Nanites simulating red blood cells will filter and recycle oxygen for a short time, preventing suffocation in hostile environments. NOTE: Only capable of supplying OXYGEN."
 	list_pos = NIF_SPAREBREATH
-	cost = 325
+	cost = 250
 	p_drain = 0.05
 	a_drain = 0.1
 	wear = 2
@@ -148,7 +147,7 @@
 	if((. = ..()))
 		nif.notify("Now taking air from environment and refilling reserves.")
 
-/datum/nifsoft/spare_breath/life()
+/datum/nifsoft/spare_breath/on_life()
 	if((. = ..()))
 		if(active) //Supplying air, not recharging it
 			switch(filled) //Text warnings
@@ -173,9 +172,10 @@
 				nif.notify("Respirocytes now fully saturated.")
 
 /datum/nifsoft/spare_breath/proc/resp_breath()
-	if(!active) return null
+	if(!active)
+		return null
 	var/datum/gas_mixture/breath = new(BREATH_VOLUME)
-	breath.adjust_gas("oxygen", BREATH_MOLES)
+	breath.adjust_gas(GAS_ID_OXYGEN, BREATH_MOLES)
 	breath.temperature = T20C
 	return breath
 /*

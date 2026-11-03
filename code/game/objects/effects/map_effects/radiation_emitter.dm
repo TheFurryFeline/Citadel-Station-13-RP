@@ -1,8 +1,11 @@
-// Constantly emites radiation from the tile it's placed on.
+// Constantly emits radiation from the tile it's placed on.
 /obj/effect/map_effect/radiation_emitter
 	name = "radiation emitter"
 	icon_state = "radiation_emitter"
-	var/radiation_power = 30 // Bigger numbers means more radiation.
+	rad_flags = RAD_NO_CONTAMINATE | RAD_BLOCK_CONTENTS
+	var/radiation_power = 200 // Bigger numbers means more radiation.
+	var/radiation_falloff = RAD_FALLOFF_NORMAL
+	var/log_pulses = FALSE //mappers can choose exceptions for when this is logged if they really want to. It's spammy, however.
 
 /obj/effect/map_effect/radiation_emitter/Initialize(mapload)
 	START_PROCESSING(SSobj, src)
@@ -13,7 +16,12 @@
 	return ..()
 
 /obj/effect/map_effect/radiation_emitter/process(delta_time)
-	SSradiation.radiate(src, radiation_power)
+	radiation_pulse(src, radiation_power, radiation_falloff, log_pulses)
 
 /obj/effect/map_effect/radiation_emitter/strong
-	radiation_power = 100
+	radiation_power = 750
+
+/obj/effect/map_effect/radiation_emitter/chernobyl // I need this.
+	radiation_power = 2000
+
+

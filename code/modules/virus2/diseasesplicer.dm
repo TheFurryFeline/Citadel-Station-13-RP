@@ -11,22 +11,21 @@
 	var/splicing = 0
 	var/scanning = 0
 
-/obj/machinery/computer/diseasesplicer/attackby(var/obj/item/I as obj, var/mob/user as mob)
+/obj/machinery/computer/diseasesplicer/attackby(obj/item/I, mob/living/user, params, clickchain_flags, damage_multiplier)
 	if(I.is_screwdriver())
-		return ..(I,user)
+		return ..(I, user)
 
 	if(default_unfasten_wrench(user, I, 20))
 		return
 
 	if(istype(I,/obj/item/virusdish))
-		var/mob/living/carbon/c = user
 		if(dish)
 			to_chat(user, "\The [src] is already loaded.")
 			return
+		if(!user.attempt_insert_item_for_installation(I, src))
+			return
 
 		dish = I
-		c.drop_item()
-		I.loc = src
 
 	if(istype(I,/obj/item/diseasedisk))
 		to_chat(user, "You upload the contents of the disk onto the buffer.")
@@ -34,12 +33,12 @@
 		species_buffer = I:species
 		analysed = I:analysed
 
-	src.attack_hand(user)
+	return ..()
 
 /obj/machinery/computer/diseasesplicer/attack_ai(var/mob/user as mob)
 	return src.attack_hand(user)
 
-/obj/machinery/computer/diseasesplicer/attack_hand(var/mob/user as mob)
+/obj/machinery/computer/diseasesplicer/attack_hand(mob/user, datum/event_args/actor/clickchain/e_args)
 	if(..())
 		return TRUE
 	ui_interact(user)
@@ -50,7 +49,7 @@
 		ui = new(user, src, "DiseaseSplicer", name)
 		ui.open()
 
-/obj/machinery/computer/diseasesplicer/ui_data(mob/user)
+/obj/machinery/computer/diseasesplicer/ui_data(mob/user, datum/tgui/ui)
 	var/list/data = list()
 
 	data["dish_inserted"] = !!dish
@@ -95,7 +94,7 @@
 	return data
 
 /obj/machinery/computer/diseasesplicer/process(delta_time)
-	if(stat & (NOPOWER|BROKEN))
+	if(machine_stat & (NOPOWER|BROKEN))
 		return
 
 	if(scanning)
@@ -131,7 +130,7 @@
 			ping("\The [src] pings, \"Backup disk saved.\"")
 			SStgui.update_uis(src)
 
-/obj/machinery/computer/diseasesplicer/ui_act(action, list/params, datum/tgui/ui, datum/ui_state/state)
+/obj/machinery/computer/diseasesplicer/ui_act(action, list/params, datum/tgui/ui, datum/ui_state/state, datum/event_args/actor/actor)
 	if(..())
 		return TRUE
 

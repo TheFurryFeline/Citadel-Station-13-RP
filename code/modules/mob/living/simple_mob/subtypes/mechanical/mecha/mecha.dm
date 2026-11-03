@@ -7,15 +7,16 @@
 	desc = "A big stompy mech!"
 	icon = 'icons/mecha/mecha.dmi'
 
-	faction = "syndicate"
-	movement_cooldown = 5
+	iff_factions = MOB_IFF_FACTION_MERCENARY
+
+	movement_base_speed = 2
 	movement_sound = "mechstep" // This gets fed into playsound(), which can also take strings as a 'group' of sound files.
 	turn_sound = 'sound/mecha/mechturn.ogg'
 	maxHealth = 300
 	mob_size = MOB_LARGE
 
 	// Very close to the base 'damage_absorption' var on the base mecha class.
-	armor = list(
+	armor_legacy_mob = list(
 				"melee"		= 20,
 				"bullet"	= 10,
 				"laser"		= 0,
@@ -30,7 +31,7 @@
 	response_harm = "uselessly hits"
 	harm_intent_damage = 0
 
-	ai_holder_type = /datum/ai_holder/simple_mob/melee
+	ai_holder_type = /datum/ai_holder/polaris/simple_mob/melee
 	say_list_type = /datum/say_list/malf_drone
 
 	var/datum/effect_system/spark_spread/sparks
@@ -38,7 +39,6 @@
 	var/pilot_type = null // Set to spawn a pilot when destroyed. Setting this also makes the mecha vulnerable to things that affect sentient minds.
 	var/deflect_chance = 10 // Chance to outright stop an attack, just like a normal exosuit.
 	var/has_repair_droid = FALSE // If true, heals 2 damage every tick and gets a repair droid overlay.
-
 
 /mob/living/simple_mob/mechanical/mecha/Initialize(mapload)
 	sparks = new (src)
@@ -57,7 +57,7 @@
 	return ..()
 
 /mob/living/simple_mob/mechanical/mecha/Destroy()
-	qdel(sparks)
+	QDEL_NULL(sparks)
 	return ..()
 
 /mob/living/simple_mob/mechanical/mecha/death()
@@ -70,7 +70,7 @@
 	// 'Eject' our pilot, if one exists.
 	if(pilot_type)
 		var/mob/living/L = new pilot_type(loc)
-		L.faction = src.faction
+		L.copy_iff_factions(src)
 
 	new wreckage(loc) // Leave some wreckage.
 
@@ -90,7 +90,7 @@
 	if(has_repair_droid)
 		add_overlay(image(icon = 'icons/mecha/mecha_equipment.dmi', icon_state = "repair_droid"))
 
-/mob/living/simple_mob/mechanical/mecha/bullet_act()
+/mob/living/simple_mob/mechanical/mecha/on_bullet_act(obj/projectile/proj, impact_flags, list/bullet_act_args)
 	. = ..()
 	sparks.start()
 
@@ -111,11 +111,12 @@
 	return ..()
 */
 
-/mob/living/simple_mob/mechanical/mecha/bullet_act(obj/item/projectile/P)
+/mob/living/simple_mob/mechanical/mecha/on_bullet_act(obj/projectile/proj, impact_flags, list/bullet_act_args)
 	if(prob(deflect_chance))
-		visible_message(SPAN_WARNING( "\The [P] is deflected by \the [src]'s armor!"))
-		deflect_sprite()
-		return 0
+		visible_message(SPAN_WARNING( "\The [proj] is deflected by \the [src]'s armor!"))
+		spawn(-1)
+			deflect_sprite()
+		return PROJECTILE_IMPACT_BLOCKED
 	return ..()
 
 /mob/living/simple_mob/mechanical/mecha/proc/deflect_sprite()
@@ -124,17 +125,16 @@
 	sleep(1 SECOND)
 	cut_overlay(deflect_image)
 	qdel(deflect_image)
-//	flick_overlay_view(deflect_image, src, duration = 1 SECOND, gc_after = TRUE)
 
 /mob/living/simple_mob/mechanical/mecha/attackby(obj/item/I, mob/user)
 	if(prob(deflect_chance))
 		visible_message(SPAN_WARNING( "\The [user]'s [I] bounces off \the [src]'s armor!"))
 		deflect_sprite()
-		user.setClickCooldown(user.get_attack_speed(I))
+		user.setClickCooldownLegacy(user.get_attack_speed_legacy(I))
 		return
 	..()
 
-/mob/living/simple_mob/mechanical/mecha/ex_act(severity)
+/mob/living/simple_mob/mechanical/mecha/legacy_ex_act(severity)
 	if(prob(deflect_chance))
 		severity++ // This somewhat misleadingly makes it less severe.
 		deflect_sprite()

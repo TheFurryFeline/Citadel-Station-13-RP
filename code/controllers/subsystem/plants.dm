@@ -30,11 +30,11 @@ SUBSYSTEM_DEF(plants)
 	var/list/currentrun = list()
 
 /datum/controller/subsystem/plants/stat_entry()
-	..("P:[processing.len]|S:[seeds.len]")
+	return ..() + " P:[processing.len]|S:[seeds.len]"
 
 /datum/controller/subsystem/plants/Initialize(timeofday)
 	setup()
-	return ..()
+	return SS_INIT_SUCCESS
 
 /**
  * Predefined/roundstart varieties use a string key to make it
@@ -78,7 +78,7 @@ SUBSYSTEM_DEF(plants)
 		S.update_seed()
 
 	//Might as well mask the gene types while we're at it.
-	var/list/gene_datums = decls_repository.decls_of_subtype(/decl/plantgene)
+	var/list/gene_datums = GET_SINGLETON_SUBTYPE_MAP(/singleton/plantgene)
 	var/list/used_masks = list()
 	var/list/plant_traits = ALL_GENES
 	while(plant_traits && plant_traits.len)
@@ -88,10 +88,10 @@ SUBSYSTEM_DEF(plants)
 		while(gene_mask in used_masks)
 			gene_mask = "[uppertext(num2hex(rand(0,255), 2))]"
 
-		var/decl/plantgene/G
+		var/singleton/plantgene/G
 
 		for(var/D in gene_datums)
-			var/decl/plantgene/P = gene_datums[D]
+			var/singleton/plantgene/P = gene_datums[D]
 			if(gene_tag == P.gene_tag)
 				G = P
 				gene_datums -= D
@@ -111,8 +111,8 @@ SUBSYSTEM_DEF(plants)
 
 	if(survive_on_station)
 		if(seed.consume_gasses)
-			seed.consume_gasses[/datum/gas/phoron] = null
-			seed.consume_gasses[/datum/gas/carbon_dioxide] = null
+			seed.consume_gasses[GAS_ID_PHORON] = null
+			seed.consume_gasses[GAS_ID_CARBON_DIOXIDE] = null
 		if(seed.chems && !isnull(seed.chems["pacid"]))
 			seed.chems["pacid"] = null //Eating through the hull will make these plants completely inviable, albeit very dangerous.
 			seed.chems -= null //Setting to null does not actually remove the entry, which is weird.
@@ -132,7 +132,7 @@ SUBSYSTEM_DEF(plants)
 	var/list/currentrun = src.currentrun
 
 	while(currentrun.len)
-		var/obj/effect/plant/P = currentrun[currentrun.len]
+		var/obj/structure/plant/P = currentrun[currentrun.len]
 		--currentrun.len
 		if(!P || QDELETED(P))
 			continue
@@ -141,12 +141,14 @@ SUBSYSTEM_DEF(plants)
 		if(MC_TICK_CHECK)
 			return
 
-/datum/controller/subsystem/plants/proc/add_plant(var/obj/effect/plant/plant)
+/datum/controller/subsystem/plants/proc/add_plant(var/obj/structure/plant/plant)
+	// todo: shouldn't need this but here for now for gc check reasons
+	if(QDELING(plant))
+		CRASH("tried to add a qdestroying plant")
 	processing |= plant
 
-/datum/controller/subsystem/plants/proc/remove_plant(var/obj/effect/plant/plant)
+/datum/controller/subsystem/plants/proc/remove_plant(var/obj/structure/plant/plant)
 	processing -= plant
-
 
 ///Debug Verb for testing seed genes.
 /client/proc/show_plant_genes()

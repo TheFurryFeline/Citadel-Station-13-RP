@@ -3,9 +3,10 @@
 	desc = "An incredibly lifelike marble carving"
 	icon = 'icons/obj/statue.dmi'
 	icon_state = "human_male"
-	density = 1
-	anchored = 1
-	health = 0 //destroying the statue kills the mob within
+	density = TRUE
+	anchored = TRUE
+	armor_type = /datum/armor/misc/weeping_angel
+	not_actually_a_closet = TRUE
 	var/intialTox = 0 	//these are here to keep the mob from taking damage from things that logically wouldn't affect a rock
 	var/intialFire = 0	//it's a little sloppy I know but it was this or the GODMODE flag. Lesser of two evils.
 	var/intialBrute = 0
@@ -14,14 +15,16 @@
 
 /obj/structure/closet/statue/Initialize(mapload, mob/living/L)
 	. = ..(mapload)
+	var/found = FALSE
 	if(L && (ishuman(L) || L.isMonkey() || iscorgi(L)))
 		if(L.buckled)
 			L.buckled = 0
 			L.anchored = 0
 		L.forceMove(src)
 		L.update_perspective()
-		L.sdisabilities |= MUTE
-		health = L.health + 100 //stoning damaged mobs will result in easier to shatter statues
+		L.sdisabilities |= SDISABILITY_MUTE
+		found = TRUE
+		integrity = L.health + 100 //stoning damaged mobs will result in easier to shatter statues
 		intialTox = L.getToxLoss()
 		intialFire = L.getFireLoss()
 		intialBrute = L.getBruteLoss()
@@ -38,7 +41,7 @@
 			icon_state = "corgi"
 			desc = "If it takes forever, I will wait for you..."
 
-	if(health == 0) //meaning if the statue didn't find a valid target
+	if(!found) //meaning if the statue didn't find a valid target
 		qdel(src)
 		return
 
@@ -64,8 +67,8 @@
 	for(var/mob/living/M in src)
 		M.forceMove(loc)
 		M.update_perspective()
-		M.sdisabilities &= ~MUTE
-		M.take_overall_damage((M.health - health - 100),0) //any new damage the statue incurred is transfered to the mob
+		M.sdisabilities &= ~SDISABILITY_MUTE
+		M.take_overall_damage((M.health - integrity - 100),0) //any new damage the statue incurred is transfered to the mob
 
 /obj/structure/closet/statue/open()
 	return
@@ -76,41 +79,18 @@
 /obj/structure/closet/statue/toggle()
 	return
 
-/obj/structure/closet/statue/proc/check_health()
-	if(health <= 0)
-		for(var/mob/M in src)
-			shatter(M)
-
-/obj/structure/closet/statue/bullet_act(var/obj/item/projectile/Proj)
-	health -= Proj.get_structure_damage()
-	check_health()
-
-	return
-
-/obj/structure/closet/statue/attack_generic(var/mob/user, damage, attacktext, environment_smash)
-	if(damage && environment_smash)
-		for(var/mob/M in src)
-			shatter(M)
-
-/obj/structure/closet/statue/ex_act(severity)
+/obj/structure/closet/statue/deconstructed(method)
 	for(var/mob/M in src)
-		M.ex_act(severity)
-		health -= 60 / severity
-		check_health()
+		shatter(M)
+	return ..()
 
-/obj/structure/closet/statue/attackby(obj/item/I as obj, mob/user as mob)
-	health -= I.force
-	user.do_attack_animation(src)
-	visible_message("<span class='danger'>[user] strikes [src] with [I].</span>")
-	check_health()
-
-/obj/structure/closet/statue/MouseDrop_T()
+/obj/structure/closet/statue/MouseDroppedOnLegacy()
 	return
 
 /obj/structure/closet/statue/relaymove()
 	return
 
-/obj/structure/closet/statue/attack_hand()
+/obj/structure/closet/statue/attack_hand(mob/user, datum/event_args/actor/clickchain/e_args)
 	return
 
 /obj/structure/closet/statue/verb_toggleopen()
@@ -119,9 +99,7 @@
 /obj/structure/closet/statue/update_icon()
 	return
 
-/obj/structure/closet/statue/proc/shatter(mob/user as mob)
+/obj/structure/closet/statue/proc/shatter(mob/user)
 	if (user)
 		user.dust()
-	dump_contents()
-	visible_message("<span class='warning'>[src] shatters!.</span>")
-	qdel(src)
+	visible_message("<span class='warning'>[user] shatters!.</span>")

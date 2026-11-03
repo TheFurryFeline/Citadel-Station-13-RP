@@ -12,7 +12,7 @@
 	var/ignore_afk = TRUE				// If true, AFK people (5 minutes) won't satisfy it as well.
 	var/retry_delay = 3 SECONDS			// How long until we check for players again.
 
-/obj/effect/map_effect/ex_act()
+/obj/effect/map_effect/legacy_ex_act()
 	return
 
 /obj/effect/map_effect/singularity_pull()
@@ -25,44 +25,39 @@
 /obj/effect/map_effect/interval
 	var/interval_lower_bound = 5 SECONDS // Lower number for how often the map_effect will trigger.
 	var/interval_upper_bound = 5 SECONDS // Higher number for above.
-	var/halt = FALSE // Set to true to stop the loop when it reaches the next iteration.
+	var/next_fire
 
 /obj/effect/map_effect/interval/Initialize(mapload)
-	handle_interval_delay()
+	START_PROCESSING(SSobj, src)
 	return ..()
 
 /obj/effect/map_effect/interval/Destroy()
-	halt = TRUE // Shouldn't need it to GC but just in case.
+	STOP_PROCESSING(SSobj, src)
 	return ..()
 
-// Override this for the specific thing to do. Be sure to call parent to keep looping.
+// Override this for the specific thing to do.
 /obj/effect/map_effect/interval/proc/trigger()
-	handle_interval_delay()
+	return
 
-// Handles the delay and making sure it doesn't run when it would be bad.
-/obj/effect/map_effect/interval/proc/handle_interval_delay()
-	// Check to see if we're useful first.
-	if(halt)
-		return // Do not pass .(), do not recursively collect 200 thaler.
-
-	if(!always_run && !check_for_player_proximity(src, proximity_needed, ignore_ghosts, ignore_afk))
-		spawn(retry_delay) // Maybe someday we'll have fancy TG timers/schedulers.
-			if(!QDELETED(src))
-				.()
+/obj/effect/map_effect/interval/process()
+	if(world.time < next_fire)
 		return
-
-	var/next_interval = rand(interval_lower_bound, interval_upper_bound)
-	spawn(next_interval)
-		if(!QDELETED(src))
-			trigger()
+	if(!always_run && !check_for_player_proximity(src, proximity_needed, ignore_ghosts, ignore_afk))
+		return
+	var/skip_this_one
+	if(isnull(next_fire))
+		skip_this_one = TRUE
+	next_fire = world.time + rand(interval_lower_bound, interval_upper_bound)
+	if(!skip_this_one)
+		trigger()
 
 // Helper proc to optimize the use of effects by making sure they do not run if nobody is around to perceive it.
 /proc/check_for_player_proximity(var/atom/proximity_to, var/radius = 12, var/ignore_ghosts = FALSE, var/ignore_afk = TRUE)
 	if(!proximity_to)
 		return FALSE
 
-	for(var/thing in player_list)
-		var/mob/M = thing // Avoiding typechecks for more speed, player_list will only contain mobs anyways.
+	for(var/thing in GLOB.player_list)
+		var/mob/M = thing // Avoiding typechecks for more speed, GLOB.player_list will only contain mobs anyways.
 		if(ignore_ghosts && isobserver(M))
 			continue
 		if(ignore_afk && M.client && M.client.is_afk(5 MINUTES))

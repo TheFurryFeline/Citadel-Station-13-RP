@@ -17,15 +17,15 @@
 
 	var/datum/changeling/changeling = changeling_power(20,0,100,CONSCIOUS)
 
-	var/obj/held_item = get_active_hand()
+	var/obj/held_item = get_active_held_item()
 
 	if(!changeling)
 		return 0
 
 	if(held_item == null)
 		if(src.mind.changeling.recursive_enhancement)
-			if(changeling_generic_weapon(/obj/item/electric_hand/efficent,0))
-				to_chat(src, "<span class='notice'>We will shock others more efficently.</span>")
+			if(changeling_generic_weapon(/obj/item/electric_hand/efficient,0))
+				to_chat(src, "<span class='notice'>We will shock others more efficiently.</span>")
 				return 1
 		else
 			if(changeling_generic_weapon(/obj/item/electric_hand,0))  //Chemical cost is handled in the equip proc.
@@ -43,9 +43,7 @@
 		if(istype(held_item,/obj/item/grab))
 			var/obj/item/grab/G = held_item
 			if(G.affecting)
-				G.affecting.electrocute_act(10 * siemens, src, 1.0, BP_TORSO, 0)
-				var/agony = 80 * siemens //Does more than if hit with an electric hand, since grabbing is slower.
-				G.affecting.stun_effect_act(0, agony, BP_TORSO, src)
+				G.affecting.electrocute(0, 10 * siemens, 80 * siemens, NONE, BP_TORSO, src)
 
 				add_attack_logs(src,G.affecting,"Changeling shocked")
 
@@ -81,12 +79,12 @@
 				if(siemens)
 					while(i)
 						cell.charge += 100 * siemens //This should be a nice compromise between recharging guns and other batteries.
-						if(cell.charge > cell.maxcharge)
-							cell.charge = cell.maxcharge
+						if(cell.charge > cell.max_charge)
+							cell.charge = cell.max_charge
 							break
 						if(siemens)
 							var/T = get_turf(src)
-							new /obj/effect/sparks(T)
+							new /obj/effect/particle_effect/sparks(T)
 							held_item.update_icon()
 						i--
 						sleep(1 SECOND)
@@ -108,7 +106,7 @@
 	var/agony_amount = 60
 	var/electrocute_amount = 10
 
-/obj/item/electric_hand/efficent
+/obj/item/electric_hand/efficient
 	shock_cost = 5
 	agony_amount = 80
 	electrocute_amount = 20
@@ -120,20 +118,20 @@
 		"<span class='warning'>We store a charge of electricity in our hand.</span>",
 		"<span class='italics'>You hear crackling electricity!</span>")
 		var/T = get_turf(src)
-		new /obj/effect/sparks(T)
+		new /obj/effect/particle_effect/sparks(T)
 
-/obj/item/electric_hand/dropped(mob/user)
+/obj/item/electric_hand/dropped(mob/user, flags, atom/newLoc)
 	. = ..()
 	qdel(src)
 
-/obj/item/electric_hand/afterattack(var/atom/target, var/mob/living/carbon/human/user, proximity)
+/obj/item/electric_hand/afterattack(atom/target, mob/user, clickchain_flags, list/params)
 	if(!target)
 		return
-	if(!proximity)
+	if(!(clickchain_flags & CLICKCHAIN_HAS_PROXIMITY))
 		return
 
 	// Handle glove conductivity.
-	var/obj/item/clothing/gloves/gloves = user.gloves
+	var/obj/item/clothing/gloves/gloves = user.item_by_slot_id(SLOT_ID_GLOVES)
 	var/siemens = 1
 	if(gloves)
 		siemens = gloves.siemens_coefficient
@@ -146,8 +144,7 @@
 			to_chat(src, "<span class='warning'>We require more chemicals to electrocute [C]!</span>")
 			return 0
 
-		C.electrocute_act(electrocute_amount * siemens,src,1.0,BP_TORSO)
-		C.stun_effect_act(0, agony_amount * siemens, BP_TORSO, src)
+		C.electrocute(0, electrocute_amount, agony_amount, NONE, BP_TORSO, src)
 
 		add_attack_logs(user,C,"Shocked with [src]")
 
@@ -168,7 +165,7 @@
 			to_chat(src, "<span class='warning'>We require more chemicals to electrocute [S]!</span>")
 			return 0
 
-		S.electrocute_act(60,src,0.75) //If only they had surge protectors.
+		S.electrocute(0, 60, 0, NONE, null, src)
 		if(siemens)
 			visible_message("<span class='warning'>Arcs of electricity strike [S]!</span>",
 			"<span class='warning'>Our hand channels raw electricity into [S]</span>",
@@ -191,14 +188,14 @@
 				if(siemens)
 					while(i)
 						cell.charge += 100 * siemens //This should be a nice compromise between recharging guns and other batteries.
-						if(cell.charge > cell.maxcharge)
-							cell.charge = cell.maxcharge
+						if(cell.charge > cell.max_charge)
+							cell.charge = cell.max_charge
 							break //No point making sparks if the cell's full.
 	//					if(!Adjacent(T))
 	//						break
 						if(siemens)
 							var/Turf = get_turf(src)
-							new /obj/effect/sparks(Turf)
+							new /obj/effect/particle_effect/sparks(Turf)
 							T.update_icon()
 						i--
 						sleep(1 SECOND)

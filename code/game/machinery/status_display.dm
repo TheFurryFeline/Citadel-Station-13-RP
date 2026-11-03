@@ -15,8 +15,8 @@
 	plane = TURF_PLANE
 	layer = ABOVE_TURF_LAYER
 	name = "status display"
-	anchored = 1
-	density = 0
+	anchored = TRUE
+	density = FALSE
 	use_power = USE_POWER_IDLE
 	idle_power_usage = 10
 	circuit = /obj/item/circuitboard/status_display
@@ -33,7 +33,7 @@
 	var/index2
 	var/picture = null
 
-	var/frequency = 1435	// Radio frequency
+	var/frequency = FREQ_STATUS_DISPLAYS	// Radio frequency
 
 	var/friendc = 0			// Track if Friend Computer mode
 	var/ignore_friendc = 0
@@ -72,13 +72,13 @@
 
 // Timed process
 /obj/machinery/status_display/process(delta_time)
-	if(stat & NOPOWER)
+	if(machine_stat & NOPOWER)
 		remove_display()
 		return
 	update()
 
 /obj/machinery/status_display/emp_act(severity)
-	if(stat & (BROKEN|NOPOWER))
+	if(machine_stat & (BROKEN|NOPOWER))
 		..(severity)
 		return
 	set_picture("ai_bsod")
@@ -148,7 +148,7 @@
 			return 1
 	return 0
 
-/obj/machinery/status_display/examine(mob/user)
+/obj/machinery/status_display/examine(mob/user, dist)
 	. = ..(user)
 	if(mode != STATUS_DISPLAY_BLANK && mode != STATUS_DISPLAY_ALERT)
 		to_chat(user, "The display says:<br>\t[sanitize(message1)]<br>\t[sanitize(message2)]")
@@ -168,7 +168,7 @@
 		message2 = ""
 		index2 = 0
 
-/obj/machinery/status_display/proc/display_alert(var/newlevel)
+/obj/machinery/status_display/proc/display_alert(newlevel)
 	remove_display()
 	if(seclevel != newlevel)
 		seclevel = newlevel
@@ -187,7 +187,7 @@
 	if(!picture || picture_state != state)
 		picture_state = state
 		picture = image('icons/obj/status_display.dmi', icon_state=picture_state)
-	overlays |= picture
+	add_overlay(picture)
 
 /obj/machinery/status_display/proc/update_display(line1, line2)
 	line1 = uppertext(line1)
@@ -226,7 +226,7 @@
 
 /obj/machinery/status_display/proc/remove_display()
 	if(overlays.len)
-		overlays.Cut()
+		cut_overlays()
 	if(maptext)
 		maptext = ""
 

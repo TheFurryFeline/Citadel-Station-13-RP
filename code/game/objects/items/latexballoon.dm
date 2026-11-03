@@ -3,13 +3,13 @@
 	desc = "A latex glove, usually used as a balloon."
 	icon_state = "latexballon"
 	item_icons = list(
-			slot_l_hand_str = 'icons/mob/items/lefthand_gloves.dmi',
-			slot_r_hand_str = 'icons/mob/items/righthand_gloves.dmi',
+			SLOT_ID_LEFT_HAND = 'icons/mob/items/lefthand_gloves.dmi',
+			SLOT_ID_RIGHT_HAND = 'icons/mob/items/righthand_gloves.dmi',
 			)
 	item_state = "lgloves"
-	force = 0
-	throwforce = 0
-	w_class = ITEMSIZE_SMALL
+	damage_force = 0
+	throw_force = 0
+	w_class = WEIGHT_CLASS_SMALL
 	throw_speed = 1
 	throw_range = 15
 	var/state
@@ -30,16 +30,8 @@
 	item_state = "lgloves"
 	loc.assume_air(air_contents)
 
-/obj/item/latexballon/ex_act(severity)
-	burst()
-	switch(severity)
-		if (1)
-			qdel(src)
-		if (2)
-			if (prob(50))
-				qdel(src)
-
-/obj/item/latexballon/bullet_act()
+/obj/item/latexballon/inflict_atom_damage(damage, damage_type, damage_tier, damage_flag, damage_mode, hit_zone, attack_type, datum/attack_source)
+	. = ..()
 	burst()
 
 /obj/item/latexballon/fire_act(datum/gas_mixture/air, temperature, volume)
@@ -50,15 +42,3 @@
 /obj/item/latexballon/attackby(obj/item/W as obj, mob/user as mob)
 	if (can_puncture(W))
 		burst()
-
-/*
-/obj/item/latexballon/nitrile
-	name = "nitrile glove"
-	desc = "A nitrile glove, usually used as a balloon."
-	icon_state = "nitrileballon"
-	item_icons = list(
-			slot_l_hand_str = 'icons/mob/items/lefthand_gloves.dmi',
-			slot_r_hand_str = 'icons/mob/items/righthand_gloves.dmi',
-			)
-	item_state = "ngloves"
-*/

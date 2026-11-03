@@ -3,11 +3,14 @@
 	var/detectTime = 0
 	var/area/ai_monitored/area_motion = null
 	var/alarm_delay = 100 // Don't forget, there's another 10 seconds in queueAlarm()
-	flags = PROXMOVE
+
+/obj/machinery/camera/Initialize(mapload)
+	. = ..()
+	new /datum/proxfield/basic/square(src, 1)
 
 /obj/machinery/camera/internal_process()
 	// motion camera event loop
-	if (stat & (EMPED|NOPOWER))
+	if (machine_stat & (EMPED|NOPOWER))
 		return
 	if(!isMotion())
 		. = PROCESS_KILL
@@ -42,7 +45,7 @@
 		cancelAlarm()
 
 /obj/machinery/camera/proc/cancelAlarm()
-	if (!status || (stat & NOPOWER))
+	if (!status || (machine_stat & NOPOWER))
 		return FALSE
 	if (detectTime == -1)
 		motion_alarm.clearAlarm(loc, src)
@@ -50,7 +53,7 @@
 	return TRUE
 
 /obj/machinery/camera/proc/triggerAlarm()
-	if (!status || (stat & NOPOWER))
+	if (!status || (machine_stat & NOPOWER))
 		return FALSE
 	if (!detectTime)
 		return FALSE
@@ -58,8 +61,10 @@
 	detectTime = -1
 	return TRUE
 
-/obj/machinery/camera/HasProximity(atom/movable/AM as mob|obj)
+/obj/machinery/camera/Proximity(datum/proxfield/field, atom/movable/AM)
 	// Motion cameras outside of an "ai monitored" area will use this to detect stuff.
+	if(!isMotion())
+		return
 	if (!area_motion)
 		if(isliving(AM))
 			newTarget(AM)

@@ -7,7 +7,7 @@
 	drop_sound = 'sound/items/drop/rubber.ogg'
 	pickup_sound = 'sound/items/pickup/rubber.ogg'
 
-/obj/item/clothing/gloves/fyellow                             //Cheap Chinese Crap
+/obj/item/clothing/gloves/fyellow //Cheap Chinese Crap
 	desc = "These gloves are cheap copies of proper insulated gloves. No way this can end badly."
 	name = "budget insulated gloves"
 	icon_state = "yellow"
@@ -18,8 +18,8 @@
 
 /obj/item/clothing/gloves/fyellow/Initialize(mapload)
 	. = ..()
-	//Picks a value between 0 and 1.25, in 5% increments // VOREStation edit
-	var/shock_pick = rand(0,15) // VOREStation Edit
+	//Picks a value between 0 and 1.25, in 5% increments
+	var/shock_pick = rand(0,15)
 	siemens_coefficient = shock_pick * 0.05
 
 /obj/item/clothing/gloves/black
@@ -28,9 +28,9 @@
 	icon_state = "black"
 	permeability_coefficient = 0.05
 
-	cold_protection = HANDS
+	cold_protection_cover = HANDS
 	min_cold_protection_temperature = GLOVES_MIN_COLD_PROTECTION_TEMPERATURE
-	heat_protection = HANDS
+	heat_protection_cover = HANDS
 	max_heat_protection_temperature = GLOVES_MAX_HEAT_PROTECTION_TEMPERATURE
 
 /obj/item/clothing/gloves/orange
@@ -84,12 +84,12 @@
 	icon_state = "evening_gloves"
 	addblends = "evening_gloves_a"
 
-	cold_protection = HANDS
+	cold_protection_cover = HANDS
 	min_cold_protection_temperature = GLOVES_MIN_COLD_PROTECTION_TEMPERATURE
-	heat_protection = HANDS
+	heat_protection_cover = HANDS
 	max_heat_protection_temperature = GLOVES_MAX_HEAT_PROTECTION_TEMPERATURE
 
-obj/item/clothing/gloves/fingerless
+/obj/item/clothing/gloves/fingerless
 	desc = "A pair of gloves that don't actually cover the fingers."
 	name = "fingerless gloves"
 	icon_state = "fingerlessgloves"

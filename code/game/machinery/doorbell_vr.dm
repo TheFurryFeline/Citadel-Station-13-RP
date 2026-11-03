@@ -7,7 +7,7 @@
 	use_power = USE_POWER_IDLE
 	idle_power_usage = 10
 	active_power_usage = 200
-	anchored = 1
+	anchored = TRUE
 	var/id_tag = null
 	var/chime_sound = 'sound/machines/doorbell.ogg'
 
@@ -33,9 +33,10 @@
 	update_icon()
 
 /obj/machinery/doorbell_chime/update_icon()
-	overlays.Cut()
+	cut_overlays()
+	. = ..()
 	if(panel_open)
-		overlays += "dbchime-open"
+		add_overlay("dbchime-open")
 	if(inoperable())
 		icon_state = "dbchime-off"
 	if(!id_tag)
@@ -44,7 +45,7 @@
 		icon_state = "dbchime-standby"
 
 //TFF 3/6/19 - Port Cit RP fix of infinite frames. ToDo: Make it so that you can completely deconstruct it and reconstruct it.
-/obj/machinery/doorbell_chime/attackby(obj/item/W as obj, mob/user as mob)
+/obj/machinery/doorbell_chime/attackby(obj/item/W, mob/user)
 	src.add_fingerprint(user)
 	if(default_deconstruction_screwdriver(user, W))
 		return
@@ -57,7 +58,7 @@
 		if(M.connectable && istype(M.connectable, /obj/machinery/button/doorbell))
 			var/obj/machinery/button/doorbell/B = M.connectable
 			id_tag = B.id
-			to_chat(user, "<span class='notice'>You upload the data from \the [W]'s buffer.</span>")
+			to_chat(user, SPAN_NOTICE("You upload the data from \the [W]'s buffer."))
 		return
 	..()
 
@@ -105,24 +106,25 @@
 	..()
 	update_icon()
 
-/obj/machinery/button/doorbell/update_icon()
-	if(stat & (NOPOWER|BROKEN))
+/obj/machinery/button/doorbell/update_icon_state()
+	if(machine_stat & (NOPOWER|BROKEN))
 		icon_state = "doorbell-off"
 	else
 		icon_state = "doorbell-standby"
+	return ..()
 
-/obj/machinery/button/doorbell/attack_hand(mob/user as mob)
-	user.setClickCooldown(DEFAULT_ATTACK_COOLDOWN)
+/obj/machinery/button/doorbell/attack_hand(mob/user, datum/event_args/actor/clickchain/e_args)
+	user.setClickCooldownLegacy(DEFAULT_ATTACK_COOLDOWN)
 	if(..())
 		return
 	use_power(5)
 	flick("doorbell-active", src)
 
-	for(var/obj/machinery/doorbell_chime/M in machines)
+	for(var/obj/machinery/doorbell_chime/M in GLOB.machines)
 		if(M.id_tag == id)
 			M.chime()
 
-/obj/machinery/button/doorbell/attackby(obj/item/W as obj, mob/user as mob)
+/obj/machinery/button/doorbell/attackby(obj/item/W, mob/user)
 	src.add_fingerprint(user)
 	if(default_deconstruction_screwdriver(user, W))
 		return
@@ -135,10 +137,10 @@
 		M.connectable = src
 		to_chat(user, SPAN_CAUTION("You save the data in \the [M]'s buffer."))
 	else if(W.is_wrench())
-		to_chat(user, "<span class='notice'>You start to unwrench \the [src].</span>")
+		to_chat(user, SPAN_NOTICE("You start to unwrench \the [src]."))
 		playsound(src.loc, 'sound/items/Ratchet.ogg', 50, 1)
 		if(do_after(user, 15) && !QDELETED(src))
-			to_chat(user, "<span class='notice'>You unwrench \the [src].</span>")
+			to_chat(user, SPAN_NOTICE("You unwrench \the [src]."))
 			new /obj/item/frame/doorbell(src.loc)
 			qdel(src)
 		return
@@ -154,3 +156,11 @@
 	refund_amt = 4
 	refund_type = /obj/item/stack/material/wood
 	build_machine_type = /obj/machinery/button/doorbell
+
+
+/obj/machinery/doorbell_chime/cursed
+	chime_sound = 'sound/effects/adminhelp.ogg'
+
+/obj/machinery/doorbell_chime/soft
+	chime_sound = 'sound/machines/achime.ogg'
+

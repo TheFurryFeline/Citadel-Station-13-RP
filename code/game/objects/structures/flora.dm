@@ -4,7 +4,7 @@
 	desc = "A perfectly generic plant."
 
 	anchored = TRUE // Usually, plants don't move. Usually.
-	plane = DECAL_PLANE
+	plane = TURF_PLANE
 	layer = BELOW_MOB_LAYER
 
 	var/randomize_size = FALSE
@@ -35,30 +35,31 @@
 	if(randomize_harvest_count)
 		max_harvests = max(0, rand(min_harvests, max_harvests)) // Incase you want to weight it more toward 'not harvestable', set min_harvests to a negative value.
 
-/obj/structure/flora/examine(mob/user)
+/obj/structure/flora/examine(mob/user, dist)
 	. = ..()
 	if(harvest_count < max_harvests)
 		. += "<span class='notice'>\The [src] seems to have something hanging from it.</span>"
 
-/obj/structure/flora/attackby(var/obj/item/W, var/mob/living/user)
-	if(can_harvest(W))
+/obj/structure/flora/attackby(obj/item/I, mob/living/user, list/params, clickchain_flags, damage_multiplier)
+	if(user.a_intent == INTENT_HARM)
+		return ..()
+	if(can_harvest(I))
 		var/harvest_spawn = pickweight(harvest_loot)
 		var/atom/movable/AM = spawn_harvest(harvest_spawn, user)
 
 		if(!AM)
 			to_chat(user, "<span class='notice'>You fail to harvest anything from \the [src].</span>")
+			return
 
 		else
 			to_chat(user, "<span class='notice'>You harvest \the [AM] from \the [src].</span>")
 			return
-
-	..(W, user)
+	return ..()
 
 /obj/structure/flora/proc/can_harvest(var/obj/item/I)
 	. = FALSE
 	if(harvest_tool && istype(I, harvest_tool) && harvest_loot && harvest_loot.len && harvest_count < max_harvests)
 		. = TRUE
-	return .
 
 /obj/structure/flora/proc/spawn_harvest(var/path = null, var/mob/user = null)
 	if(!ispath(path))
@@ -82,6 +83,98 @@
 	. = ..()
 	icon_state = "snowbush[rand(1, 6)]"
 
+/obj/structure/flora/snow_berry
+	name = "Ashomarr Tree"
+	desc = "Ashomarr or 'Adhomai Holly' is a berry bush know to thrive in extreme cold. Unlike earth holly, the berries are non-toxic."
+	icon = 'icons/obj/flora/snowflora.dmi'
+	icon_state = "holly"
+
+/obj/structure/flora/snow_berry/attack_hand(mob/user, datum/event_args/actor/clickchain/e_args)
+	var/harvest_amount = rand(1, 5)
+	visible_message("[user] begins to pick berries from the Bush.", "You begin picking the berries from the bush.")
+	if(do_after(user, 5 SECONDS))
+		for(var/i in 1 to harvest_amount)
+			new /obj/item/reagent_containers/food/snacks/ashomarr(src.loc)
+		visible_message("[user] harvests the berries from the Ashomarr Tree.", "You finish harvesting the berries from the tree.")
+	qdel(src)
+
+/obj/structure/flora/taj_tuber
+	name = "Guskaroot"
+	desc = "A tuber native to Adhomai known for its unnatural resillence to cold and its ability to grow in the wild."
+	icon = 'icons/obj/flora/snowflora.dmi'
+	icon_state = "tajtuber"
+
+/obj/structure/flora/taj_tuber/attack_hand(mob/user, datum/event_args/actor/clickchain/e_args)
+	var/harvest_amount = rand(1, 3)
+	visible_message("[user] begins to pull the tubers from the earth.", "You begin pulling up the tubers.")
+	if(do_after(user, 5 SECONDS))
+		for(var/i in 1 to harvest_amount)
+			new /obj/item/reagent_containers/food/snacks/guska(src.loc)
+		visible_message("[user] pull the tubers clean from the frozen earth", "You finish harvesting the tubers.")
+	qdel(src)
+
+/obj/structure/flora/lavaland
+	name = "generic ashland flora"
+	desc = "You shouldn't be seeing this outlander! Report it to the buried ones at once!"
+	icon = 'icons/obj/lavaland/lavaland_flora.dmi'
+	icon_state = ""
+
+/obj/structure/flora/lavaland/sirim
+	name = "Sirim"
+	desc = "A fungus native to Surt. Its life cycle has very similar biochemical pathways to yeast."
+	icon_state = "sirim"
+
+/obj/structure/flora/lavaland/sirim/attack_hand(mob/user, datum/event_args/actor/clickchain/e_args)
+	var/harvest_amount = rand(1, 4)
+	visible_message("[user] begins to gather sporocarps of the sirim.", "You begin gathering sirim sporocarps.")
+	if(do_after(user, 5 SECONDS))
+		for(var/i in 1 to harvest_amount)
+			new /obj/item/reagent_containers/food/snacks/sirim(src.loc)
+		visible_message("[user] finishes gathering sporocarps", "You finish harvesting the sporocarps.")
+	qdel(src)
+
+/obj/structure/flora/lavaland/rockhead
+	name = "Rockhead"
+	desc = "A fungus native to Surt. This one has been known to feature in scorian cooking."
+	icon_state = "rockhead"
+
+/obj/structure/flora/lavaland/rockhead/attack_hand(mob/user, datum/event_args/actor/clickchain/e_args)
+	var/harvest_amount = rand(3, 6)
+	visible_message("[user] begins to gather sporocarps of the rockhead.", "You begin gathering rockhead sporocarps.")
+	if(do_after(user, 5 SECONDS))
+		for(var/i in 1 to harvest_amount)
+			new /obj/item/reagent_containers/food/snacks/rockhead(src.loc)
+		visible_message("[user] finishes gathering sporocarps", "You finish harvesting the sporocarps.")
+	qdel(src)
+
+/obj/structure/flora/lavaland/mothershair
+	name = "Mother's Hair"
+	desc = "A fungus native to Surt. It has an unusually mineral-like consistency."
+	icon_state = "mothershair"
+
+/obj/structure/flora/lavaland/mothershair/attack_hand(mob/user, datum/event_args/actor/clickchain/e_args)
+	var/harvest_amount = rand(1, 3)
+	visible_message("[user] begins to gather strands of the Mother's hair.", "You begin gathering strands of Mother's hair.")
+	if(do_after(user, 5 SECONDS))
+		for(var/i in 1 to harvest_amount)
+			new /obj/item/reagent_containers/food/snacks/mothershair(src.loc)
+		visible_message("[user] finishes gathering strands", "You finish harvesting the strands.")
+	qdel(src)
+
+/obj/structure/flora/lavaland/hangingroot
+	name = "Hanging Root"
+	desc = "A rock with lichen hanging from it, resembling roots."
+	icon_state = "hangingroot"
+
+/obj/structure/flora/lavaland/hangingroot/attack_hand(mob/user, datum/event_args/actor/clickchain/e_args)
+	var/harvest_amount = rand(1, 5)
+	visible_message("[user] begins to gather strands of lichen.", "You begin gathering strands of lichen.")
+	if(do_after(user, 5 SECONDS))
+		for(var/i in 1 to harvest_amount)
+			new /obj/item/reagent_containers/food/snacks/hangingroot(src.loc)
+		visible_message("[user] finishes gathering lichen", "You finish harvesting the lichen.")
+	qdel(src)
+
 /obj/structure/flora/pottedplant
 	name = "potted plant"
 	desc = "Really ties the room together."
@@ -99,8 +192,10 @@
 
 /obj/structure/flora/ausbushes/attackby(obj/item/W as obj, mob/user as mob)
 	// Dismantle
+	if(user.a_intent == INTENT_HARM) // who said you CAN'T touch grass (violently)?
+		return ..()
 	if(istype(W, /obj/item/shovel))
-		playsound(src.loc, W.usesound, 50, 1)
+		playsound(src.loc, W.tool_sound, 50, 1)
 		if(do_after(user, 10, src))
 			user.visible_message("<span class='notice'>\The [user] digs up \the [src].</span>", "<span class='notice'>You dig up \the [src].</span>")
 			new /obj/item/stack/tile/grass(get_turf(usr), 1)
@@ -391,10 +486,15 @@
 	desc = "This is a tiny well lit decorative christmas tree."
 	icon_state = "plant-xmas"
 
+/obj/structure/flora/pottedplant/hedge
+	name = "potted hedge"
+	desc = "A well maintained hedge."
+	icon_state = "plant-27"
+
 /obj/structure/flora/sif
 	icon = 'icons/obj/flora/sifflora.dmi'
 
-/obj/structure/flora/sif/attack_hand(mob/user)
+/obj/structure/flora/sif/attack_hand(mob/user, datum/event_args/actor/clickchain/e_args)
 	if (user.a_intent == INTENT_HARM)
 		if(do_after(user, 5 SECONDS))
 			user.visible_message("\The [user] digs up \the [src.name].", "You dig up \the [src.name].")
@@ -471,20 +571,22 @@
 	desc = "A healthy, fat pumpkin. It looks as if it was freshly plucked from its vines and shows no signs of decay."
 	icon_state = "decor-pumpkin"
 
-/atom/movable/landmark/carved_pumpkin_spawn
+/obj/landmark/carved_pumpkin_spawn
 	name = "jack o'lantern spawn"
 	icon = 'icons/obj/flora/pumpkins.dmi'
 	icon_state = "spawner-jackolantern"
 
-/atom/movable/landmark/carved_pumpkin_spawn/New()
-    var/new_pumpkin = pick(
+/obj/landmark/carved_pumpkin_spawn/Initialize(mapload)
+	SHOULD_CALL_PARENT(FALSE)
+	atom_flags |= ATOM_INITIALIZED
+	var/new_pumpkin = pick(
 		prob(70);/obj/structure/flora/pumpkin,
-        prob(60);/obj/structure/flora/pumpkin/carved,
-        prob(30);/obj/structure/flora/pumpkin/carved/scream,
-        prob(30);/obj/structure/flora/pumpkin/carved/girly,
-        prob(10);/obj/structure/flora/pumpkin/carved/owo)
-    new new_pumpkin(src.loc)
-    ..()
+		prob(60);/obj/structure/flora/pumpkin/carved,
+		prob(30);/obj/structure/flora/pumpkin/carved/scream,
+		prob(30);/obj/structure/flora/pumpkin/carved/girly,
+		prob(10);/obj/structure/flora/pumpkin/carved/owo)
+	new new_pumpkin(src.loc)
+	return INITIALIZE_HINT_QDEL
 
 /obj/structure/flora/pumpkin/carved
 	name = "jack o'lantern"
@@ -515,7 +617,7 @@
 	var/gift_type = /obj/item/b_gift
 	var/list/ckeys_that_took = list()
 
-/obj/structure/flora/pumpkin/pumpkin_patch/presents/attack_hand(mob/living/user)
+/obj/structure/flora/pumpkin/pumpkin_patch/presents/attack_hand(mob/user, datum/event_args/actor/clickchain/e_args)
 	. = ..()
 	if(.)
 		return

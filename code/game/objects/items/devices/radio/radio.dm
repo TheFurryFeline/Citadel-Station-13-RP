@@ -1,26 +1,25 @@
 // Access check is of the type requires one. These have been carefully selected to avoid allowing the janitor to see channels he shouldn't
 GLOBAL_LIST_INIT(default_internal_channels, list(
-//VOREStation Edit Start - Updating this for Virgo
-	num2text(PUB_FREQ) = list(),
-	num2text(AI_FREQ)  = list(access_synth),
-	num2text(ENT_FREQ) = list(),
-	num2text(ERT_FREQ) = list(access_cent_specops),
-	num2text(COMM_FREQ)= list(access_heads),
-	num2text(ENG_FREQ) = list(access_engine_equip, access_atmospherics),
-	num2text(MED_FREQ) = list(access_medical_equip),
-	num2text(MED_I_FREQ)=list(access_medical_equip),
-	num2text(SEC_FREQ) = list(access_security),
-	num2text(SEC_I_FREQ)=list(access_security),
-	num2text(SCI_FREQ) = list(access_tox, access_robotics, access_xenobiology, access_explorer),
-	num2text(SUP_FREQ) = list(access_cargo, access_mining_station),
-	num2text(SRV_FREQ) = list(access_janitor, access_library, access_hydroponics, access_bar, access_kitchen),
-	num2text(EXP_FREQ) = list(access_explorer, access_pilot, access_rd)
+	num2text(FREQ_COMMON) = list(),
+	num2text(FREQ_AI_PRIVATE)  = list(ACCESS_SPECIAL_SILICONS),
+	num2text(FREQ_ENTERTAINMENT) = list(),
+	num2text(FREQ_ERT) = list(ACCESS_CENTCOM_ERT),
+	num2text(FREQ_COMMAND)= list(ACCESS_COMMAND_BRIDGE),
+	num2text(FREQ_ENGINEERING) = list(ACCESS_ENGINEERING_ENGINE, ACCESS_ENGINEERING_ATMOS),
+	num2text(FREQ_MEDICAL) = list(ACCESS_MEDICAL_EQUIPMENT),
+	num2text(FREQ_MEDICAL_INTERNAL)=list(ACCESS_MEDICAL_EQUIPMENT),
+	num2text(FREQ_SECURITY) = list(ACCESS_SECURITY_EQUIPMENT),
+	num2text(FREQ_SECURITY_INTERNAL)=list(ACCESS_SECURITY_EQUIPMENT),
+	num2text(FREQ_SCIENCE) = list(ACCESS_SCIENCE_FABRICATION, ACCESS_SCIENCE_ROBOTICS, ACCESS_SCIENCE_XENOBIO, ACCESS_GENERAL_EXPLORER),
+	num2text(FREQ_SUPPLY) = list(ACCESS_SUPPLY_BAY, ACCESS_SUPPLY_MINE_OUTPOST),
+	num2text(FREQ_SERVICE) = list(ACCESS_GENERAL_JANITOR, ACCESS_GENERAL_LIBRARY, ACCESS_GENERAL_BOTANY, ACCESS_GENERAL_BAR, ACCESS_GENERAL_KITCHEN),
+	num2text(FREQ_EXPLORER) = list(ACCESS_GENERAL_EXPLORER, ACCESS_GENERAL_PILOT, ACCESS_SCIENCE_RD)
 ))
 
 GLOBAL_LIST_INIT(default_medbay_channels, list(
-	num2text(PUB_FREQ) = list(),
-	num2text(MED_FREQ) = list(access_medical_equip),
-	num2text(MED_I_FREQ) = list(access_medical_equip)
+	num2text(FREQ_COMMON) = list(),
+	num2text(FREQ_MEDICAL) = list(ACCESS_MEDICAL_EQUIPMENT),
+	num2text(FREQ_MEDICAL_INTERNAL) = list(ACCESS_MEDICAL_EQUIPMENT)
 ))
 
 /obj/item/radio
@@ -29,11 +28,13 @@ GLOBAL_LIST_INIT(default_medbay_channels, list(
 	suffix = "\[3\]"
 	icon_state = "walkietalkie"
 	item_state = "radio"
+	suit_storage_class = SUIT_STORAGE_CLASS_SOFTWEAR | SUIT_STORAGE_CLASS_HARDWEAR
+	interaction_flags_atom = parent_type::interaction_flags_atom | INTERACT_ATOM_ALLOW_USER_LOCATION | INTERACT_ATOM_IGNORE_MOBILITY
 
 	///FALSE for off
 	var/on = TRUE
 	var/last_transmission
-	var/frequency = PUB_FREQ //common chat
+	var/frequency = FREQ_COMMON //common chat
 	///Tune to frequency to unlock traitor supplies
 	var/traitor_frequency = 0
 	///The range which mobs can hear this radio from
@@ -52,11 +53,11 @@ GLOBAL_LIST_INIT(default_medbay_channels, list(
 	///Holder to see if it's a syndicate encrypted radio
 	var/syndie = FALSE
 	///Holder to see if it's a CentCom encrypted radio
-	var/centComm = FALSE
+	var/centcom = FALSE
 	slot_flags = SLOT_BELT
 	throw_speed = 2
 	throw_range = 9
-	w_class = ITEMSIZE_SMALL
+	w_class = WEIGHT_CLASS_SMALL
 	show_messages = 1
 
 	//Bluespace radios talk directly to telecomms equipment
@@ -66,7 +67,7 @@ GLOBAL_LIST_INIT(default_medbay_channels, list(
 	var/bs_tx_preload_id
 	var/bs_rx_preload_id
 
-	matter = list(MAT_GLASS = 25,MAT_STEEL = 75)
+	materials_base = list(MAT_GLASS = 25,MAT_STEEL = 75)
 	var/const/FREQ_LISTENING = 1
 	var/list/internal_channels
 
@@ -83,8 +84,8 @@ GLOBAL_LIST_INIT(default_medbay_channels, list(
 	wires = new(src)
 	internal_channels = GLOB.default_internal_channels.Copy()
 	listening_objects += src
-	if(frequency < RADIO_LOW_FREQ || frequency > RADIO_HIGH_FREQ)
-		frequency = sanitize_frequency(frequency, RADIO_LOW_FREQ, RADIO_HIGH_FREQ)
+	if(frequency < MIN_FREE_FREQ || frequency > MAX_FREE_FREQ)
+		frequency = sanitize_frequency(frequency, free = TRUE)
 	set_frequency(frequency)
 
 	for (var/ch_name in channels)
@@ -139,7 +140,10 @@ GLOBAL_LIST_INIT(default_medbay_channels, list(
 			radio_controller.remove_object(src, radiochannels[ch_name])
 	return ..()
 
-/obj/item/radio/attack_self(mob/user as mob)
+/obj/item/radio/attack_self(mob/user, datum/event_args/actor/actor)
+	. = ..()
+	if(.)
+		return
 	user.set_machine(src)
 	interact(user)
 
@@ -158,7 +162,7 @@ GLOBAL_LIST_INIT(default_medbay_channels, list(
 		ui = new(user, src, "Radio", name)
 		ui.open()
 
-/obj/item/radio/ui_data(mob/user)
+/obj/item/radio/ui_data(mob/user, datum/tgui/ui)
 	var/data[0]
 
 	data["rawfreq"] = frequency
@@ -180,19 +184,19 @@ GLOBAL_LIST_INIT(default_medbay_channels, list(
 	if(syndie)
 		data["useSyndMode"] = TRUE
 
-	data["minFrequency"] = PUBLIC_LOW_FREQ
-	data["maxFrequency"] = PUBLIC_HIGH_FREQ
+	data["minFrequency"] = MIN_FREQ
+	data["maxFrequency"] = MAX_FREQ
 
 	return data
 
-/obj/item/radio/ui_act(action, params)
+/obj/item/radio/ui_act(action, list/params, datum/tgui/ui, datum/ui_state/state, datum/event_args/actor/actor)
 	if(..())
 		return TRUE
 
 	switch(action)
 		if("setFrequency")
 			var/new_frequency = (text2num(params["freq"]))
-			if((new_frequency < PUBLIC_LOW_FREQ || new_frequency > PUBLIC_HIGH_FREQ))
+			if((new_frequency < MIN_FREQ || new_frequency > MAX_FREQ))
 				new_frequency = sanitize_frequency(new_frequency)
 			set_frequency(new_frequency)
 			if(hidden_uplink)
@@ -297,6 +301,8 @@ GLOBAL_LIST_INIT(default_medbay_channels, list(
 		return UI_CLOSE
 	return ..()
 
+GLOBAL_DATUM_INIT(virtual_announcer_ai, /mob/living/silicon/ai/announcer, new(null, null, null, 1))
+
 /obj/item/radio/proc/autosay(var/message, var/from, var/channel, list/zlevels = list(0)) //BS12 EDIT
 	var/datum/radio_frequency/connection = null
 	if(channel && channels && channels.len > 0)
@@ -310,7 +316,10 @@ GLOBAL_LIST_INIT(default_medbay_channels, list(
 	if (!istype(connection))
 		return
 
-	var/static/mob/living/silicon/ai/announcer/A = new /mob/living/silicon/ai/announcer(null, null, null, 1)
+	var/mob/living/silicon/ai/announcer/A = GLOB.virtual_announcer_ai
+	// WHY THE FUCK IS THIS A GLOBAL OBJECT
+	if(isnull(A))
+		return
 	A.SetName(from)
 	Broadcast_Message(connection, A,
 						0, "*garbled automated announcement*", src,
@@ -334,7 +343,7 @@ GLOBAL_LIST_INIT(default_medbay_channels, list(
 	//If we were to send to a channel we don't have, drop it.
 	return null
 
-/obj/item/radio/talk_into(mob/living/M as mob, message, channel, var/verb = "says", var/datum/language/speaking = null)
+/obj/item/radio/talk_into(mob/living/M as mob, message, channel, var/verb = "says", var/datum/prototype/language/speaking = null)
 	if(!on)
 		return FALSE //The device has to be on
 	//Fix for permacell radios, but kinda eh about actually fixing them.
@@ -542,9 +551,9 @@ GLOBAL_LIST_INIT(default_medbay_channels, list(
 	//Nothing handled any sort of remote radio-ing and returned before now, just squawk on this zlevel.
 	return Broadcast_Message(connection, M, voicemask, pick(M.speak_emote),
 		src, message, displayname, jobname, real_name, M.voice_name,
-		filter_type, signal.data["compression"], GLOB.using_map.get_map_levels(pos_z), connection.frequency, verb, speaking)
+		filter_type, signal.data["compression"], (LEGACY_MAP_DATUM).get_map_levels(pos_z), connection.frequency, verb, speaking)
 
-/obj/item/radio/hear_talk(mob/M as mob, msg, var/verb = "says", var/datum/language/speaking = null)
+/obj/item/radio/hear_talk(mob/M as mob, msg, var/verb = "says", var/datum/prototype/language/speaking = null)
 	if (broadcasting)
 		if(get_dist(src, M) <= canhear_range)
 			talk_into(M, msg,null,verb,speaking)
@@ -576,13 +585,12 @@ GLOBAL_LIST_INIT(default_medbay_channels, list(
 		return -1
 	if(!(0 in level))
 		var/turf/position = get_turf(src)
-		if((!position || !(position.z in level)) && !bluespace_radio) //VOREStation Edit
-			return -1
+		if((!position || !(position.z in level)) && !bluespace_radio)			return -1
 	if(freq in ANTAG_FREQS)
 		if(!(src.syndie))//Checks to see if it's allowed on that frequency, based on the encryption keys
 			return -1
 	if(freq in CENT_FREQS)
-		if(!(src.centComm))//Checks to see if it's allowed on that frequency, based on the encryption keys
+		if(!(src.centcom))//Checks to see if it's allowed on that frequency, based on the encryption keys
 			return -1
 	if (!on)
 		return -1
@@ -605,10 +613,10 @@ GLOBAL_LIST_INIT(default_medbay_channels, list(
 
 	var/range = receive_range(freq, level)
 	if(range > -1)
-		return get_mobs_or_objects_in_view(canhear_range, src)
+		return get_hearers_in_view(canhear_range, src)
 
 
-/obj/item/radio/examine(mob/user)
+/obj/item/radio/examine(mob/user, dist)
 	. = ..()
 	if ((in_range(src, user) || loc == user))
 		if (b_stat)
@@ -664,18 +672,16 @@ GLOBAL_LIST_INIT(default_medbay_channels, list(
 	if (isrobot(src.loc))
 		var/mob/living/silicon/robot/R = src.loc
 		var/datum/robot_component/C = R.components["radio"]
-		R.cell_use_power(C.active_usage)
+		R.legacy_cell_use_power(C.active_usage)
 
-/obj/item/radio/borg/attackby(obj/item/W as obj, mob/user as mob)
-//	..()
+/obj/item/radio/borg/attackby(obj/item/I, mob/living/user, params, clickchain_flags, damage_multiplier)
 	user.set_machine(src)
-	if (!(W.is_screwdriver() || istype(W, /obj/item/encryptionkey)))
-		return
+	if (!(I.is_screwdriver() || istype(I, /obj/item/encryptionkey)))
+		return ..()
 
-	if(W.is_screwdriver())
+	if(I.is_screwdriver())
+		. = CLICKCHAIN_DO_NOT_PROPAGATE
 		if(keyslot)
-
-
 			for(var/ch_name in channels)
 				radio_controller.remove_object(src, radiochannels[ch_name])
 				secure_radio_connections[ch_name] = null
@@ -684,41 +690,37 @@ GLOBAL_LIST_INIT(default_medbay_channels, list(
 			if(keyslot)
 				var/turf/T = get_turf(user)
 				if(T)
-					keyslot.loc = T
+					keyslot.forceMove(T)
 					keyslot = null
 
 			recalculateChannels()
 			to_chat(user, "You pop out the encryption key in the radio!")
-			playsound(src, W.usesound, 50, 1)
+			playsound(src, I.tool_sound, 50, 1)
 
 		else
 			to_chat(user, "This radio doesn't have any encryption keys!")
 
-	if(istype(W, /obj/item/encryptionkey/))
+	if(istype(I, /obj/item/encryptionkey))
+		. = CLICKCHAIN_DO_NOT_PROPAGATE
 		if(keyslot)
 			to_chat(user, "The radio can't hold another key!")
 			return
-
-		if(!keyslot)
-			user.drop_item()
-			W.loc = src
-			keyslot = W
-
+		if(!user.attempt_insert_item_for_installation(I, src))
+			return
+		keyslot = I
 		recalculateChannels()
-
-	return
 
 /obj/item/radio/borg/recalculateChannels()
 	src.channels = list()
 	src.syndie = 0
 
 	var/mob/living/silicon/robot/D = src.loc
-	if(D.module)
-		for(var/ch_name in D.module.channels)
+	if(D.module_legacy)
+		for(var/ch_name in D.module_legacy.channels)
 			if(ch_name in src.channels)
 				continue
 			src.channels += ch_name
-			src.channels[ch_name] += D.module.channels[ch_name]
+			src.channels[ch_name] += D.module_legacy.channels[ch_name]
 	if(keyslot)
 		for(var/ch_name in keyslot.channels)
 			if(ch_name in src.channels)
@@ -761,7 +763,7 @@ GLOBAL_LIST_INIT(default_medbay_channels, list(
 	name = "phone"
 
 /obj/item/radio/phone/medbay
-	frequency = MED_I_FREQ
+	frequency = FREQ_MEDICAL_INTERNAL
 
 /obj/item/radio/phone/medbay/Initialize(mapload)
 	. = ..()
@@ -776,7 +778,7 @@ GLOBAL_LIST_INIT(default_medbay_channels, list(
 /obj/item/radio/emergency
 	name = "Medbay Emergency Radio Link"
 	icon_state = "med_walkietalkie"
-	frequency = MED_I_FREQ
+	frequency = FREQ_MEDICAL_INTERNAL
 	subspace_transmission = 1
 	adhoc_fallback = TRUE
 
@@ -790,15 +792,15 @@ GLOBAL_LIST_INIT(default_medbay_channels, list(
 	desc = "A powerful new radio originally gifted to Nanotrasen from Ward Takahashi. Immensely expensive, this communications device has the ability to send and recieve transmissions from anywhere."
 	catalogue_data = list()///datum/category_item/catalogue/information/organization/ward_takahashi)
 	icon = 'icons/vore/custom_items_vr.dmi'
-	icon_override = 'icons/mob/back_vr.dmi'
+	icon_override = 'icons/mob/clothing/back.dmi'
 	icon_state = "radiopack"
 	item_state = "radiopack"
 	slot_flags = SLOT_BACK
-	force = 5
-	throwforce = 6
+	damage_force = 5
+	throw_force = 6
 	preserve_item = 1
-	w_class = ITEMSIZE_LARGE
-	action_button_name = "Remove/Replace Handset"
+	w_class = WEIGHT_CLASS_BULKY
+	item_action_name = "Remove/Replace Handset"
 
 	var/obj/item/radio/bluespace_handset/linked/handset = /obj/item/radio/bluespace_handset/linked
 
@@ -810,24 +812,22 @@ GLOBAL_LIST_INIT(default_medbay_channels, list(
 	. = ..()
 	QDEL_NULL(handset)
 
-/obj/item/bluespace_radio/ui_action_click()
+/obj/item/bluespace_radio/ui_action_click(datum/action/action, datum/event_args/actor/actor)
 	toggle_handset()
 
-/obj/item/bluespace_radio/attack_hand(mob/user)
+/obj/item/bluespace_radio/attack_hand(mob/user, datum/event_args/actor/clickchain/e_args)
 	if(loc == user)
 		toggle_handset()
 	else
 		..()
 
-/obj/item/bluespace_radio/MouseDrop()
+/obj/item/bluespace_radio/OnMouseDropLegacy()
 	if(ismob(loc))
 		if(!CanMouseDrop(src))
 			return
 		var/mob/M = loc
-		if(!M.unEquip(src))
-			return
 		add_fingerprint(usr)
-		M.put_in_any_hand_if_possible(src)
+		M.put_in_hands(src)
 
 /obj/item/bluespace_radio/attackby(obj/item/W, mob/user, params)
 	if(W == handset)
@@ -837,7 +837,7 @@ GLOBAL_LIST_INIT(default_medbay_channels, list(
 
 /obj/item/bluespace_radio/verb/toggle_handset()
 	set name = "Toggle Handset"
-	set category = "Object"
+	set category = VERB_CATEGORY_OBJECT
 
 	var/mob/living/carbon/human/user = usr
 	if(!handset)
@@ -861,26 +861,24 @@ GLOBAL_LIST_INIT(default_medbay_channels, list(
 	if(!istype(M))
 		return 0 //not equipped
 
-	if((slot_flags & SLOT_BACK) && M.get_equipped_item(slot_back) == src)
+	if((slot_flags & SLOT_BACK) && M.item_by_slot_id(SLOT_ID_BACK) == src)
 		return 1
-	if((slot_flags & SLOT_BACK) && M.get_equipped_item(slot_s_store) == src)
+	if((slot_flags & SLOT_BACK) && M.item_by_slot_id(SLOT_ID_SUIT_STORAGE) == src)
 		return 1
 
 	return 0
 
-/obj/item/bluespace_radio/dropped(mob/user)
-	..()
+/obj/item/bluespace_radio/dropped(mob/user, flags, atom/newLoc)
+	. = ..()
 	reattach_handset(user) //handset attached to a base unit should never exist outside of their base unit or the mob equipping the base unit
 
 /obj/item/bluespace_radio/proc/reattach_handset(mob/user)
-	if(!handset) return
+	if(!handset)
+		return
 
 	if(ismob(handset.loc))
-		var/mob/M = handset.loc
-		if(M.drop_from_inventory(handset, src))
-			to_chat(user, "<span class='notice'>\The [handset] snaps back into the main unit.</span>")
-	else
-		handset.forceMove(src)
+		to_chat(handset.loc, "<span class='notice'>\The [handset] snaps back into the main unit.</span>")
+	handset.forceMove(src)
 
 //Subspace Radio Handset
 /obj/item/radio/bluespace_handset
@@ -889,7 +887,7 @@ GLOBAL_LIST_INIT(default_medbay_channels, list(
 	bluespace_radio = TRUE
 	icon_state = "signaller"
 	slot_flags = null
-	w_class = ITEMSIZE_LARGE
+	w_class = WEIGHT_CLASS_BULKY
 
 /obj/item/radio/bluespace_handset/linked
 	var/obj/item/bluespace_radio/base_unit
@@ -908,8 +906,8 @@ GLOBAL_LIST_INIT(default_medbay_channels, list(
 		base_unit = null
 	return ..()
 
-/obj/item/radio/bluespace_handset/linked/dropped(mob/user)
-	..() //update twohanding
+/obj/item/radio/bluespace_handset/linked/dropped(mob/user, flags, atom/newLoc)
+	. = ..() //update twohanding
 	if(base_unit)
 		base_unit.reattach_handset(user) //handset attached to a base unit should never exist outside of their base unit or the mob equipping the base unit
 
@@ -924,4 +922,8 @@ GLOBAL_LIST_INIT(default_medbay_channels, list(
 */
 /obj/item/bluespace_radio/commerce
 	name = "commercial subspace radio"
-	desc = "Immensely expensive, this communications device has the ability to send and recieve transmissions from anywhere. Only a few of these devices have been sold by either Ward Takahashi or NanoTrasen. This device is incredibly rare and mind-numbingly expensive. Do not lose it."
+	desc = "Immensely expensive, this communications device has the ability to send and recieve transmissions from anywhere. Only a few of these devices have been sold by either Ward Takahashi or Nanotrasen. This device is incredibly rare and mind-numbingly expensive. Do not lose it."
+
+/obj/item/bluespace_radio/sdf
+	name = "sdf subspace radio"
+	desc = "Immensely expensive, this communications device has the ability to send and recieve transmissions from anywhere. Only a few of these devices have been sold by either Ward Takahashi or Nanotrasen. This device is incredibly rare and mind-numbingly expensive. Do not lose it."

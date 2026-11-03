@@ -123,31 +123,7 @@
 			if(DM_SIZE_STEAL)
 				spanstyle = "color:purple;"
 			if(DM_TRANSFORM)
-				switch(B.tf_mode)
-					if(DM_TRANSFORM_MALE)
-						spanstyle = "color:purple;"
-					if(DM_TRANSFORM_HAIR_AND_EYES)
-						spanstyle = "color:purple;"
-					if(DM_TRANSFORM_FEMALE)
-						spanstyle = "color:purple;"
-					if(DM_TRANSFORM_KEEP_GENDER)
-						spanstyle = "color:purple;"
-					if(DM_TRANSFORM_CHANGE_SPECIES_AND_TAUR)
-						spanstyle = "color:purple;"
-					if(DM_TRANSFORM_CHANGE_SPECIES_AND_TAUR_EGG)
-						spanstyle = "color:purple;"
-					if(DM_TRANSFORM_REPLICA)
-						spanstyle = "color:purple;"
-					if(DM_TRANSFORM_REPLICA_EGG)
-						spanstyle = "color:purple;"
-					if(DM_TRANSFORM_KEEP_GENDER_EGG)
-						spanstyle = "color:purple;"
-					if(DM_TRANSFORM_MALE_EGG)
-						spanstyle = "color:purple;"
-					if(DM_TRANSFORM_FEMALE_EGG)
-						spanstyle = "color:purple;"
-					if(DM_EGG)
-						spanstyle = "color:purple;"
+				spanstyle = "color:purple;"
 
 		dat += "<span style='[spanstyle]'> ([B.contents.len])</span></a></li>"
 
@@ -327,11 +303,6 @@
 			dat += "<a style='background:#173d15;' href='?src=\ref[src];toggledlm=1'>Toggle Leaving Remains (Currently: ON)</a>"
 		if(FALSE)
 			dat += "<a style='background:#990000;' href='?src=\ref[src];toggledlm=1'>Toggle Leaving Remains (Currently: OFF)</a>"
-	switch(user.allowmobvore)
-		if(TRUE)
-			dat += "<br><a style='background:#173d15;' href='?src=\ref[src];togglemv=1'>Toggle Mob Vore (Currently: ON)</a>"
-		if(FALSE)
-			dat += "<br><a style='background:#990000;' href='?src=\ref[src];togglemv=1'>Toggle Mob Vore (Currently: OFF)</a>"
 	switch(user.permit_healbelly)
 		if(TRUE)
 			dat += "<a style='background:#173d15;' href='?src=\ref[src];togglehealbelly=1'>Toggle Healbelly Permission (Currently: ON)</a>"
@@ -372,7 +343,6 @@
 
 	dat += "<br><a href='?src=\ref[src];setflavor=1'>Set Your Taste</a>"
 	dat += "<br><a href='?src=\ref[src];setsmell=1'>Set Your Smell</a>"
-	dat += "<br><a href='?src=\ref[src];togglenoisy=1'>Toggle Hunger Noises</a>"
 
 	//Under the last HR, save and stuff.
 	dat += "<HR><a href='?src=\ref[src];saveprefs=1'>Save Prefs</a>"
@@ -472,7 +442,8 @@
 						to_chat(user,"<span class='warning'>You can't do that in your state!</span>")
 						return TRUE
 
-					user.ClickOn(T)
+					// wow this is shit, refactor when
+					user.click_on(T, null, null, "", CLICKCHAIN_FROM_HREF)
 					sleep(5) //Seems to exit too fast for the panel to update
 
 	if(href_list["insidepick"])
@@ -559,7 +530,7 @@
 		selected = NB
 
 	if(href_list["bellypick"])
-		selected = locate(href_list["bellypick"])
+		selected = locate(href_list["bellypick"]) in user.vore_organs
 		user.vore_selected = selected
 
 	////
@@ -1007,21 +978,8 @@
 		if(user.client.prefs_vr)
 			user.client.prefs_vr.digest_leave_remains = user.digest_leave_remains
 
-	if(href_list["togglemv"])
-		var/choice = alert(user, "This button is for those who don't like being eaten by mobs. Mobs are currently: [user.allowmobvore ? "Allowed to eat" : "Prevented from eating"] you.", "", "Allow Mob Predation", "Cancel", "Prevent Mob Predation")
-		switch(choice)
-			if("Cancel")
-				return FALSE
-			if("Allow Mob Predation")
-				user.allowmobvore = TRUE
-			if("Prevent Mob Predation")
-				user.allowmobvore = FALSE
-
-		if(user.client.prefs_vr)
-			user.client.prefs_vr.allowmobvore = user.allowmobvore
-
 	if(href_list["togglehealbelly"])
-		var/choice = alert(user, "This button is for those who don't like healbelly used on them as a mechanic. It does not affect anything, but is displayed under mechanical prefs for ease of quick checks. You are currently: [user.allowmobvore ? "Okay" : "Not Okay"] with players using healbelly on you.", "", "Allow Healing Belly", "Cancel", "Disallow Healing Belly")
+		var/choice = alert(user, "This button is for those who don't like healbelly used on them as a mechanic. It does not affect anything, but is displayed under mechanical prefs for ease of quick checks. You are currently: [user.permit_healbelly ? "Okay" : "Not Okay"] with players using healbelly on you.", "", "Allow Healing Belly", "Cancel", "Disallow Healing Belly")
 		switch(choice)
 			if("Cancel")
 				return FALSE
@@ -1032,16 +990,6 @@
 
 		if(user.client.prefs_vr)
 			user.client.prefs_vr.permit_healbelly = user.permit_healbelly
-
-	if(href_list["togglenoisy"])
-		var/choice = alert(user, "Toggle audible hunger noises. Currently: [user.noisy ? "Enabled" : "Disabled"]", "", "Enable audible hunger", "Cancel", "Disable audible hunger")
-		switch(choice)
-			if("Cancel")
-				return FALSE
-			if("Enable audible hunger")
-				user.noisy = TRUE
-			if("Disable audible hunger")
-				user.noisy = FALSE
 
 	//Refresh when interacted with, returning 1 makes vore_look.Topic update
 	return TRUE

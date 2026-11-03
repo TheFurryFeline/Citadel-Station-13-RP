@@ -5,7 +5,7 @@
 	real_name = "host brain"
 	universal_understand = 1
 
-/mob/living/captive_brain/say(var/message, var/datum/language/speaking = null, var/verb="says", var/alt_name="", var/whispering = 0)
+/mob/living/captive_brain/say(var/message, var/datum/prototype/language/speaking = null, var/verb="says", var/alt_name="", var/whispering = 0)
 
 	if (src.client)
 		if(client.prefs.muted & MUTE_IC)
@@ -25,14 +25,14 @@
 		to_chat(src, "You whisper silently, \"[message]\"")
 		to_chat(B.host, "The captive mind of [src] whispers, \"[message]\"")
 
-		for (var/mob/M in player_list)
+		for (var/mob/M in GLOB.player_list)
 			if (istype(M, /mob/new_player))
 				continue
-			else if(M.stat == DEAD && M.is_preference_enabled(/datum/client_preference/ghost_ears))
+			else if(M.stat == DEAD && M.get_preference_toggle(/datum/game_preference_toggle/observer/ghost_ears))
 				to_chat(M, "The captive mind of [src] whispers, \"[message]\"")
 
-/mob/living/captive_brain/emote(var/message)
-	return
+/mob/living/captive_brain/process_emote(datum/emote/emote, raw_parameter_string, datum/event_args/actor/actor, used_binding)
+	return FALSE
 
 /mob/living/captive_brain/process_resist()
 	//Resisting control by an alien mind.
@@ -50,10 +50,10 @@
 			to_chat(H, "<span class='danger'>With an immense exertion of will, you regain control of your body!</span>")
 			to_chat(B.host, "<span class='danger'>You feel control of the host brain ripped from your grasp, and retract your probosci before the wild neural impulses can damage you.</span>")
 			B.detatch()
-			verbs -= /mob/living/carbon/proc/release_control
-			verbs -= /mob/living/carbon/proc/punish_host
-			verbs -= /mob/living/carbon/proc/spawn_larvae
+			remove_verb(src, /mob/living/carbon/proc/release_control)
+			remove_verb(src, /mob/living/carbon/proc/punish_host)
+			remove_verb(src, /mob/living/carbon/proc/spawn_larvae)
 
-		return
+		return TRUE
 
 	..()

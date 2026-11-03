@@ -2,17 +2,17 @@
 	name = "\improper AI Liquid Dispenser"
 	icon = 'icons/obj/device.dmi'
 	icon_state = "motion0"
-	anchored = 1.0
+	anchored = TRUE
 	use_power = USE_POWER_IDLE
 	idle_power_usage = 10
 	var/uses = 20
-	var/disabled = 1
-	var/lethal = 0
-	var/locked = 1
+	var/disabled = TRUE
+	var/lethal = FALSE
+	var/locked = TRUE
 	var/cooldown_time = 0
 	var/cooldown_timeleft = 0
-	var/cooldown_on = 0
-	req_access = list(access_ai_upload)
+	var/cooldown_on = FALSE
+	req_access = list(ACCESS_COMMAND_UPLOAD)
 
 /obj/machinery/ai_slipper/Initialize(mapload, newdir)
 	. = ..()
@@ -22,11 +22,12 @@
 	..()
 	update_icon()
 
-/obj/machinery/ai_slipper/update_icon()
-	if(stat & NOPOWER || stat & BROKEN)
+/obj/machinery/ai_slipper/update_icon_state()
+	if(machine_stat & (NOPOWER|BROKEN))
 		icon_state = "motion0"
 	else
 		icon_state = disabled ? "motion0" : "motion3"
+	return ..()
 
 /obj/machinery/ai_slipper/proc/setState(var/enabled, var/uses)
 	disabled = disabled
@@ -34,7 +35,7 @@
 	power_change()
 
 /obj/machinery/ai_slipper/attackby(obj/item/W, mob/user)
-	if(stat & (NOPOWER|BROKEN))
+	if(machine_stat & (NOPOWER|BROKEN))
 		return
 	if(istype(user, /mob/living/silicon))
 		return attack_hand(user)
@@ -57,8 +58,8 @@
 /obj/machinery/ai_slipper/attack_ai(mob/user as mob)
 	return attack_hand(user)
 
-/obj/machinery/ai_slipper/attack_hand(mob/user as mob)
-	if(stat & (NOPOWER|BROKEN))
+/obj/machinery/ai_slipper/attack_hand(mob/user, datum/event_args/actor/clickchain/e_args)
+	if(machine_stat & (NOPOWER|BROKEN))
 		return
 	if((get_dist(src, user) > 1))
 		if(!istype(user, /mob/living/silicon))
@@ -80,12 +81,11 @@
 	if(locked && (!istype(user, /mob/living/silicon)))
 		t += "<I>(Swipe ID card to unlock control panel.)</I><BR>"
 	else
-		t += text("Dispenser [] - <A href='?src=\ref[];toggleOn=1'>[]?</a><br>\n", disabled?"deactivated":"activated", src, disabled?"Enable":"Disable")
-		t += text("Uses Left: [uses]. <A href='?src=\ref[src];toggleUse=1'>Activate the dispenser?</A><br>\n")
+		t += "Dispenser [(disabled ? "deactivated" : "activated")] - <A href='?src=\ref[src];toggleOn=1'>[(disabled ? "Enable" : "Disable")]?</a><br>\n"
+		t += "Uses Left: [uses]. <A href='?src=\ref[src];toggleUse=1'>Activate the dispenser?</A><br>\n"
 
-	user << browse(t, "window=computer;size=575x450")
+	user << browse(HTML_SKELETON(t), "window=computer;size=575x450")
 	onclose(user, "computer")
-	return
 
 /obj/machinery/ai_slipper/Topic(href, href_list)
 	..()

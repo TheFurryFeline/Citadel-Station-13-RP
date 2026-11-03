@@ -3,7 +3,7 @@
 /mob/living/simple_mob/slime/xenobio
 	desc = "The most basic of slimes.  The grey slime has no remarkable qualities, however it remains one of the most useful colors for scientists."
 	layer = MOB_LAYER + 1 // Need them on top of other mobs or it looks weird when consuming something.
-	ai_holder_type = /datum/ai_holder/simple_mob/xenobio_slime // This should never be changed for xenobio slimes.
+	ai_holder_type = /datum/ai_holder/polaris/simple_mob/xenobio_slime // This should never be changed for xenobio slimes.
 	var/is_adult = FALSE // Slimes turn into adults when fed enough. Adult slimes are somewhat stronger, and can reproduce if fed enough.
 	var/maxHealth_adult = 200
 	var/power_charge = 0 // Disarm attacks can shock someone if high/lucky enough.
@@ -16,20 +16,20 @@
 		/mob/living/simple_mob/slime/xenobio/blue,
 		/mob/living/simple_mob/slime/xenobio/purple
 	)
+	var/split_amount = 4 // Amount of children we will normally have. Half of that for dead adult slimes. Is NOT carried across generations.
+	var/untamable = FALSE //Makes slime untamable via discipline.
+	var/untamable_inherit = FALSE //Makes slime inherit its untamability.
 	var/amount_grown = 0 // controls how long the slime has been overfed, if 10, grows or reproduces
-	var/number = 0 // This is used to make the slime semi-unique for indentification.
+	var/number = 0 // This is used to make the slime semi-unique for identification.
 	var/harmless = FALSE // Set to true when pacified. Makes the slime harmless, not get hungry, and not be able to grow/reproduce.
 
 /mob/living/simple_mob/slime/xenobio/Initialize(mapload, var/mob/living/simple_mob/slime/xenobio/my_predecessor)
-	ASSERT(ispath(ai_holder_type, /datum/ai_holder/simple_mob/xenobio_slime))
+	ASSERT(ispath(ai_holder_type, /datum/ai_holder/polaris/simple_mob/xenobio_slime))
 	number = rand(1, 1000)
 	update_name()
-
 	. = ..() // This will make the AI and do the other mob constructor things. It will also return the default hint at the end.
-
 	if(my_predecessor)
 		inherit_information(my_predecessor)
-
 
 /mob/living/simple_mob/slime/xenobio/Destroy()
 	if(victim)
@@ -41,8 +41,8 @@
 	if(!predecessor)
 		return
 
-	var/datum/ai_holder/simple_mob/xenobio_slime/AI = ai_holder
-	var/datum/ai_holder/simple_mob/xenobio_slime/previous_AI = predecessor.ai_holder
+	var/datum/ai_holder/polaris/simple_mob/xenobio_slime/AI = ai_holder
+	var/datum/ai_holder/polaris/simple_mob/xenobio_slime/previous_AI = predecessor.ai_holder
 	ASSERT(istype(AI))
 	ASSERT(istype(previous_AI))
 
@@ -52,7 +52,6 @@
 	AI.obedience = max(previous_AI.obedience - 1, 0)
 	AI.resentment = max(previous_AI.resentment - 1, 0)
 	AI.rabid = previous_AI.rabid
-
 
 /mob/living/simple_mob/slime/xenobio/update_icon()
 	icon_living = "[icon_state_override ? "[icon_state_override] slime" : "slime"] [is_adult ? "adult" : "baby"][victim ? " eating" : ""]"
@@ -72,7 +71,7 @@
 
 	..()
 
-/mob/living/simple_mob/slime/xenobio/examine(mob/user)
+/mob/living/simple_mob/slime/xenobio/examine(mob/user, dist)
 	. = ..()
 	if(hat)
 		. += "It is wearing \a [hat]."
@@ -84,8 +83,8 @@
 	else if(harmless)
 		. += "It appears to have been pacified."
 	else
-		if(has_AI())
-			var/datum/ai_holder/simple_mob/xenobio_slime/AI = ai_holder
+		if(has_polaris_AI())
+			var/datum/ai_holder/polaris/simple_mob/xenobio_slime/AI = ai_holder
 			if(AI.rabid)
 				. += "It seems very, very angry and upset."
 			else if(AI.obedience >= 5)
@@ -100,9 +99,25 @@
 		return
 
 	is_adult = TRUE
-	melee_damage_lower = round(melee_damage_lower * 2) // 20
-	melee_damage_upper = round(melee_damage_upper * 2) // 30
+	legacy_melee_damage_lower = initial(legacy_melee_damage_lower) * 2
+	legacy_melee_damage_upper = initial(legacy_melee_damage_upper) * 2
+	init_melee_style()
 	maxHealth = maxHealth_adult
+	amount_grown = 0
+	update_icon()
+	update_name()
+
+/mob/living/simple_mob/slime/xenobio/proc/make_baby()
+	if(!is_adult)
+		return
+
+	is_adult = FALSE
+	legacy_melee_damage_lower = initial(legacy_melee_damage_lower)
+	legacy_melee_damage_upper = initial(legacy_melee_damage_upper)
+	init_melee_style()
+	maxHealth = initial(maxHealth)
+	health = clamp(health, 0, maxHealth)
+	nutrition = 400
 	amount_grown = 0
 	update_icon()
 	update_name()
@@ -120,8 +135,8 @@
 		mood = "sad"
 	else if(harmless)
 		mood = ":33"
-	else if(has_AI())
-		var/datum/ai_holder/simple_mob/xenobio_slime/AI = ai_holder
+	else if(has_polaris_AI())
+		var/datum/ai_holder/polaris/simple_mob/xenobio_slime/AI = ai_holder
 		if(AI.rabid)
 			mood = "angry"
 		else if(AI.target)
@@ -139,24 +154,30 @@
 /mob/living/simple_mob/slime/xenobio/proc/enrage()
 	if(harmless)
 		return
-	if(has_AI())
-		var/datum/ai_holder/simple_mob/xenobio_slime/AI = ai_holder
+	if(has_polaris_AI())
+		var/datum/ai_holder/polaris/simple_mob/xenobio_slime/AI = ai_holder
 		AI.enrage()
+
+/mob/living/simple_mob/slime/xenobio/proc/relax()
+	if(harmless)
+		return
+	if(has_polaris_AI())
+		var/datum/ai_holder/polaris/simple_mob/xenobio_slime/AI = ai_holder
+		AI.relax()
 
 /mob/living/simple_mob/slime/xenobio/proc/pacify()
 	harmless = TRUE
-	if(has_AI())
-		var/datum/ai_holder/simple_mob/xenobio_slime/AI = ai_holder
+	if(has_polaris_AI())
+		var/datum/ai_holder/polaris/simple_mob/xenobio_slime/AI = ai_holder
 		AI.pacify()
 
-	faction = "neutral"
+	set_iff_factions(MOB_IFF_FACTION_NEUTRAL)
 
 	// If for whatever reason the mob AI (or player) decides to try to attack something anyways.
-	melee_damage_upper = 0
-	melee_damage_lower = 0
+	legacy_melee_damage_upper = 0
+	legacy_melee_damage_lower = 0
 
 	update_mood()
-
 
 // These are verbs so that player slimes can evolve/split.
 /mob/living/simple_mob/slime/xenobio/verb/evolve()
@@ -202,27 +223,31 @@
 				if(T.density) // No walls.
 					continue
 				for(var/atom/movable/AM in T)
-					if(AM.density)
+					if(istype(AM, /mob/living/simple_mob/slime) || !(AM.CanPass(src, T)))
+						free = FALSE
+						break
+				for(var/atom/movable/AM in get_turf(src))
+					if(!(AM.CanPass(src, T)) && !(AM == src))
 						free = FALSE
 						break
 
 				if(free)
 					free_tiles++
 
-			if(free_tiles < 3) // Three free tiles are needed, as four slimes are made and the 4th tile is from the center tile that the current slime occupies.
+			if(free_tiles < split_amount-1) // Three free tiles are needed (by default), as four slimes are made and the 4th tile is from the center tile that the current slime occupies.
 				to_chat(src, SPAN_WARNING( "It is too cramped here to reproduce..."))
 				return
 
 			var/list/babies = list()
-			for(var/i = 1 to 4)
-				babies.Add(make_new_slime())
+			for(var/i = 1 to split_amount)
+				babies.Add(make_new_slime(no_step = i))
 
 			var/mob/living/simple_mob/slime/new_slime = pick(babies)
 			new_slime.universal_speak = universal_speak
 			if(src.mind)
-				src.mind.transfer_to(new_slime)
+				src.mind.transfer(new_slime)
 			else
-				new_slime.key = src.key
+				transfer_client_to(new_slime)
 			qdel(src)
 		else
 			to_chat(src, SPAN_WARNING( "I am not ready to reproduce yet..."))
@@ -230,7 +255,7 @@
 		to_chat(src, SPAN_WARNING( "I have not evolved enough to reproduce yet..."))
 
 // Used when reproducing or dying.
-/mob/living/simple_mob/slime/xenobio/proc/make_new_slime(var/desired_type)
+/mob/living/simple_mob/slime/xenobio/proc/make_new_slime(var/desired_type, var/no_step)
 	var/t = src.type
 	if(desired_type)
 		t = desired_type
@@ -246,17 +271,21 @@
 
 	if(!istype(baby, /mob/living/simple_mob/slime/xenobio/rainbow))
 		baby.unity = unity
-	baby.faction = faction
+	if(untamable_inherit)
+		baby.untamable = untamable
+	baby.untamable_inherit = untamable_inherit
+	baby.copy_iff_factions(src)
 	baby.friends = friends.Copy()
 
-	step_away(baby, src)
+	if(no_step != 1)
+		step_away(baby, src)
 	return baby
 
-/mob/living/simple_mob/slime/xenobio/get_description_interaction()
+/mob/living/simple_mob/slime/xenobio/get_description_interaction(mob/user)
 	var/list/results = list()
 
 	if(!stat)
-		results += "[desc_panel_image("slimebaton")]to stun the slime, if it's being bad."
+		results += "[desc_panel_image("slimebaton", user)]to stun the slime, if it's being bad."
 
 	results += ..()
 

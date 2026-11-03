@@ -13,7 +13,7 @@
 
 /datum/ghost_query/proc/query()
 	// First, ask all the ghosts who want to be asked.
-	for(var/mob/observer/dead/D in player_list)
+	for(var/mob/observer/dead/D in GLOB.player_list)
 		if(!D.MayRespawn())
 			continue // They can't respawn for whatever reason.
 		if(D.client)
@@ -125,7 +125,6 @@
 /datum/ghost_query/lost_drone
 	role_name = "Lost Drone"
 	question = "A lost drone onboard has been discovered by a crewmember and they are attempting to reactivate it.  Would you like to play as the drone?"
-	//be_special_flag = BE_AI	//VOREStation Removal: Positronic role is never used because intended purpose is unfitting, so remove the check
 	check_bans = list("AI", "Cyborg")
 	cutoff_number = 1
 
@@ -159,3 +158,6 @@
 	question = "A cursed blade has been discovered by a curious explorer. \
 	Would you like to play as the soul imprisoned within?"
 	cutoff_number = 1
+
+/datum/ghost_query/admin
+	wait_time = 10 SECONDS

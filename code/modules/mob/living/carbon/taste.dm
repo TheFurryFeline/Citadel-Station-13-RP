@@ -1,13 +1,6 @@
-/mob/living/carbon/proc/ingest(var/datum/reagents/from, var/datum/reagents/target, var/amount = 1, var/multiplier = 1, var/copy = 0) //we kind of 'sneak' a proc in here for ingesting stuff so we can play with it.
-	/* VOREStation Removal - Synths should be able to taste because... reasons
-	if(ishuman(src))
-		var/mob/living/carbon/human/H = src
-		var/braintype = H.get_FBP_type()
-		if(braintype == FBP_DRONE || braintype == FBP_POSI)
-			return from.trans_to_holder(target,amount,multiplier,copy) //skip the taste, complete transfer
-	*/
+/mob/living/carbon/proc/ingest(datum/reagent_holder/from, datum/reagent_holder/target, amount = 1, multiplier = 1, copy = 0) //we kind of 'sneak' a proc in here for ingesting stuff so we can play with it.
 	if(last_taste_time + 50 < world.time)
-		var/datum/reagents/temp = new(amount) //temporary holder used to analyse what gets transfered.
+		var/datum/reagent_holder/temp = new(amount) //temporary holder used to analyse what gets transfered.
 		from.trans_to_holder(temp, amount, multiplier, 1)
 
 		var/text_output = temp.generate_taste_message(src)
@@ -22,32 +15,28 @@
 catalogue the 'taste strength' of each one
 calculate text size per text.
 */
-/datum/reagents/proc/generate_taste_message(mob/living/carbon/taster = null)
+/datum/reagent_holder/proc/generate_taste_message(mob/living/carbon/taster = null)
 	var/minimum_percent = 15
 	if(ishuman(taster))
 		var/mob/living/carbon/human/H = taster
-		minimum_percent = round(15/(H.species.taste_sensitivity)) //VOREStation Edit - Rule of fun! Synths can taste fine!
+		minimum_percent = round(15/(H.species.taste_sensitivity)) // Rule of fun! Synths can taste fine! //TODO: Reconsider.
 
 	var/list/out = list()
 	var/list/tastes = list() //descriptor = strength
 	if(minimum_percent <= 100)
-		for(var/datum/reagent/R in reagent_list)
+		for(var/id in reagent_volumes)
+			var/datum/reagent/R = SSchemistry.fetch_reagent(id)
 			if(!R.taste_mult)
 				continue
-			if(R.id == "nutriment") //this is ugly but apparently only nutriment (not subtypes) has taste data TODO figure out why
-				var/list/taste_data = R.get_data()
-				for(var/taste in taste_data)
-					if(taste in tastes)
-						tastes[taste] += taste_data[taste]
-					else
-						tastes[taste] = taste_data[taste]
+			if(istype(R, /datum/reagent/nutriment))
+				var/datum/nutriment_data/nutriment_data = reagent_datas?[id]
+				var/list/nutriment_tastes = nutriment_data.taste
+				for(var/taste in nutriment_tastes)
+					tastes[taste] = tastes[taste] + nutriment_tastes[taste]
 			else
 				var/taste_desc = R.taste_description
 				var/taste_amount = get_reagent_amount(R.id) * R.taste_mult
-				if(R.taste_description in tastes)
-					tastes[taste_desc] += taste_amount
-				else
-					tastes[taste_desc] = taste_amount
+				tastes[taste_desc] = tastes[taste_desc] + taste_amount
 
 		//deal with percentages
 		var/total_taste = 0

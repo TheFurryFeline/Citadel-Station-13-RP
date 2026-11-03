@@ -28,7 +28,7 @@
 	tt_desc = "S Lepidoptera adamas"
 	catalogue_data = list(/datum/category_item/catalogue/fauna/glitterfly)
 
-	faction = "neutral"
+	iff_factions = MOB_IFF_FACTION_NEUTRAL
 
 	icon_state = "butterfly"
 	icon_living = "butterfly"
@@ -39,30 +39,30 @@
 	health = 10
 	randomized = TRUE
 
-	movement_cooldown = -1
+	movement_base_speed = 10
 	hovering = TRUE
 
-	melee_damage_lower = 1
-	melee_damage_upper = 2
+	legacy_melee_damage_lower = 1
+	legacy_melee_damage_upper = 2
 	attack_armor_pen = 80
 	attack_sharp = TRUE
 
 	density = FALSE	// Non-dense, so things can walk through their groups unhindered.
 
-	pass_flags = PASSTABLE
+	pass_flags = ATOM_PASS_TABLE
 
 	attacktext = list("bit", "buffeted", "slashed")
 
 	say_list_type = /datum/say_list/glitterfly
-	ai_holder_type = /datum/ai_holder/simple_mob/melee/evasive/glitterfly
+	ai_holder_type = /datum/ai_holder/polaris/simple_mob/melee/evasive/glitterfly
 
 /mob/living/simple_mob/animal/sif/glitterfly/Initialize(mapload)
 	. = ..()
 	var/colorlist = list(rgb(rand(100,255), rand(100,255), rand(100,255)) =  10, rgb(rand(5,100), rand(5,100), rand(5,100)) = 2, "#222222" = 1)
 	color = pickweight(colorlist)
 
-	default_pixel_y = rand(5,12)
-	pixel_y = default_pixel_y
+	base_pixel_y = rand(5,12)
+	pixel_y = base_pixel_y
 
 	adjust_scale(round(rand(90, 105) / 100))
 
@@ -73,9 +73,9 @@
 	maxHealth = 30
 	health = 30
 
-	movement_cooldown = -2
+	movement_base_speed = 5
 
-	melee_damage_upper = 5
+	legacy_melee_damage_upper = 5
 
 	plane = ABOVE_LIGHTING_PLANE
 
@@ -87,14 +87,14 @@
 	emote_see = list("vibrates","flutters", "twirls")
 	emote_hear = list("pips", "clicks", "chirps")
 
-/datum/ai_holder/simple_mob/melee/evasive/glitterfly
+/datum/ai_holder/polaris/simple_mob/melee/evasive/glitterfly
 	hostile = FALSE
 	can_flee = TRUE
 	flee_when_outmatched = TRUE
 	outmatched_threshold = 100
 	max_home_distance = 5
 
-/datum/ai_holder/simple_mob/melee/evasive/glitterfly/handle_special_strategical()
+/datum/ai_holder/polaris/simple_mob/melee/evasive/glitterfly/handle_special_strategical()
 	if(prob(1))
 		var/friendly_animal_corpse = FALSE
 		for(var/mob/living/simple_mob/animal/A in view(vision_range,holder))

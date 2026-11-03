@@ -5,7 +5,7 @@
 	icon = 'icons/obj/hydroponics_products.dmi'
 	icon_state = "blank"
 	desc = "Nutritious! Probably."
-	flags = NOCONDUCT
+	atom_flags = NOCONDUCT
 	slot_flags = SLOT_HOLSTER
 	drop_sound = 'sound/items/drop/herb.ogg'
 	pickup_sound = 'sound/items/pickup/herb.ogg'
@@ -58,7 +58,7 @@
 	if(reagents.total_volume > 0)
 		bitesize = 1+round(reagents.total_volume / 2, 1)
 	if(seed.get_trait(TRAIT_STINGS))
-		force = 1
+		damage_force = 1
 	catalogue_data = seed.catalog_data_grown
 
 /obj/item/reagent_containers/food/snacks/grown/update_desc()
@@ -88,9 +88,9 @@
 			descriptors |= "radioactive"
 		if(reagents.has_reagent("amatoxin") || reagents.has_reagent("toxin"))
 			descriptors |= "poisonous"
-		if(reagents.has_reagent("psilocybin") || reagents.has_reagent("space_drugs"))
+		if(reagents.has_reagent("psilocybin") || reagents.has_reagent("space_drugs")|| reagents.has_reagent("earthsblood"))
 			descriptors |= "hallucinogenic"
-		if(reagents.has_reagent("bicaridine"))
+		if(reagents.has_reagent("bicaridine")  || reagents.has_reagent("earthsblood"))
 			descriptors |= "medicinal"
 		if(reagents.has_reagent("gold"))
 			descriptors |= "shiny"
@@ -125,7 +125,7 @@
 /obj/item/reagent_containers/food/snacks/grown/update_icon()
 	if(!seed || !SSplants || !SSplants.plant_icon_cache)
 		return
-	overlays.Cut()
+	cut_overlays()
 	var/image/plant_icon
 	var/icon_key = "fruit-[seed.get_trait(TRAIT_PRODUCT_ICON)]-[seed.get_trait(TRAIT_PRODUCT_COLOUR)]-[seed.get_trait(TRAIT_PLANT_COLOUR)]"
 	if(SSplants.plant_icon_cache[icon_key])
@@ -134,39 +134,35 @@
 		plant_icon = image('icons/obj/hydroponics_products.dmi',"blank")
 		var/image/fruit_base = image('icons/obj/hydroponics_products.dmi',"[seed.get_trait(TRAIT_PRODUCT_ICON)]-product")
 		fruit_base.color = "[seed.get_trait(TRAIT_PRODUCT_COLOUR)]"
-		plant_icon.overlays |= fruit_base
+		plant_icon.add_overlay(fruit_base)
 		if("[seed.get_trait(TRAIT_PRODUCT_ICON)]-leaf" in icon_states('icons/obj/hydroponics_products.dmi'))
 			var/image/fruit_leaves = image('icons/obj/hydroponics_products.dmi',"[seed.get_trait(TRAIT_PRODUCT_ICON)]-leaf")
 			fruit_leaves.color = "[seed.get_trait(TRAIT_PLANT_COLOUR)]"
-			plant_icon.overlays |= fruit_leaves
+			plant_icon.add_overlay(fruit_leaves)
 		SSplants.plant_icon_cache[icon_key] = plant_icon
-	overlays |= plant_icon
+	add_overlay(plant_icon)
 
 /obj/item/reagent_containers/food/snacks/grown/Crossed(var/mob/living/M)
 	. = ..()
-	if(M.is_incorporeal())
+	if(M.is_incorporeal() || M.is_avoiding_ground())
 		return
 	if(seed && seed.get_trait(TRAIT_JUICY) == 2)
 		if(istype(M))
-
 			if(M.buckled)
 				return
-
 			if(istype(M,/mob/living/carbon/human))
 				var/mob/living/carbon/human/H = M
-				if(H.shoes && H.shoes.item_flags & NOSLIP)
+				if(H.shoes && H.shoes.clothing_flags & NOSLIP)
 					return
-				if(H.flags & NO_SLIP)//Species that dont slip naturally
+				if(H.species.species_flags & NO_SLIP)//Species that dont slip naturally
 					return
 			M.stop_pulling()
 			to_chat(M, "<span class='notice'>You slipped on the [name]!</span>")
 			playsound(src.loc, 'sound/misc/slip.ogg', 50, 1, -3)
-			M.Stun(8)
-			M.Weaken(5)
+			M.afflict_stun(20 * 8)
+			M.afflict_paralyze(20 * 5)
 			seed.thrown_at(src,M)
-			sleep(-1)
-			if(src)
-				qdel(src)
+			qdel(src)
 			return
 
 /obj/item/reagent_containers/food/snacks/grown/throw_impact(atom/hit_atom)
@@ -184,18 +180,18 @@
 				var/obj/item/cell/potato/pocell = new /obj/item/cell/potato(get_turf(user))
 				if(src.loc == user && istype(user,/mob/living/carbon/human))
 					user.put_in_hands(pocell)
-				pocell.maxcharge = src.potency * 10
-				pocell.charge = pocell.maxcharge
+				pocell.max_charge = src.potency * 200 //fellas, have you ever actually tried to reach 200 potency? Let them have this if they can manage it.
+				pocell.charge = pocell.max_charge
 				qdel(src)
 				return
-		else if(W.sharp)
+		else if(W.is_sharp())
 			if(seed.kitchen_tag == "pumpkin") // Ugggh these checks are awful.
 				user.show_message("<span class='notice'>You carve a face into [src]!</span>", 1)
 				new /obj/item/clothing/head/pumpkinhead (user.loc)
 				qdel(src)
 				return
 			else if(seed.chems)
-				if(W.sharp && W.edge && !isnull(seed.chems["woodpulp"]))
+				if((W.is_sharp() && W.is_edge()) && !isnull(seed.chems["woodpulp"]))
 					user.show_message("<span class='notice'>You make planks out of \the [src]!</span>", 1)
 					playsound(loc, 'sound/effects/woodcutting.ogg', 50, 1)
 					var/flesh_colour = seed.get_trait(TRAIT_FLESH_COLOUR)
@@ -244,24 +240,31 @@
 					return
 	..()
 
-/obj/item/reagent_containers/food/snacks/grown/apply_hit_effect(mob/living/target, mob/living/user, var/hit_zone)
+/obj/item/reagent_containers/food/snacks/grown/melee_finalize(datum/event_args/actor/clickchain/clickchain, clickchain_flags, datum/melee_attack/weapon/attack_style)
 	. = ..()
-
+	if(. & (CLICKCHAIN_FLAGS_UNCONDITIONAL_ABORT | CLICKCHAIN_ATTACK_MISSED))
+		return
+	var/mob/living/L = clickchain.target
+	if(!istype(L))
+		return
 	if(seed && seed.get_trait(TRAIT_STINGS))
 		if(!reagents || reagents.total_volume <= 0)
 			return
 		reagents.remove_any(rand(1,3))
-		seed.thrown_at(src, target)
-		sleep(-1)
-		if(!src)
+		seed.thrown_at(src, L)
+		if(QDELETED(src))
+			. |= CLICKCHAIN_DO_NOT_PROPAGATE
 			return
 		if(prob(35))
-			if(user)
-				to_chat(user, "<span class='danger'>\The [src] has fallen to bits.</span>")
-				user.drop_from_inventory(src)
-			qdel(src)
+			if(clickchain.performer)
+				to_chat(clickchain.performer, "<span class='danger'>\The [src] has fallen to bits.</span>")
+				qdel(src)
+				. |= CLICKCHAIN_DO_NOT_PROPAGATE
 
-/obj/item/reagent_containers/food/snacks/grown/attack_self(mob/user as mob)
+/obj/item/reagent_containers/food/snacks/grown/attack_self(mob/user, datum/event_args/actor/actor)
+	. = ..()
+	if(.)
+		return
 
 	if(!seed)
 		return
@@ -310,13 +313,13 @@
 				return
 	*/
 
-/obj/item/reagent_containers/food/snacks/grown/pickup(mob/user)
+/obj/item/reagent_containers/food/snacks/grown/pickup(mob/user, flags, atom/oldLoc)
 	..()
 	if(!seed)
 		return
 	if(seed.get_trait(TRAIT_STINGS))
 		var/mob/living/carbon/human/H = user
-		if(istype(H) && H.gloves)
+		if(H.inventory.get_slot_single(/datum/inventory_slot/inventory/gloves::id))
 			return
 		if(!reagents || reagents.total_volume <= 0)
 			return
@@ -351,6 +354,8 @@ var/list/fruit_icon_cache = list()
 	name = "[S.seed_name] slice"
 	desc = "A slice of \a [S.seed_name]. Tasty, probably."
 
+	var/list/overlays_to_add = list()
+
 	var/rind_colour = S.get_trait(TRAIT_PRODUCT_COLOUR)
 	var/flesh_colour = S.get_trait(TRAIT_FLESH_COLOUR)
 	if(!flesh_colour) flesh_colour = rind_colour
@@ -358,9 +363,11 @@ var/list/fruit_icon_cache = list()
 		var/image/I = image(icon,"fruit_rind")
 		I.color = rind_colour
 		fruit_icon_cache["rind-[rind_colour]"] = I
-	overlays |= fruit_icon_cache["rind-[rind_colour]"]
+	overlays_to_add += fruit_icon_cache["rind-[rind_colour]"]
 	if(!fruit_icon_cache["slice-[rind_colour]"])
 		var/image/I = image(icon,"fruit_slice")
 		I.color = flesh_colour
 		fruit_icon_cache["slice-[rind_colour]"] = I
-	overlays |= fruit_icon_cache["slice-[rind_colour]"]
+	overlays_to_add += fruit_icon_cache["slice-[rind_colour]"]
+
+	add_overlay(overlays_to_add)

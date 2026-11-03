@@ -1,18 +1,46 @@
+CREATE_WALL_MOUNTING_TYPES_SHIFTED(/obj/item/radio/intercom, 28)
 /obj/item/radio/intercom
 	name = "station intercom (General)"
 	desc = "Talk through this."
-	icon = 'icons/obj/radio.dmi' //VOREStation Edit - New Icon
+	icon = 'icons/obj/intercom.dmi'
 	icon_state = "intercom"
 	plane = TURF_PLANE
 	layer = ABOVE_TURF_LAYER
 	anchored = 1
-	w_class = ITEMSIZE_LARGE
+	w_class = WEIGHT_CLASS_BULKY
 	canhear_range = 2
-	flags = NOBLOODY
+	atom_flags = NOBLOODY
 	var/circuit = /obj/item/circuitboard/intercom
 	var/number = 0
 	var/last_tick //used to delay the powercheck
 	var/wiresexposed = 0
+	var/overlay_color = PIPE_COLOR_GREEN
+
+/obj/item/radio/intercom/setDir(ndir)
+	. = ..()
+	base_pixel_x = 0
+	base_pixel_y = 0
+	switch(dir)
+		if(NORTH)
+			base_pixel_y = -28
+		if(SOUTH)
+			base_pixel_y = 28
+		if(WEST)
+			base_pixel_x = 28
+		if(EAST)
+			base_pixel_x = -28
+	reset_pixel_offsets()
+
+/obj/item/radio/intercom/update_icon(updates)
+	cut_overlays()
+	. = ..()
+	if(!on)
+		icon_state = "intercom-p"
+	else
+		icon_state = "intercom_[broadcasting][listening]"
+		var/image/I = image(icon, "intercom_overlay")
+		I.color = overlay_color
+		add_overlay(I)
 
 /obj/item/radio/intercom/custom
 	name = "station intercom (Custom)"
@@ -25,13 +53,13 @@
 
 /obj/item/radio/intercom/private
 	name = "station intercom (Private)"
-	frequency = AI_FREQ
+	frequency = FREQ_AI_PRIVATE
 
 /obj/item/radio/intercom/specops
 	name = "\improper Spec Ops intercom"
-	frequency = ERT_FREQ
+	frequency = FREQ_ERT
 	subspace_transmission = 1
-	centComm = 1
+	centcom = 1
 
 /obj/item/radio/intercom/department
 	canhear_range = 5
@@ -40,17 +68,35 @@
 
 /obj/item/radio/intercom/department/medbay
 	name = "station intercom (Medbay)"
-	icon_state = "medintercom"
-	frequency = MED_I_FREQ
+	frequency = FREQ_MEDICAL_INTERNAL
+	overlay_color = COLOR_TEAL
 
 /obj/item/radio/intercom/department/security
 	name = "station intercom (Security)"
-	icon_state = "secintercom"
-	frequency = SEC_I_FREQ
+	frequency = FREQ_SECURITY_INTERNAL
+	overlay_color = COLOR_MAROON
 
 /obj/item/radio/intercom/entertainment
 	name = "entertainment intercom"
-	frequency = ENT_FREQ
+	frequency = FREQ_ENTERTAINMENT
+
+/obj/item/radio/intercom/entertainment/laptop
+	icon = 'icons/obj/computer.dmi'
+	icon_state = "laptop"
+	anchored = FALSE
+	broadcasting = FALSE
+	listening = TRUE
+	name = "Radio Computer"
+	desc = "A laptop with a mic, connected to the entertainement frequency."
+	frequency = FREQ_ENTERTAINMENT
+	anchored = TRUE
+	can_be_unanchored = TRUE
+	canhear_range = 5
+	broadcasting = 1
+	listening = 0
+	plane = TURF_PLANE
+	layer = PLANT_LAYER
+
 
 /obj/item/radio/intercom/omni
 	name = "global announcer"
@@ -71,49 +117,49 @@
 /obj/item/radio/intercom/department/security/Initialize(mapload)
 	. = ..()
 	internal_channels = list(
-		num2text(PUB_FREQ) = list(),
-		num2text(SEC_I_FREQ) = list(access_security)
+		num2text(FREQ_COMMON) = list(),
+		num2text(FREQ_SECURITY_INTERNAL) = list(ACCESS_SECURITY_EQUIPMENT)
 	)
 
 /obj/item/radio/intercom/entertainment/Initialize(mapload)
 	. = ..()
 	internal_channels = list(
-		num2text(PUB_FREQ) = list(),
-		num2text(ENT_FREQ) = list()
+		num2text(FREQ_COMMON) = list(),
+		num2text(FREQ_ENTERTAINMENT) = list()
 	)
 
 /obj/item/radio/intercom/syndicate
 	name = "illicit intercom"
 	desc = "Talk through this. Evilly"
-	frequency = SYND_FREQ
+	frequency = FREQ_SYNDICATE
 	subspace_transmission = 1
 	syndie = 1
 
 /obj/item/radio/intercom/syndicate/Initialize(mapload)
 	. = ..()
-	internal_channels[num2text(SYND_FREQ)] = list(access_syndicate)
+	internal_channels[num2text(FREQ_SYNDICATE)] = list(ACCESS_FACTION_SYNDICATE)
 
 /obj/item/radio/intercom/raider
 	name = "illicit intercom"
 	desc = "Pirate radio, but not in the usual sense of the word."
-	frequency = RAID_FREQ
-	subspace_transmission = 1
-	syndie = 1
+	frequency = FREQ_RAIDER
+	subspace_transmission = 0
+	syndie = 0
 
 /obj/item/radio/intercom/raider/Initialize(mapload)
 	. = ..()
-	internal_channels[num2text(RAID_FREQ)] = list(access_syndicate)
+	internal_channels[num2text(FREQ_RAIDER)] = list(ACCESS_FACTION_PIRATE)
 
 /obj/item/radio/intercom/trader
 	name = "commercial intercom"
 	desc = "Good luck finding a 'Skip Advertisements' button here."
-	frequency = TRADE_FREQ
+	frequency = FREQ_TRADER
 	subspace_transmission = 0
 	syndie = 0
 
 /obj/item/radio/intercom/trader/Initialize(mapload)
 	. = ..()
-	internal_channels[num2text(TRADE_FREQ)] = list(access_trader)
+	internal_channels[num2text(FREQ_TRADER)] = list(ACCESS_FACTION_TRADER)
 
 /obj/item/radio/intercom/Destroy()
 	STOP_PROCESSING(SSobj, src)
@@ -124,7 +170,7 @@
 	spawn (0)
 		attack_self(user)
 
-/obj/item/radio/intercom/attack_hand(mob/user as mob)
+/obj/item/radio/intercom/attack_hand(mob/user, datum/event_args/actor/clickchain/e_args)
 	src.add_fingerprint(user)
 	spawn (0)
 		attack_self(user)
@@ -134,7 +180,7 @@
 	if(W.is_screwdriver())  // Opening the intercom up.
 		wiresexposed = !wiresexposed
 		to_chat(user, "The wires have been [wiresexposed ? "exposed" : "unexposed"]")
-		playsound(src, W.usesound, 50, 1)
+		playsound(src, W.tool_sound, 50, 1)
 		if(wiresexposed)
 			if(!on)
 				icon_state = "intercom-p_open"
@@ -145,7 +191,7 @@
 		return
 	if(wiresexposed && W.is_wirecutter())
 		user.visible_message("<span class='warning'>[user] has cut the wires inside \the [src]!</span>", "You have cut the wires inside \the [src].")
-		playsound(src, W.usesound, 50, 1)
+		playsound(src, W.tool_sound, 50, 1)
 		new/obj/item/stack/cable_coil(get_turf(src), 5)
 		var/obj/structure/frame/A = new /obj/structure/frame(src.loc)
 		var/obj/item/circuitboard/M = circuit
@@ -157,7 +203,7 @@
 		A.anchored = 1
 		A.state = 2
 		A.update_icon()
-		M.deconstruct(src)
+		M.after_deconstruct(src)
 		qdel(src)
 	else
 		src.attack_hand(user)
@@ -191,16 +237,7 @@
 			else
 				on = A.powered(EQUIP) // set "on" to the power status
 
-		if(!on)
-			if(wiresexposed)
-				icon_state = "intercom-p_open"
-			else
-				icon_state = "intercom-p"
-		else
-			if(wiresexposed)
-				icon_state = "intercom_open"
-			else
-				icon_state = initial(icon_state)
+		update_icon()
 
 /obj/item/radio/intercom/locked
     var/locked_frequency
@@ -214,7 +251,7 @@
 
 /obj/item/radio/intercom/locked/ai_private
 	name = "\improper AI intercom"
-	frequency = AI_FREQ
+	frequency = FREQ_AI_PRIVATE
 	broadcasting = 1
 	listening = 1
 

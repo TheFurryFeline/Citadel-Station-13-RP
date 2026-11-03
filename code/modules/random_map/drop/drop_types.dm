@@ -31,15 +31,15 @@ var/global/list/datum/supply_drop_loot/supply_drop
 	contents = list(
 		/obj/item/clothing/gloves/arm_guard/laserproof,
 		/obj/item/clothing/shoes/leg_guard/laserproof,
-		/obj/item/clothing/head/helmet/laserproof,
+		/obj/item/clothing/head/helmet/ablative,
 		/obj/item/clothing/suit/armor/laserproof,
 		/obj/item/clothing/glasses/sunglasses/sechud/tactical,
 		/obj/item/storage/belt/security/tactical/bandolier,
 		/obj/item/clothing/accessory/storage/black_drop_pouches,
 		/obj/item/storage/backpack/dufflebag/sec,
-		/obj/item/shield/energy,
-		/obj/item/gun/energy/ionrifle,
-		/obj/item/gun/energy/xray,
+		/obj/item/shield/transforming/energy,
+		/obj/item/gun/projectile/energy/ionrifle,
+		/obj/item/gun/projectile/energy/xray,
 		/obj/item/storage/box/emps,
 		/obj/item/storage/box/flashbangs,
 		/obj/item/material/knife/tacknife/combatknife)
@@ -50,7 +50,7 @@ var/global/list/datum/supply_drop_loot/supply_drop
 /datum/supply_drop_loot/ballistics/New()
 	..()
 	contents = list(
-		/obj/item/clothing/head/helmet/bulletproof,
+		/obj/item/clothing/head/helmet/ballistic,
 		/obj/item/clothing/suit/armor/bulletproof,
 		/obj/item/clothing/gloves/arm_guard/bulletproof,
 		/obj/item/clothing/shoes/leg_guard/bulletproof,
@@ -58,14 +58,14 @@ var/global/list/datum/supply_drop_loot/supply_drop
 		/obj/item/storage/belt/security/tactical/bandolier,
 		/obj/item/clothing/accessory/storage/black_drop_pouches,
 		/obj/item/storage/backpack/dufflebag/sec,
-		/obj/item/shield/riot/tele,
+		/obj/item/shield/transforming/telescopic,
 		/obj/item/storage/box/emps,
 		/obj/item/storage/box/flashbangs,
-		/obj/item/gun/projectile/automatic/sts35,
-		/obj/item/ammo_magazine/m762/ap,
-		/obj/item/ammo_magazine/m762/ap,
-		/obj/item/gun/projectile/colt,
-		/obj/item/ammo_magazine/m45,
+		/obj/item/gun/projectile/ballistic/automatic/sts35,
+		/obj/item/ammo_magazine/a7_62mm/ap,
+		/obj/item/ammo_magazine/a7_62mm/ap,
+		/obj/item/gun/projectile/ballistic/colt,
+		/obj/item/ammo_magazine/a45/singlestack,
 		/obj/item/material/knife/tacknife/combatknife)
 
 /datum/supply_drop_loot/heavy_warfare
@@ -82,23 +82,24 @@ var/global/list/datum/supply_drop_loot/supply_drop
 		/obj/item/storage/belt/security/tactical/bandolier,
 		/obj/item/clothing/accessory/storage/black_drop_pouches,
 		/obj/item/storage/backpack/dufflebag/sec,
-		/obj/item/gun/projectile/automatic/bullpup,
-		/obj/item/ammo_magazine/m762/ap,
-		/obj/item/ammo_magazine/m762,
-		/obj/item/shield/energy,
-		/obj/item/grenade/explosive/frag,
-		/obj/item/grenade/explosive/frag,
-		/obj/item/grenade/smokebomb,
-		/obj/item/grenade/smokebomb,
-		/obj/item/grenade/flashbang,
-		/obj/item/grenade/flashbang,
-		/obj/item/grenade/empgrenade,
-		/obj/item/grenade/empgrenade,
+		/obj/item/gun/projectile/ballistic/automatic/bullpup,
+		/obj/item/ammo_magazine/a7_62mm/ap,
+		/obj/item/ammo_magazine/a7_62mm,
+		/obj/item/shield/transforming/energy,
+		/obj/item/grenade/simple/explosive/frag,
+		/obj/item/grenade/simple/explosive/frag,
+		/obj/item/grenade/simple/smoke,
+		/obj/item/grenade/simple/smoke,
+		/obj/item/grenade/simple/flashbang,
+		/obj/item/grenade/simple/flashbang,
+		/obj/item/grenade/simple/emp,
+		/obj/item/grenade/simple/emp,
 		/obj/item/material/knife/tacknife/combatknife)
 
-datum/supply_drop_loot/riot
+/datum/supply_drop_loot/riot
 	name = "Riot Gear"
 	container = /obj/structure/largecrate
+
 /datum/supply_drop_loot/riot/New()
 	..()
 	contents = list(
@@ -106,7 +107,7 @@ datum/supply_drop_loot/riot
 		/obj/item/clothing/suit/armor/riot,
 		/obj/item/clothing/gloves/arm_guard/riot,
 		/obj/item/clothing/shoes/leg_guard/riot,
-		/obj/item/shield/riot/tele,
+		/obj/item/shield/transforming/telescopic,
 		/obj/item/storage/box/flashbangs,
 		/obj/item/storage/box/handcuffs,
 		/obj/item/melee/baton,
@@ -114,8 +115,8 @@ datum/supply_drop_loot/riot
 		/obj/item/storage/belt/security,
 		/obj/item/clothing/shoes/boots/jackboots,
 		/obj/item/clothing/gloves/black,
-		/obj/item/gun/projectile/shotgun/pump,
-		/obj/item/gun/energy/gun,
+		/obj/item/gun/projectile/ballistic/shotgun/pump,
+		/obj/item/gun/projectile/energy/gun,
 		/obj/item/clothing/accessory/holster,
 		/obj/item/gun/launcher/grenade,
 		/obj/item/storage/backpack/dufflebag/sec)
@@ -180,12 +181,12 @@ datum/supply_drop_loot/riot
 /datum/supply_drop_loot/food/New()
 	..()
 	contents = list(
-		/obj/item/reagent_containers/food/snacks/liquidfood,
-		/obj/item/reagent_containers/food/snacks/liquidfood,
-		/obj/item/reagent_containers/food/snacks/liquidfood,
-		/obj/item/reagent_containers/food/snacks/liquidfood,
-		/obj/item/reagent_containers/food/snacks/liquidfood,
-		/obj/item/reagent_containers/food/snacks/liquidfood,
+		/obj/item/reagent_containers/food/snacks/liquid,
+		/obj/item/reagent_containers/food/snacks/liquid,
+		/obj/item/reagent_containers/food/snacks/liquid,
+		/obj/item/reagent_containers/food/snacks/liquid,
+		/obj/item/reagent_containers/food/snacks/liquid,
+		/obj/item/reagent_containers/food/snacks/liquid,
 		/obj/item/reagent_containers/food/snacks/tastybread,
 		/obj/item/reagent_containers/food/snacks/tastybread,
 		/obj/item/reagent_containers/food/snacks/tastybread,
@@ -266,9 +267,9 @@ datum/supply_drop_loot/riot
 /datum/supply_drop_loot/materials/New()
 	..()
 	contents = list(
-		/obj/fiftyspawner/steel,
-		/obj/fiftyspawner/steel,
-		/obj/fiftyspawner/steel,
+		/obj/item/stack/material/steel/full_stack,
+		/obj/item/stack/material/steel/full_stack,
+		/obj/item/stack/material/steel/full_stack,
 		/obj/fiftyspawner/glass,
 		/obj/fiftyspawner/glass,
 		/obj/fiftyspawner/wood,
@@ -282,7 +283,7 @@ datum/supply_drop_loot/riot
 /datum/supply_drop_loot/materials_advanced/New()
 	..()
 	contents = list(
-		/obj/fiftyspawner/steel,
+		/obj/item/stack/material/steel/full_stack,
 		/obj/fiftyspawner/glass,
 		/obj/fiftyspawner/wood,
 		/obj/fiftyspawner/plastic,

@@ -7,7 +7,7 @@
 			new /obj/item/clothing/shoes/syndigaloshes(src)
 
 		if("stealth")
-			new /obj/item/gun/energy/crossbow(src)
+			new /obj/item/gun/projectile/energy/crossbow(src)
 			new /obj/item/pen/reagent/paralysis(src)
 			new /obj/item/chameleon(src)
 
@@ -21,14 +21,14 @@
 			new /obj/item/tank/emergency/oxygen/double(src)
 
 		if("guns")
-			new /obj/item/gun/projectile/revolver(src)
-			new /obj/item/ammo_magazine/s357(src)
+			new /obj/item/gun/projectile/ballistic/revolver(src)
+			new /obj/item/ammo_magazine/a357/speedloader(src)
 			new /obj/item/card/emag(src)
 			new /obj/item/plastique(src)
 			new /obj/item/plastique(src)
 
 		if("murder")
-			new /obj/item/melee/energy/sword(src)
+			new /obj/item/melee/transforming/energy/sword(src)
 			new /obj/item/clothing/glasses/thermal/syndi(src)
 			new /obj/item/card/emag(src)
 			new /obj/item/clothing/shoes/syndigaloshes(src)
@@ -151,7 +151,7 @@
 		/obj/item/clothing/mask/chameleon,
 		/obj/item/clothing/glasses/chameleon,
 		/obj/item/clothing/accessory/chameleon,
-		/obj/item/gun/energy/chameleon
+		/obj/item/gun/projectile/energy/chameleon
 	)
 
 /obj/item/storage/box/syndie_kit/clerical
@@ -177,7 +177,7 @@
 	name = "\improper Smooth operator"
 	desc = "Compact 9mm with silencer kit."
 	starts_with = list(
-		/obj/item/gun/projectile/pistol,
+		/obj/item/gun/projectile/ballistic/pistol,
 		/obj/item/silencer
 	)
 
@@ -222,7 +222,7 @@
 	pack.desc += " 'MB' has been scribbled on it."
 
 	pack = new /obj/item/storage/fancy/cigarettes(src)
-	pack.reagents.add_reagent("tricordrazine", 15 * pack.storage_slots)
+	pack.reagents.add_reagent("tricordrazine", 15 * pack.max_items)
 	pack.desc += " 'T' has been scribbled on it."
 
 	new /obj/item/flame/lighter/zippo(src)
@@ -231,14 +231,14 @@
 
 /proc/fill_cigarre_package(var/obj/item/storage/fancy/cigarettes/C, var/list/reagents)
 	for(var/reagent in reagents)
-		C.reagents.add_reagent(reagent, reagents[reagent] * C.storage_slots)
+		C.reagents.add_reagent(reagent, reagents[reagent] * C.max_items)
 
 /obj/item/storage/box/syndie_kit/ewar_voice
-	name = "Electrowarfare and Voice Synthesiser kit"
+	name = "Electrowarfare and Voice Synthesizer kit"
 	desc = "Kit for confounding organic and synthetic entities alike."
 	starts_with = list(
-		/obj/item/rig_module/electrowarfare_suite,
-		/obj/item/rig_module/voice
+		/obj/item/hardsuit_module/electrowarfare_suite,
+		/obj/item/hardsuit_module/voice
 	)
 
 /obj/item/storage/secure/briefcase/money
@@ -280,7 +280,7 @@
 		/obj/item/sniper_rifle_part/barrel,
 		/obj/item/sniper_rifle_part/stock,
 		/obj/item/sniper_rifle_part/trigger_group,
-		/obj/item/ammo_casing/a145 = 4
+		/obj/item/ammo_casing/a12_7mm = 4
 	)
 
 /obj/item/storage/secure/briefcase/fuelrod
@@ -288,11 +288,11 @@
 	desc = "A heavy, locked briefcase."
 	description_fluff = "The container, upon opening, looks to have a few oddly shaped indentations in its packing."
 	description_antag = "This case will likely contain a charged fuel rod gun, and a few fuel rods to go with it. It can only hold the fuel rod gun, fuel rods, batteries, a screwdriver, and stock machine parts."
-	force = 12 //Anti-rad lined i.e. Lead, probably gonna hurt a bit if you get bashed with it.
-	can_hold = list(/obj/item/gun/magnetic/fuelrod, /obj/item/fuel_assembly, /obj/item/cell, /obj/item/stock_parts, /obj/item/tool/screwdriver)
-	cant_hold = list(/obj/item/tool/screwdriver/power)
+	damage_force = 12 //Anti-rad lined i.e. Lead, probably gonna hurt a bit if you get bashed with it.
+	insertion_whitelist = list(/obj/item/gun/projectile/magnetic/fuelrod, /obj/item/fuel_assembly, /obj/item/cell, /obj/item/stock_parts, /obj/item/tool/screwdriver)
+	insertion_blacklist = list(/obj/item/tool/screwdriver/power)
 	starts_with = list(
-		/obj/item/gun/magnetic/fuelrod,
+		/obj/item/gun/projectile/magnetic/fuelrod,
 		/obj/item/fuel_assembly/deuterium,
 		/obj/item/fuel_assembly/deuterium,
 		/obj/item/fuel_assembly/tritium,

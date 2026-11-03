@@ -1,33 +1,19 @@
-//////////////////////////////////////////////////////
-////////////////////SUBTLE COMMAND////////////////////
-//////////////////////////////////////////////////////
+/mob/living/verb/subtle_vore(message as message)
+	set name = "Subtle Vore"
+	set category = "Vore"
+	set desc = "Emote to people within your vore holders and/or the person whos vore holder you are inside."
 
-/mob/verb/me_verb_subtle(message as message) //This would normally go in say.dm
-	set name = "Subtle"
-	set category = "IC"
-	set desc = "Emote to nearby people (and your pred/prey)"
-
-	if(say_disabled)	//This is here to try to identify lag problems
-		to_chat(usr, "Speech is currently admin-disabled.")
-		return
-
-	message = sanitize_or_reflect(message,src) //VOREStation Edit - Reflect too-long messages (within reason)
+	message = sanitize_or_reflect(message,src) // Reflect too-long messages (within reason)
 	if(!message)
 		return
 
 	set_typing_indicator(FALSE)
-	if(use_me)
-		usr.emote_vr("me",4,message)
-	else
-		usr.emote_vr(message)
+	run_subtle_vore(message)
 
-/mob/proc/custom_emote_vr(var/m_type=1,var/message = null) //This would normally go in emote.dm
-	if(stat || !use_me && usr == src)
+/mob/living/proc/run_subtle_vore(message)
+	if(stat)
 		to_chat(src, "You are unable to emote.")
 		return
-
-	var/muzzled = is_muzzled()
-	if(m_type == 2 && muzzled) return
 
 	var/input
 	if(!message)
@@ -36,97 +22,61 @@
 		input = message
 
 	if(input)
-		log_subtle(message,src)
-		message = "<B>[src]</B> <I>[input]</I>"
+		log_subtle_vore(message,src)
+		message = "<B>[src]</B> " + SPAN_SINGING(input)
 	else
 		return
 
 	if (message)
 		message = say_emphasis(message)
 
-		var/list/vis = get_mobs_and_objs_in_view_fast(get_turf(src),1,2) //Turf, Range, and type 2 is emote
-		var/list/vis_mobs = vis["mobs"]
-		var/list/vis_objs = vis["objs"]
+		var/list/vis_mobs = new()
+		var/list/vis_objs = new()
+
+		// if we're in a vore holder, display to everything inside
+		if(istype(src.loc, /obj/belly))
+			var/obj/belly/vore_holder = src.loc
+			for(var/visible in vore_holder.contents)
+				if(ismob(visible))
+					vis_mobs.Add(visible)
+				else if(isobj(visible))
+					vis_objs.Add(visible)
+			if(vore_holder.owner)
+				vis_mobs.Add(vore_holder.owner)
+		else
+			// in this case we don't implicitly get added to the list
+			vis_mobs.Add(src)
+
+		// if we have vore holders, display to everything inside them (assuming there is anything)
+		if(LAZYLEN(src.vore_organs))
+			for(var/obj/belly/vore_holder in src.vore_organs)
+				if(LAZYLEN(vore_holder.contents))
+					for(var/visible in vore_holder.contents)
+						if(ismob(visible))
+							vis_mobs.Add(visible)
+						else if(isobj(visible))
+							vis_objs.Add(visible)
 
 		for(var/vismob in vis_mobs)
 			var/mob/M = vismob
-			spawn(0)
-				M.show_message(message, 2)
-
-		for(var/visobj in vis_objs)
-			var/obj/O = visobj
-			spawn(0)
-				O.see_emote(src, message, 2)
-
-/mob/proc/emote_vr(var/act, var/type, var/message) //This would normally go in say.dm
-	if(act == "me")
-		return custom_emote_vr(type, message)
-
-//////// SHIT COPYPASTE CODE FOR SUBTLER ANTI GHOST
-
-/mob/verb/subtler_anti_ghost(message as message) //This would normally go in say.dm
-	set name = "Subtler Anti Ghost"
-	set category = "IC"
-	set desc = "Emote to nearby people (and your pred/prey), but ghosts can't see it."
-
-	if(say_disabled)	//This is here to try to identify lag problems
-		to_chat(usr, "Speech is currently admin-disabled.")
-		return
-
-	message = sanitize_or_reflect(message,src) //VOREStation Edit - Reflect too-long messages (within reason)
-	if(!message)
-		return
-
-	set_typing_indicator(FALSE)
-	run_subtler(message)
-
-/mob/proc/run_subtler(message)
-	if(stat || !use_me && usr == src)
-		to_chat(src, "You are unable to emote.")
-		return
-
-	var/input
-	if(!message)
-		input = sanitize_or_reflect(input(src,"Choose an emote to display.") as text|null, src)
-	else
-		input = message
-
-	if(input)
-		log_subtle_anti_ghost(message,src)
-		message = "<B>[src]</B> <I>[input]</I>"
-	else
-		return
-
-	if (message)
-		message = say_emphasis(message)
-
-		var/list/vis = get_mobs_and_objs_in_view_fast(get_turf(src),1,2) //Turf, Range, and type 2 is emote
-		var/list/vis_mobs = vis["mobs"]
-		var/list/vis_objs = vis["objs"]
-
-		for(var/vismob in vis_mobs)
 			if(istype(vismob, /mob/observer))
 				continue
-			var/mob/M = vismob
-			spawn(0)
-				M.show_message(message, 2)
+			M.show_message(message, SAYCODE_TYPE_ALWAYS)
 
 		for(var/visobj in vis_objs)
 			var/obj/O = visobj
-			spawn(0)
-				O.see_emote(src, message, 2)
-
-/////// END
+			O.see_emote(src, message, 2)
 
 #define MAX_HUGE_MESSAGE_LEN 8192
 #define POST_DELIMITER_STR "\<\>"
-/proc/sanitize_or_reflect(message,user)
+// TODO: NUKE THIS PROC!!
+/proc/sanitize_or_reflect(message, user, encode)
 	//Way too long to send
 	if(length_char(message) > MAX_HUGE_MESSAGE_LEN)
-		fail_to_chat(user)
+		fail_to_chat(user, null)
 		return
 
-	message = sanitize(message, max_length = MAX_HUGE_MESSAGE_LEN)
+	message = sanitize(message, max_length = MAX_HUGE_MESSAGE_LEN, encode = encode)
 
 	//Came back still too long to send
 	if(length_char(message) > MAX_MESSAGE_LEN)

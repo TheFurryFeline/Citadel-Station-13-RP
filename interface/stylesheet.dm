@@ -2,9 +2,11 @@
 /// !!!!!!!!!!HEY LISTEN!!!!!!!!!!!!!!!!!!!!!!!!
 /// !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
-// If you modify this file you ALSO need to modify code/modules/goonchat/browserAssets/browserOutput.css and browserOutput_white.css
-// BUT you have to use PX font sizes with are on a x8 scale of these font sizes
-// Sample font-size: DM: 8 CSS: 64px
+/**
+ * If you modify this file you ALSO need to modify tgui/packages/tgui-panel/styles/goon/chat-dark.scss and tgui/packages/tgui-panel/styles/goon/chat-light.scss
+ * BUT you have to use PX font sizes with are on a x8 scale of these font sizes
+ * Sample font-size: DM: 8 CSS: 64px
+ */
 
 /client/script = {"<style>
 body					{font-family: Verdana, sans-serif;}
@@ -19,12 +21,16 @@ em						{font-style: normal;font-weight: bold;}
 .motd a, .motd a:link, .motd a:visited, .motd a:active, .motd a:hover
 						{color: #638500;}
 
-.prefix					{font-weight: bold;}
-.log_message			{color: #386AFF;	font-weight: bold;}
+.italics				{					font-style: italic;}
 
-/* OOC */
-.ooc					{font-weight: bold;}
-.ooc img.text_tag		{width: 32px; height: 10px;}
+.bold					{					font-weight: bold;}
+
+.prefix					{					font-weight: bold;}
+.oocplain				{}
+.warningplain			{}
+
+//* OOC *//
+.ooc					{					font-weight: bold;}
 
 .ooc .everyone			{color: #002eb8;}
 .ooc .looc				{color: #3A9696;}
@@ -39,8 +45,9 @@ em						{font-style: normal;font-weight: bold;}
 .admin					{color: #386aff;	font-weight: bold;}
 .ooc .event_manager		{color: #660033;}
 .ooc .aooc				{color: #960018;}
+.ooc img.text_tag		{width: 32px;		height: 10px;}
 
-/* Admin: Private Messages */
+//* Admin: Private Messages *//
 .pm  .howto				{color: #ff0000;	font-weight: bold;		font-size: 200%;}
 .pm  .in				{color: #ff0000;}
 .pm  .out				{color: #ff0000;}
@@ -52,7 +59,7 @@ em						{font-style: normal;font-weight: bold;}
 .admin_channel			{color: #9611D4;	font-weight: bold;}
 .event_channel			{color: #cc3399;	font-weight: bold;}
 
-/* Radio: Misc */
+//* Radio: Misc *//
 .deadsay				{color: #530FAD;}
 .binarysay				{color: #20c20e;	background-color: #000000;	display: block;}
 .binarysay a			{color: #00ff00;}
@@ -61,7 +68,7 @@ em						{font-style: normal;font-weight: bold;}
 .deptradio				{color: #ff00ff;}	/* when all other department colors fail */
 .newscaster				{color: #750000;}
 
-/* Radio Channels */
+//* Radio Channels *//
 .comradio				{color: #193A7A;}
 .syndradio				{color: #6D3F40;}
 .centradio				{color: #5C5C8A;}
@@ -74,15 +81,16 @@ em						{font-style: normal;font-weight: bold;}
 .sciradio				{color: #993399;}
 .suppradio				{color: #5F4519;}
 .servradio				{color: #6eaa2c;}
-.expradio				{color: #555555;}
+.expradio				{color: #c240a1;}
 
 .redteamradio			{color: #ff0000;}
 .blueteamradio			{color: #0000ff;}
 .greenteamradio			{color: #00ff00;}
 .yellowteamradio		{color: #d1ba22;}
 .gangradio				{color: #ac2ea1;}
+.sdfradio				{color: #ff9900;}
 
-/* Miscellaneous */
+//* Miscellaneous *//
 .name					{font-weight: bold;}
 .say					{}
 .yell					{					font-weight: bold;}
@@ -91,13 +99,16 @@ h1.alert, h2.alert		{color: #000000;}
 .ghostalert				{color: #5c00e6;	font-style: italic; font-weight: bold;}
 
 .emote					{}
+.infoplain				{}
 
-/* Game Messages */
+//* Game Messages *//
 
 .attack					{color: #ff0000;}
 .moderate				{color: #CC0000;}
 .disarm					{color: #990000;}
 .passive				{color: #660000;}
+
+.helpful				{color: #368f31;}
 
 .announce 				{color: #228b22;	font-weight: bold;}
 .boldannounce			{color: #ff0000;	font-weight: bold;}
@@ -183,6 +194,12 @@ h1.alert, h2.alert		{color: #000000;}
 .clown					{color: #FF69Bf;	font-size: 3;	font-family: "Comic Sans MS", cursive, sans-serif;	font-weight: bold;}
 .singing				{font-family: "Trebuchet MS", cursive, sans-serif; font-style: italic;}
 .his_grace				{color: #15D512;	font-family: "Courier New", cursive, sans-serif;	font-style: italic;}
+.votenotification 		{color: #490049;	font-size: 3; 	font-weight: bold;		animation: votenotification 3000ms infinite;	}
+	@keyframes votenotification {
+		0% 		{color: #490049;}
+		50% 	{color: #ff00ff;}
+		100% 	{color: #490049;}
+}
 .hypnophrase			{color: #3bb5d3;	font-weight: bold;	animation: hypnocolor 1500ms infinite; animation-direction: alternate;}
 	@keyframes hypnocolor {
 		0%		{color: #0d0d0d;}
@@ -200,7 +217,7 @@ h1.alert, h2.alert		{color: #000000;}
 }
 
 .icon					{height: 1em;	width: auto;}
-.iconbig				{height: 32px;	width: 32px; }
+.bigicon				{height: 32px;	width: 32px; }
 
 .memo					{color: #638500;	text-align: center;}
 .memoedit				{text-align: center;	font-size: 2;}
@@ -215,7 +232,7 @@ h1.alert, h2.alert		{color: #000000;}
 .monkeyhive				{color: #774704;}
 .monkeylead				{color: #774704;	font-size: 2;}
 
-/* Languages */
+//* Languages *//
 
 .alien					{color: #543354;}
 .tajaran				{color: #803B56;}
@@ -230,7 +247,9 @@ h1.alert, h2.alert		{color: #000000;}
 .birdsongc				{color: #CC9900;}
 .vulpkanin				{color: #B97A57;}
 .enochian				{color: #848A33; letter-spacing:-1pt; word-spacing:4pt; font-family: "Lucida Sans Unicode", "Lucida Grande", sans-serif;}
-.daemon					{color: #5E339E; letter-spacing:-1pt; word-spacing:0pt; font-family: "Courier New", Courier, monospace;}
+.daemon					{color: #68008B; letter-spacing:-1pt; word-spacing:0pt; font-family: "Courier New", Courier, monospace;}
+.luinimma				{color: #d4bd11; font-family: "Trebuchet MS", cursive, sans-serif;}
+.keisani				{color: #AF7751;}
 .bug					{color: #9e9e39;}
 .vox					{color: #AA00AA;}
 .zaddat					{color: #941C1C;}
@@ -241,11 +260,12 @@ h1.alert, h2.alert		{color: #000000;}
 .interface				{color: #330033;}
 .squeakish				{color: #f54298;}
 
-/* Debug Logs */
-.debug_error					{color:#FF0000; font-weight:bold}
-.debug_warning					{color:#FF0000;}
-.debug_info						{}
-.debug_debug					{color:#0000FF;}
+//* Debug Logs *//
+.debug_debug					{color:#007FFF;}
+.debug_error					{color:#FF7F00; font-weight:bold}
+.debug_warning					{color:#FF007F; font-weight:bold}
+.debug_info						{color:#7F7FFF;}
 .debug_trace					{color:#888888;}
+.maptext { font-family: 'Small Fonts'; font-size: 7px; -dm-text-outline: 1px black; color: white; line-height: 1.1; text-align: center; }
 
 </style>"}

@@ -1,8 +1,10 @@
 //Config stuff
-#define SYNDICATE_ELITE_MOVETIME 600	//Time to station is milliseconds. 60 seconds, enough time for everyone to be on the shuttle before it leaves.
-#define SYNDICATE_ELITE_STATION_AREATYPE "/area/shuttle/syndicate_elite/station" //Type of the spec ops shuttle area for station
-#define SYNDICATE_ELITE_DOCK_AREATYPE "/area/shuttle/syndicate_elite/mothership"	//Type of the spec ops shuttle area for dock
-
+///Time to station is milliseconds. 60 seconds, enough time for everyone to be on the shuttle before it leaves.
+#define SYNDICATE_ELITE_MOVETIME 600
+///Type of the spec ops shuttle area for station
+#define SYNDICATE_ELITE_STATION_AREATYPE "/area/shuttle/syndicate_elite/station"
+///Type of the spec ops shuttle area for dock
+#define SYNDICATE_ELITE_DOCK_AREATYPE "/area/shuttle/syndicate_elite/mothership"
 var/syndicate_elite_shuttle_moving_to_station = 0
 var/syndicate_elite_shuttle_moving_to_mothership = 0
 var/syndicate_elite_shuttle_at_station = 0
@@ -15,7 +17,7 @@ var/syndicate_elite_shuttle_timeleft = 0
 	icon_keyboard = "syndie_key"
 	icon_screen = "syndishuttle"
 	light_color = "#00ffff"
-	req_access = list(access_cent_specops)
+	req_access = list(ACCESS_CENTCOM_ERT)
 	var/temp = null
 	var/hacked = 0
 	var/allowedtocall = 0
@@ -85,10 +87,10 @@ var/syndicate_elite_shuttle_timeleft = 0
 		sleep(10)
 
 		var/spawn_marauder[] = new()
-		for(var/atom/movable/landmark/L in GLOB.landmarks_list)
+		for(var/obj/landmark/L in GLOB.landmarks_list)
 			if(L.name == "Marauder Entry")
 				spawn_marauder.Add(L)
-		for(var/atom/movable/landmark/L in GLOB.landmarks_list)
+		for(var/obj/landmark/L in GLOB.landmarks_list)
 			if(L.name == "Marauder Exit")
 				var/obj/effect/portal/P = new(L.loc)
 				P.invisibility = 101//So it is not seen by anyone.
@@ -160,7 +162,7 @@ var/syndicate_elite_shuttle_timeleft = 0
 		var/turf/D = locate(T.x, throwy - 1, 1)
 					//var/turf/E = get_step(D, SOUTH)
 		for(var/atom/movable/AM as mob|obj in T)
-			AM.Move(D)
+			AM.abstract_move(D)
 		if(istype(T, /turf/simulated))
 			qdel(T)
 
@@ -189,7 +191,7 @@ var/syndicate_elite_shuttle_timeleft = 0
 /obj/machinery/computer/syndicate_elite_shuttle/emag_act(var/remaining_charges, var/mob/user)
 	to_chat(user, "<span class='notice'>The electronic systems in this console are far too advanced for your primitive hacking peripherals.</span>")
 
-/obj/machinery/computer/syndicate_elite_shuttle/attack_hand(var/mob/user as mob)
+/obj/machinery/computer/syndicate_elite_shuttle/attack_hand(mob/user, datum/event_args/actor/clickchain/e_args)
 	if(!allowed(user))
 		to_chat(user, "<span class='warning'>Access Denied.</span>")
 		return
@@ -211,7 +213,7 @@ var/syndicate_elite_shuttle_timeleft = 0
 		[syndicate_elite_shuttle_moving_to_station || syndicate_elite_shuttle_moving_to_mothership ? "\n*The Syndicate Elite shuttle is already leaving.*<BR>\n<BR>":syndicate_elite_shuttle_at_station ? "\n<A href='?src=\ref[src];sendtodock=1'>Shuttle Offline</A><BR>\n<BR>":"\n<A href='?src=\ref[src];sendtostation=1'>Depart to [station_name()]</A><BR>\n<BR>"]
 		\n<A href='?src=\ref[user];mach_close=computer'>Close</A>"}
 
-	user << browse(dat, "window=computer;size=575x450")
+	user << browse(HTML_SKELETON(dat), "window=computer;size=575x450")
 	onclose(user, "computer")
 	return
 

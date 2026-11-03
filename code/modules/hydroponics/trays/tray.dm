@@ -1,10 +1,13 @@
+// todo: use something like /datum/component/atmos_connector_attach
+// todo: /obj/machinery/hydroponics_tray or /obj/machinery/portable_atmospherics/hydroponics_tray
 /obj/machinery/portable_atmospherics/hydroponics
 	name = "hydroponics tray"
 	icon = 'icons/obj/hydroponics_machines.dmi'
 	icon_state = "hydrotray3"
-	density = 1
-	anchored = 1
-	flags = OPENCONTAINER
+	density = TRUE
+	pass_flags_self = ATOM_PASS_TABLE | ATOM_PASS_OVERHEAD_THROW
+	anchored = TRUE
+	atom_flags = OPENCONTAINER
 	volume = 100
 
 	var/mechanical = 1         // Set to 0 to stop it from drawing the alert lights.
@@ -39,6 +42,7 @@
 	var/obj/temp_chem_holder   // Something to hold reagents during process_reagents()
 	var/labelled
 	var/frozen = 0				//Is the plant frozen? -1 is used to define trays that can't be frozen. 0 is unfrozen and 1 is frozen.
+	var/hostile_soil = 0		//Does the soil make-up allow for weed invasion?
 
 	// Seed details/line data.
 	var/datum/seed/seed = null // The currently planted seed
@@ -67,6 +71,7 @@
 		"diethylamine" =    2,
 		"nutriment" =       1,
 		"adminordrazine" =  1,
+		"fertilizer" =      2,
 		"eznutrient" =      1,
 		"robustharvest" =   1,
 		"left4zed" =        1,
@@ -86,7 +91,8 @@
 	var/global/list/pestkiller_reagents = list(
 		"sugar" =           2,
 		"diethylamine" =   -2,
-		"adminordrazine" = -5
+		"adminordrazine" = -5,
+		"ash" =			   -1
 		)
 	var/global/list/water_reagents = list(
 		"water" =           1,
@@ -153,7 +159,7 @@
 	if(istype(user,/mob/living/carbon/alien/diona))
 		var/mob/living/carbon/alien/diona/nymph = user
 
-		if(nymph.stat == DEAD || nymph.paralysis || nymph.weakened || nymph.stunned || nymph.restrained())
+		if(!CHECK_MOBILITY(nymph, MOBILITY_CAN_USE))
 			return
 
 		if(weedlevel > 0)
@@ -199,31 +205,22 @@
 	check_health()
 	update_icon()
 
-/obj/machinery/portable_atmospherics/hydroponics/bullet_act(var/obj/item/projectile/Proj)
-
+/obj/machinery/portable_atmospherics/hydroponics/on_bullet_act(obj/projectile/proj, impact_flags, list/bullet_act_args)
+	. = ..()
 	//Don't act on seeds like dionaea that shouldn't change.
 	if(seed && seed.get_trait(TRAIT_IMMUTABLE) > 0)
 		return
 
 	//Override for somatoray projectiles.
-	if(istype(Proj ,/obj/item/projectile/energy/floramut)&& prob(20))
-		if(istype(Proj, /obj/item/projectile/energy/floramut/gene))
-			var/obj/item/projectile/energy/floramut/gene/G = Proj
+	if(istype(proj ,/obj/projectile/energy/floramut)&& prob(20))
+		if(istype(proj, /obj/projectile/energy/floramut/gene))
+			var/obj/projectile/energy/floramut/gene/G = proj
 			if(seed)
 				seed = seed.diverge_mutate_gene(G.gene, get_turf(loc))	//get_turf just in case it's not in a turf.
 		else
 			mutate(1)
-			return
-	else if(istype(Proj ,/obj/item/projectile/energy/florayield) && prob(20))
+	else if(istype(proj ,/obj/projectile/energy/florayield) && prob(20))
 		yield_mod = min(10,yield_mod+rand(1,2))
-		return
-
-	..()
-
-/obj/machinery/portable_atmospherics/hydroponics/CanAllowThrough(atom/movable/mover, turf/target)
-	. = ..()
-	if(istype(mover) && mover.checkpass(PASSTABLE))
-		return TRUE
 
 /obj/machinery/portable_atmospherics/hydroponics/proc/check_health()
 	if(seed && !dead && health <= 0)
@@ -240,15 +237,15 @@
 
 //Process reagents being input into the tray.
 /obj/machinery/portable_atmospherics/hydroponics/proc/process_reagents()
-
-	if(!reagents) return
+	if(!reagents)
+		return
 
 	if(reagents.total_volume <= 0)
 		return
 
 	reagents.trans_to_obj(temp_chem_holder, min(reagents.total_volume,rand(1,3)))
 
-	for(var/datum/reagent/R in temp_chem_holder.reagents.reagent_list)
+	for(var/datum/reagent/R in temp_chem_holder.reagents.get_reagent_datums())
 
 		var/reagent_total = temp_chem_holder.reagents.get_reagent_amount(R.id)
 
@@ -383,7 +380,7 @@
 /obj/machinery/portable_atmospherics/hydroponics/verb/remove_label()
 
 	set name = "Remove Label"
-	set category = "Object"
+	set category = VERB_CATEGORY_OBJECT
 	set src in view(1)
 
 	if(usr.incapacitated())
@@ -399,7 +396,7 @@
 
 /obj/machinery/portable_atmospherics/hydroponics/verb/setlight()
 	set name = "Set Light"
-	set category = "Object"
+	set category = VERB_CATEGORY_OBJECT
 	set src in view(1)
 
 	if(usr.incapacitated())
@@ -500,11 +497,10 @@
 			return 1
 
 	else if (istype(O, /obj/item/seeds))
-
 		if(!seed)
-
 			var/obj/item/seeds/S = O
-			user.remove_from_mob(O)
+			if(!user.attempt_insert_item_for_installation(O, src))
+				return
 
 			if(!S.seed)
 				to_chat(user, "The packet seems to be empty. You throw it away.")
@@ -532,14 +528,13 @@
 
 		var/obj/item/storage/bag/plants/S = O
 		for (var/obj/item/reagent_containers/food/snacks/grown/G in locate(user.x,user.y,user.z))
-			if(!S.can_be_inserted(G))
-				return
-			S.handle_item_insertion(G, 1)
+			S.obj_storage.try_insert(G, new /datum/event_args/actor(user), TRUE, TRUE, TRUE)
+		S.obj_storage.ui_queue_refresh()
 
 	else if ( istype(O, /obj/item/plantspray) )
-
 		var/obj/item/plantspray/spray = O
-		user.remove_from_mob(O)
+		if(!user.temporarily_remove_from_inventory(O))
+			return
 		toxins += spray.toxicity
 		pestlevel -= spray.pest_kill_str
 		weedlevel -= spray.weed_kill_str
@@ -554,7 +549,7 @@
 		if(locate(/obj/machinery/atmospherics/portables_connector/) in loc)
 			return ..()
 
-		playsound(loc, O.usesound, 50, 1)
+		playsound(loc, O.tool_sound, 50, 1)
 		anchored = !anchored
 		to_chat(user, "You [anchored ? "wrench" : "unwrench"] \the [src].")
 
@@ -570,11 +565,11 @@
 		update_icon()
 		return
 
-	else if(O.force && seed)
-		user.setClickCooldown(user.get_attack_speed(O))
+	else if(O.damage_force && seed)
+		user.setClickCooldownLegacy(user.get_attack_speed_legacy(O))
 		user.visible_message("<span class='danger'>\The [seed.display_name] has been attacked by [user] with \the [O]!</span>")
 		if(!dead)
-			health -= O.force
+			health -= O.damage_force
 			check_health()
 
 	return
@@ -585,7 +580,7 @@
 	else if(harvest)
 		harvest(user)
 
-/obj/machinery/portable_atmospherics/hydroponics/attack_hand(mob/user as mob)
+/obj/machinery/portable_atmospherics/hydroponics/attack_hand(mob/user, datum/event_args/actor/clickchain/e_args)
 
 	if(istype(usr,/mob/living/silicon))
 		return
@@ -596,7 +591,7 @@
 	else if(dead)
 		remove_dead(user)
 
-/obj/machinery/portable_atmospherics/hydroponics/examine(mob/user)
+/obj/machinery/portable_atmospherics/hydroponics/examine(mob/user, dist)
 	. = ..()
 	if(seed)
 		. += "<span class='notice'>[seed.display_name] are growing here.</span>"
@@ -646,7 +641,7 @@
 
 /obj/machinery/portable_atmospherics/hydroponics/verb/close_lid_verb()
 	set name = "Toggle Tray Lid"
-	set category = "Object"
+	set category = VERB_CATEGORY_OBJECT
 	set src in view(1)
 	if(usr.incapacitated())
 		return
@@ -659,3 +654,8 @@
 	closed_system = !closed_system
 	to_chat(user, "You [closed_system ? "close" : "open"] the tray's lid.")
 	update_icon()
+
+//* Subtypes *//
+
+/obj/machinery/portable_atmospherics/hydroponics/unanchored
+	anchored = FALSE

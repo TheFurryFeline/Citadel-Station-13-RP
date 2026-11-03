@@ -1,4 +1,4 @@
-/obj/effect/plant/HasProximity(var/atom/movable/AM)
+/obj/structure/plant/HasProximity(var/atom/movable/AM)
 
 	if(!is_mature() || seed.get_trait(TRAIT_SPREAD) != 2)
 		return
@@ -14,7 +14,7 @@
 			entangle(M)
 
 
-/obj/effect/plant/proc/attack_mob(mob/living/M,base_damage)
+/obj/structure/plant/proc/attack_mob(mob/living/M,base_damage)
 	var/target_zone
 	if(M.lying)
 		target_zone = ran_zone()
@@ -31,23 +31,23 @@
 	if(soaked >= 30)
 		return
 
-	if(!M.apply_damage(base_damage, BRUTE, target_zone, blocked, soaked, used_weapon=src))
+	if(!M.apply_damage(base_damage, DAMAGE_TYPE_BRUTE, target_zone, blocked, soaked, used_weapon=src))
 		return 0
 
-/obj/effect/plant/attack_hand(var/mob/user)
+/obj/structure/plant/attack_hand(mob/user, datum/event_args/actor/clickchain/e_args)
 	manual_unbuckle(user)
 
-/obj/effect/plant/attack_generic(var/mob/user)
+/obj/structure/plant/attack_generic(var/mob/user)
 	manual_unbuckle(user)
 
-/obj/effect/plant/Crossed(atom/movable/O)
+/obj/structure/plant/Crossed(atom/movable/O)
 	. = ..()
 	if(O.is_incorporeal())
 		return
 	if(isliving(O))
 		trodden_on(O)
 
-/obj/effect/plant/proc/trodden_on(var/mob/living/victim)
+/obj/structure/plant/proc/trodden_on(var/mob/living/victim)
 	if(has_buckled_mobs())
 		return
 	else if(!is_mature())
@@ -68,18 +68,12 @@
 			attack_mob(victim,rand(1,3))
 
 
-/obj/effect/plant/proc/unbuckle()
-	if(has_buckled_mobs())
-		for(var/A in buckled_mobs)
-			var/mob/living/L = A
-			if(L.buckled == src)
-				L.buckled = null
-				L.anchored = initial(L.anchored)
-				L.update_canmove()
-		buckled_mobs = list()
-	return
+/obj/structure/plant/proc/unbuckle()
+	if(!has_buckled_mobs())
+		return
+	unbuckle_all_mobs(BUCKLE_OP_FORCE)
 
-/obj/effect/plant/proc/manual_unbuckle(mob/user as mob)
+/obj/structure/plant/proc/manual_unbuckle(mob/user as mob)
 	if(has_buckled_mobs())
 		var/chance = 20
 		if(seed)
@@ -99,17 +93,16 @@
 					"<span class='warning'>You hear shredding and ripping.</span>")
 				unbuckle()
 		else
-			user.setClickCooldown(user.get_attack_speed())
-			health -= rand(1,5)
+			user.setClickCooldownLegacy(user.get_attack_speed_legacy())
 			var/text = pick("rip","tear","pull", "bite", "tug")
 			user.visible_message(\
 			"<span class='warning'>\The [user] [text]s at \the [src].</span>",\
 			"<span class='warning'>You [text] at \the [src].</span>",\
 			"<span class='warning'>You hear shredding and ripping.</span>")
-			check_health()
+			damage_integrity(rand(1, 5))
 			return
 
-/obj/effect/plant/proc/entangle(var/mob/living/victim)
+/obj/structure/plant/proc/entangle(var/mob/living/victim)
 
 	if(has_buckled_mobs())
 		return
@@ -122,7 +115,7 @@
 		var/can_grab = 1
 		if(istype(victim, /mob/living/carbon/human))
 			var/mob/living/carbon/human/H = victim
-			if(istype(H.shoes, /obj/item/clothing/shoes/magboots) && (H.shoes.item_flags & NOSLIP))
+			if(istype(H.shoes, /obj/item/clothing/shoes/magboots) && (H.shoes.clothing_flags & NOSLIP))
 				can_grab = 0
 		if(can_grab)
 			if(prob(TRAIT_POTENCY))
@@ -131,11 +124,11 @@
 				buckle_mob(victim)
 				victim.setDir(pick(GLOB.cardinal))
 				to_chat(victim, "<span class='danger'>Tendrils [pick("wind", "tangle", "tighten")] around you!</span>")
-				victim.Weaken(1)
+				victim.afflict_paralyze(20 * 1)
 				victim.adjustToxLoss(rand(0.5,1.25))
 				seed.do_thorns(victim,src)
 			else // Adding a non-grab attack chance since we will be increasing the rate at which the vines check for nearby targets
 				src.visible_message("<span class='danger'>Tendrils lash out from \the [src] and swipe across [victim]!</span>")
-				victim.Weaken(1.5)
+				victim.afflict_paralyze(20 * 1.5)
 				victim.adjustToxLoss(rand(1,3.5))
 				attack_mob(victim,rand(2,3.5))

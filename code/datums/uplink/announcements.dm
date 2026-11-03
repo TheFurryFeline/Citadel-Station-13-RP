@@ -15,7 +15,7 @@
 	desc = "Causes a falsified Command Update. Triggers immediately after supplying additional data."
 	item_cost = 40
 
-/datum/uplink_item/abstract/announcements/fake_centcom/extra_args(var/mob/user)
+/datum/uplink_item/abstract/announcements/fake_centcom/extra_args(mob/user)
 	var/title = sanitize(input("Enter your announcement title.", "Announcement Title") as null|text)
 	if(!title)
 		return
@@ -24,18 +24,18 @@
 		return
 	return list("title" = title, "message" = message)
 
-/datum/uplink_item/abstract/announcements/fake_centcom/get_goods(var/obj/item/uplink/U, var/loc, var/mob/user, var/list/args)
-	for (var/obj/machinery/computer/communications/C in machines)
-		if(! (C.stat & (BROKEN|NOPOWER) ) )
+/datum/uplink_item/abstract/announcements/fake_centcom/get_goods(obj/item/uplink/U, loc, mob/user, list/extra_args)
+	for (var/obj/machinery/computer/communications/C in GLOB.machines)
+		if(! (C.machine_stat & (BROKEN|NOPOWER)) )
 			var/obj/item/paper/P = new /obj/item/paper( C.loc )
 			P.name = "'[command_name()] Update.'"
-			P.info = replacetext(args["message"], "\n", "<br/>")
+			P.info = replacetext(extra_args["message"], "\n", "<br/>")
 			P.update_space(P.info)
 			P.update_icon()
-			C.messagetitle.Add(args["title"])
+			C.messagetitle.Add(extra_args["title"])
 			C.messagetext.Add(P.info)
 
-	command_announcement.Announce(args["message"], args["title"])
+	command_announcement.Announce(extra_args["message"], extra_args["title"])
 	return 1
 
 /datum/uplink_item/abstract/announcements/fake_crew_arrival
@@ -43,7 +43,7 @@
 	desc = "Creates a fake crew arrival announcement as well as fake crew records, using your current appearance (including held items!) and worn id card. Trigger with care!"
 	item_cost = 30
 
-/datum/uplink_item/abstract/announcements/fake_crew_arrival/get_goods(var/obj/item/uplink/U, var/loc, var/mob/user, var/list/args)
+/datum/uplink_item/abstract/announcements/fake_crew_arrival/get_goods(obj/item/uplink/U, loc, mob/user, list/extra_args)
 	if(!user)
 		return 0
 
@@ -60,7 +60,7 @@
 		general.fields["rank"] = I.assignment
 		general.fields["real_rank"] = I.assignment
 		general.fields["name"] = I.registered_name
-		general.fields["sex"] = I.sex
+		general.fields["sex"] = capitalize(user.gender)
 	else
 		var/mob/living/carbon/human/H
 		if(istype(user,/mob/living/carbon/human))
@@ -74,7 +74,7 @@
 		general.fields["name"] = user.real_name
 		general.fields["sex"] = capitalize(user.gender)
 
-	general.fields["species"] = user.get_species()
+	general.fields["species"] = user.get_species_name()
 	var/datum/data/record/medical = data_core.CreateMedicalRecord(general.fields["name"], general.fields["id"])
 	data_core.CreateSecurityRecord(general.fields["name"], general.fields["id"])
 
@@ -89,8 +89,6 @@
 		medical.fields["b_dna"]			= random_medical_record.fields["b_type"]
 
 	if(I)
-		general.fields["fingerprint"] 	= I.fingerprint_hash
-		medical.fields["b_type"]	= I.blood_type
 		medical.fields["b_dna"]		= I.dna_hash
 
 	AnnounceArrivalSimple(general.fields["name"], general.fields["rank"])
@@ -114,4 +112,3 @@
 	var/datum/event_meta/EM = new(EVENT_LEVEL_MUNDANE, "Fake Radiation Storm", add_to_queue = 0)
 	new/datum/event/radiation_storm/syndicate(EM)
 	return 1
-

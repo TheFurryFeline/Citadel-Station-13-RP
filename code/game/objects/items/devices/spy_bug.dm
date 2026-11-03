@@ -4,9 +4,9 @@
 	icon = 'icons/obj/grenade.dmi'
 	icon_state = "camgrenade"
 	item_state = "empgrenade"
-	w_class = ITEMSIZE_SMALL
-	force = 0
-	throwforce = 5.0
+	w_class = WEIGHT_CLASS_SMALL
+	damage_force = 0
+	throw_force = 5.0
 	throw_range = 15
 	throw_speed = 3
 	origin_tech = list(TECH_DATA = 1, TECH_ENGINEERING = 1)
@@ -20,7 +20,10 @@
 	. = ..()
 	camera = new camtype(src)
 
-/obj/item/camerabug/attack_self(mob/user)
+/obj/item/camerabug/attack_self(mob/user, datum/event_args/actor/actor)
+	. = ..()
+	if(.)
+		return
 	if(user.a_intent == INTENT_HARM)
 		to_chat(user, "<span class='notice'>You crush the [src] under your foot, breaking it.</span>")
 		visible_message("[user.name] crushes the [src] under their foot, breaking it!</span>")
@@ -30,7 +33,7 @@
 
 /obj/item/camerabug/verb/reset()
 	set name = "Reset camera bug"
-	set category = "Object"
+	set category = VERB_CATEGORY_OBJECT
 	if(linkedmonitor)
 		linkedmonitor.unpair(src)
 	linkedmonitor = null
@@ -44,9 +47,9 @@
 	icon = 'icons/obj/grenade.dmi'
 	icon_state = "camgrenadebroken"
 	item_state = "empgrenade"
-	force = 5.0
-	w_class = ITEMSIZE_SMALL
-	throwforce = 5.0
+	damage_force = 5.0
+	w_class = WEIGHT_CLASS_SMALL
+	throw_force = 5.0
 	throw_range = 15
 	throw_speed = 3
 	origin_tech = list(TECH_ENGINEERING = 1)
@@ -58,11 +61,11 @@
 	icon_state = "eshield"
 	item_state = "nothing"
 	layer = TURF_LAYER+0.2
-	w_class = ITEMSIZE_TINY
+	w_class = WEIGHT_CLASS_TINY
 	slot_flags = SLOT_EARS
 	origin_tech = list(TECH_ENGINEERING = 1, TECH_ILLEGAL = 3) //crush it and you lose the data
-	force = 0
-	throwforce = 5.0
+	damage_force = 0
+	throw_force = 5.0
 	throw_range = 15
 	throw_speed = 3
 
@@ -73,12 +76,12 @@
 	icon_state = "eshield"
 	item_state = "nothing"
 	layer = TURF_LAYER+0.2
-	w_class = ITEMSIZE_TINY
+	w_class = WEIGHT_CLASS_TINY
 	slot_flags = SLOT_EARS
 	origin_tech = list(TECH_DATA = 1, TECH_ENGINEERING = 1, TECH_ILLEGAL = 3)
 	camtype = /obj/machinery/camera/bug/spy
 
-/obj/item/camerabug/examine(mob/user)
+/obj/item/camerabug/examine(mob/user, dist)
 	. = ..()
 	. += "It has a tiny camera inside. Needs to be both configured and brought in contact with monitor device to be fully functional."
 
@@ -96,7 +99,7 @@
 		else
 			to_chat(user, "Error: The device is linked to another monitor.")
 	else
-		if(W.force >= 5)
+		if(W.damage_force >= 5)
 			visible_message("\The [src] lens shatters!")
 			new brokentype(get_turf(src))
 			if(linkedmonitor)
@@ -106,14 +109,15 @@
 			qdel(src)
 		..()
 
-/obj/item/camerabug/bullet_act()
+/obj/item/camerabug/on_bullet_act(obj/projectile/proj, impact_flags, list/bullet_act_args)
+	. = ..()
+	if(. & PROJECTILE_IMPACT_FLAGS_UNCONDITIONAL_ABORT)
+		return
 	visible_message("The [src] lens shatters!")
 	new brokentype(get_turf(src))
 	if(linkedmonitor)
 		linkedmonitor.unpair(src)
 	linkedmonitor = null
-	spawn(0)
-	qdel(src)
 
 /obj/item/camerabug/Destroy()
 	if(linkedmonitor)
@@ -127,14 +131,17 @@
 	icon = 'icons/obj/device.dmi'
 	icon_state = "forensic0"
 	item_state = "electronic"
-	w_class  = ITEMSIZE_SMALL
+	w_class  = WEIGHT_CLASS_SMALL
 	origin_tech = list(TECH_DATA = 1, TECH_ENGINEERING = 1)
 
 	var/operating = 0
 	var/obj/machinery/camera/bug/selected_camera
 	var/list/obj/machinery/camera/bug/cameras = new()
 
-/obj/item/bug_monitor/attack_self(mob/user)
+/obj/item/bug_monitor/attack_self(mob/user, datum/event_args/actor/actor)
+	. = ..()
+	if(.)
+		return
 	if(operating)
 		return
 
@@ -203,7 +210,7 @@
 	item_state = "electronic"
 	origin_tech = list(TECH_DATA = 1, TECH_ENGINEERING = 1, TECH_ILLEGAL = 3)
 
-/obj/item/bug_monitor/spy/examine(mob/user)
+/obj/item/bug_monitor/spy/examine(mob/user, dist)
 	. = ..()
 	. += "The time '12:00' is blinking in the corner of the screen and \the [src] looks very cheaply made."
 

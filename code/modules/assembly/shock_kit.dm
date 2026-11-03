@@ -5,7 +5,7 @@
 	var/obj/item/clothing/head/helmet/part1 = null
 	var/obj/item/radio/electropack/part2 = null
 	var/status = 0
-	w_class = ITEMSIZE_HUGE
+	w_class = WEIGHT_CLASS_HUGE
 
 /obj/item/assembly/shock_kit/Destroy()
 	qdel(part1)
@@ -29,11 +29,14 @@
 	if(W.is_screwdriver())
 		status = !status
 		to_chat(user, "<span class='notice'>[src] is now [status ? "secured" : "unsecured"]!</span>")
-		playsound(src, W.usesound, 50, 1)
+		playsound(src, W.tool_sound, 50, 1)
 	add_fingerprint(user)
 	return
 
-/obj/item/assembly/shock_kit/attack_self(mob/user as mob)
+/obj/item/assembly/shock_kit/attack_self(mob/user, datum/event_args/actor/actor)
+	. = ..()
+	if(.)
+		return
 	part1.attack_self(user, status)
 	part2.attack_self(user, status)
 	add_fingerprint(user)

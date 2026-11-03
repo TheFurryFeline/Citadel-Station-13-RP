@@ -19,12 +19,12 @@
 	has_skybox_image = TRUE
 
 /datum/event/hostile_migration/get_skybox_image()
-	if(!cloud_hueshift)
-		cloud_hueshift = color_matrix_rotate_hue(rand(-3, 3) * 15)
-	var/image/res = image('icons/skybox/caelus.dmi', "rats")
-	res.color = cloud_hueshift
+	var/color1 = color_matrix_multiply(color_matrix_rotate_hue(rand(-3, 3) * 15), rgba_auto_greyscale_matrix("#8888ff"))
+	var/color2 = color_matrix_multiply(color_matrix_rotate_hue(rand(-3, 3) * 15), rgba_auto_greyscale_matrix("#88ff88"))
+	var/image/res = image('icons/skybox/caelus.dmi', "aurora")
 	res.appearance_flags = RESET_COLOR
 	res.blend_mode = BLEND_ADD
+	animate_color_shift(res, color1, color2, 1080 * 0.5, 1080 * 0.5)
 	return res
 
 /datum/event/hostile_migration/setup()
@@ -91,8 +91,8 @@
 	var/list/vents = list()
 	for(var/areapath in typesof(spawn_area_type))
 		var/area/A = locate(areapath)
-		for(var/obj/machinery/atmospherics/unary/vent_pump/temp_vent in A.contents)
-			if(!temp_vent.welded && temp_vent.network && ((temp_vent.loc.z in GLOB.using_map.station_levels) || isTalon == 1))
+		for(var/obj/machinery/atmospherics/component/unary/vent_pump/temp_vent in A.contents)
+			if(!temp_vent.welded && temp_vent.network && ((temp_vent.loc.z in (LEGACY_MAP_DATUM).station_levels) || isTalon == 1))
 				vents += temp_vent
 
 	var/rats = /mob/living/simple_mob/animal/passive/mouse/rat
@@ -100,21 +100,21 @@
 	spawn(0)
 		var/num = spawncount
 		while(vents.len > 0 && num > 0)
-			var/obj/machinery/atmospherics/unary/vent_pump/V = pick(vents)
+			var/obj/machinery/atmospherics/component/unary/vent_pump/V = pick(vents)
 			num--
 			var/spawn_type = rats
 			new spawn_type(V.loc)
 		var/bossnum = boss_spawn_count
 		while(vents.len > 0 && bossnum > 0)
 			bossnum--
-			var/obj/machinery/atmospherics/unary/vent_pump/V = pick(vents)
+			var/obj/machinery/atmospherics/component/unary/vent_pump/V = pick(vents)
 			var/spawn_type = bossrats
 			new spawn_type(V.loc)
 		isTalon = 0
 
 // Overmap version
 /datum/event/hostile_migration/overmap/announce()
-	if(istype(victim, /obj/effect/overmap/visitable/ship/talon))
+	if(istype(victim, /obj/overmap/entity/visitable/ship/talon))
 		command_announcement.Announce("Unidentified hostile lifesigns detected migrating towards ITV Talon through the exterior pipes. Secure any exterior access, including ducting and ventilation.","Hostile Vermin Boarding Alert")
 		return
 	else
@@ -123,10 +123,10 @@
 
 // override: cancel if not main ship as this is too dumb to target the actual ship crossing it.
 /datum/event/hostile_migration/overmap/start()
-	if(istype(victim, /obj/effect/overmap/visitable/ship/landable))
+	if(istype(victim, /obj/overmap/entity/visitable/ship/landable))
 		kill()
 		return
-	if(istype(victim, /obj/effect/overmap/visitable/ship/talon)) //Forces the location to the Talon.
+	if(istype(victim, /obj/overmap/entity/visitable/ship/talon)) //Forces the location to the Talon.
 		isTalon = 1
 		location = 8
 	return ..()

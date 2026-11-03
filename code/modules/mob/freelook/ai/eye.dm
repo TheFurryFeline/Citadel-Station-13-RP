@@ -9,26 +9,20 @@
 
 /mob/observer/eye/aiEye/Initialize(mapload)
 	. = ..()
-	visualnet = cameranet
+	visualnet = GLOB.cameranet
 
 /mob/observer/eye/aiEye/setLoc(var/T, var/cancel_tracking = 1)
 	if(..())
 		var/mob/living/silicon/ai/ai = owner
 		if(cancel_tracking)
 			ai.ai_cancel_tracking()
-
-		//Holopad
-		if(ai.holo)
-			if(ai.hologram_follow)
-				ai.holo.move_hologram(ai)
+		if(ai.hologram_follow)
+			ai.move_active_hologram(T)
 		return 1
 
 // AI MOVEMENT
 
 // The AI's "eye". Described on the top of the page.
-
-/mob/living/silicon/ai
-	var/obj/machinery/hologram/holopad/holo = null
 
 /mob/living/silicon/ai/proc/destroy_eyeobj(var/atom/new_eye)
 	if(!eyeobj)
@@ -59,7 +53,6 @@
 	return INITIALIZE_HINT_LATELOAD
 
 /mob/living/silicon/ai/LateInitialize()
-	. = ..()
 	if(eyeobj && loc)
 		eyeobj.forceMove(loc)
 

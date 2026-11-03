@@ -1,8 +1,8 @@
-var/global/list/empty_playable_ai_cores = list()
+GLOBAL_LIST_EMPTY(empty_playable_ai_cores)
 
 /mob/living/silicon/ai/verb/store_core()
 	set name = "Store Core"
-	set category = "OOC"
+	set category = VERB_CATEGORY_OOC
 	set desc = "Enter intelligence storage. This is functionally equivalent to cryo or robotic storage, freeing up your job slot."
 
 	if(SSticker && SSticker.mode && SSticker.mode.name == "AI malfunction")
@@ -15,7 +15,7 @@ var/global/list/empty_playable_ai_cores = list()
 		return
 
 	// We warned you.
-	empty_playable_ai_cores += new /obj/structure/AIcore/deactivated(loc)
+	GLOB.empty_playable_ai_cores += new /obj/structure/AIcore/deactivated(loc)
 	GLOB.global_announcer.autosay("[src] has been moved to intelligence storage.", "Artificial Intelligence Oversight")
 
 	//Handle job slot/tater cleanup.

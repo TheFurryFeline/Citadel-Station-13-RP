@@ -20,7 +20,7 @@
 	var/obj/structure/m_tray/connected = null
 	var/list/occupants = list()
 	anchored = 1
-	can_be_unanchored = 1
+	// can_be_unanchored = 1
 
 /obj/structure/morgue/Destroy()
 	if(connected)
@@ -43,7 +43,7 @@
 			src.icon_state = "morgue2"
 			get_occupants()
 			for (var/mob/living/carbon/human/H in occupants)
-				if(H.isSynthetic() || H.suiciding || !H.ckey || !H.client || (NOCLONE in H.mutations) || (H.species && H.species.flags & NO_SCAN))
+				if(H.isSynthetic() || H.suiciding || !H.ckey || !H.client || (MUTATION_NOCLONE in H.mutations) || (H.species && H.species.species_flags & NO_SCAN))
 					src.icon_state = "morgue2"
 					break
 				else
@@ -54,43 +54,40 @@
 			src.icon_state = "morgue1"
 	return
 
-/obj/structure/morgue/ex_act(severity)
+/obj/structure/morgue/legacy_ex_act(severity)
 	switch(severity)
 		if(1.0)
 			for(var/atom/movable/A as mob|obj in src)
 				A.forceMove(src.loc)
-				ex_act(severity)
+				legacy_ex_act(severity)
 			qdel(src)
 			return
 		if(2.0)
 			if (prob(50))
 				for(var/atom/movable/A as mob|obj in src)
 					A.forceMove(src.loc)
-					ex_act(severity)
+					legacy_ex_act(severity)
 				qdel(src)
 				return
 		if(3.0)
 			if (prob(5))
 				for(var/atom/movable/A as mob|obj in src)
 					A.forceMove(src.loc)
-					ex_act(severity)
+					legacy_ex_act(severity)
 				qdel(src)
 				return
 	return
 
-/obj/structure/morgue/attack_robot(mob/user)
-	if(Adjacent(user))
-		attack_hand(user)
-
-/obj/structure/morgue/attack_hand(mob/user as mob)
+/obj/structure/morgue/attack_hand(mob/user, datum/event_args/actor/clickchain/e_args)
+	if (!anchored)
+		user.show_message(SPAN_WARNING("You can't open [src] while it's unanchored."))
+		return
 	if (src.connected)
 		close()
 	else
 		open()
 	src.add_fingerprint(user)
 	update()
-	return
-
 
 /obj/structure/morgue/proc/close()
 	for(var/atom/movable/A as mob|obj in src.connected.loc)
@@ -121,24 +118,27 @@
 
 /obj/structure/morgue/attackby(obj/item/W as obj, mob/user as mob)
 	if (istype(W, /obj/item/pen))
-		var/t = input(user, "What would you like the label to be?", text("[]", src.name), null)  as text
-		if (user.get_active_hand() != W)
+		var/t = input(user, "What would you like the label to be?", name, null) as text
+		if (user.get_active_held_item() != W)
 			return
 		if ((!in_range(src, usr) && src.loc != user))
 			return
 		t = sanitizeSafe(t, MAX_NAME_LEN)
 		if (t)
-			src.name = text("Morgue- '[]'", t)
+			name = "Morgue- '[t]'"
 		else
 			src.name = "Morgue"
 	if(istype(W, /obj/item/tool/wrench))
+		if(connected)
+			user.show_message(SPAN_WARNING("You can't move [src] while it's open."))
+			return
 		if(anchored)
-			user.show_message(text("<span class='notice'>[src] can now be moved.</span>"))
-			playsound(src, W.usesound, 50, 1)
+			user.show_message(SPAN_NOTICE("[src] can now be moved."))
+			playsound(src, W.tool_sound, 50, 1)
 			anchored = FALSE
 		else if(!anchored)
-			user.show_message(text("<span class='notice'>[src] is now secured.</span>"))
-			playsound(src, W.usesound, 50, 1)
+			user.show_message(SPAN_NOTICE("[src] is now secured."))
+			playsound(src, W.tool_sound, 50, 1)
 			anchored = TRUE
 	src.add_fingerprint(user)
 	return
@@ -157,11 +157,11 @@
 	desc = "Apply corpse before closing."
 	icon = 'icons/obj/stationobjs.dmi'
 	icon_state = "morguet"
-	density = 1
+	density = TRUE
+	pass_flags_self = ATOM_PASS_THROWN | ATOM_PASS_OVERHEAD_THROW
+	anchored = TRUE
 	plane = TURF_PLANE
 	var/obj/structure/morgue/connected = null
-	anchored = 1
-	throwpass = 1
 
 /obj/structure/m_tray/Destroy()
 	if(connected && connected.connected == src)
@@ -169,11 +169,7 @@
 	connected = null
 	return ..()
 
-/obj/structure/m_tray/attack_robot(mob/user)
-	if(Adjacent(user))
-		attack_hand(user)
-
-/obj/structure/m_tray/attack_hand(mob/user as mob)
+/obj/structure/m_tray/attack_hand(mob/user, datum/event_args/actor/clickchain/e_args)
 	if (src.connected)
 		for(var/atom/movable/A as mob|obj in src.loc)
 			if (!( A.anchored ))
@@ -184,20 +180,18 @@
 		add_fingerprint(user)
 		//SN src = null
 		qdel(src)
-		return
-	return
 
-/obj/structure/m_tray/MouseDrop_T(atom/movable/O as mob|obj, mob/user as mob)
+/obj/structure/m_tray/MouseDroppedOnLegacy(atom/movable/O as mob|obj, mob/user as mob)
 	if ((!( istype(O, /atom/movable) ) || O.anchored || get_dist(user, src) > 1 || get_dist(user, O) > 1 || user.contents.Find(src) || user.contents.Find(O)))
 		return
 	if (!ismob(O) && !istype(O, /obj/structure/closet/body_bag))
 		return
-	if (!ismob(user) || user.stat || user.lying || user.stunned)
+	if (!ismob(user) || !CHECK_MOBILITY(user, MOBILITY_CAN_USE))
 		return
 	O.forceMove(src.loc)
 	if (user != O)
 		for(var/mob/B in viewers(user, 3))
-			if ((B.client && !( B.blinded )))
+			if ((B.client && !( B.has_status_effect(/datum/status_effect/sight/blindness) )))
 				to_chat(B, "<span class='warning'>\The [user] stuffs [O] into [src]!</span>")
 	return
 
@@ -227,7 +221,7 @@ GLOBAL_LIST_BOILERPLATE(all_crematoriums, /obj/structure/morgue/crematorium)
 			src.icon_state = "crema1"
 	return
 
-/obj/structure/morgue/crematorium/attack_hand(mob/user as mob)
+/obj/structure/morgue/crematorium/attack_hand(mob/user, datum/event_args/actor/clickchain/e_args)
 	if (cremating)
 		to_chat(usr, "<span class='warning'>It's locked.</span>")
 		return
@@ -241,9 +235,9 @@ GLOBAL_LIST_BOILERPLATE(all_crematoriums, /obj/structure/morgue/crematorium)
 	else if (src.locked == 0)
 		playsound(src.loc, 'sound/items/Deconstruct.ogg', 50, 1)
 		src.connected = new /obj/structure/m_tray/c_tray( src.loc )
-		step(src.connected, dir) //Vorestation Edit
+		step(src.connected, dir)
 		src.connected.layer = OBJ_LAYER
-		var/turf/T = get_step(src, dir) //Vorestation Edit
+		var/turf/T = get_step(src, dir)
 		if (T.contents.Find(src.connected))
 			src.connected.connected = src
 			src.icon_state = "crema0"
@@ -251,24 +245,24 @@ GLOBAL_LIST_BOILERPLATE(all_crematoriums, /obj/structure/morgue/crematorium)
 				A.forceMove(src.connected.loc)
 			src.connected.icon_state = "cremat"
 		else
-			//src.connected = null
 			qdel(src.connected)
+			src.connected = null
 	src.add_fingerprint(user)
 	update()
 
 /obj/structure/morgue/crematorium/attackby(P as obj, mob/user as mob)
 	if (istype(P, /obj/item/pen))
-		var/t = input(user, "What would you like the label to be?", text("[]", src.name), null)  as text
-		if (user.get_active_hand() != P)
+		var/t = input(user, "What would you like the label to be?", name, null) as text
+		if (user.get_active_held_item() != P)
 			return
-		if ((!in_range(src, usr) > 1 && src.loc != user))
+		if ((!in_range(src, usr) > 1 && loc != user))
 			return
 		t = sanitizeSafe(t, MAX_NAME_LEN)
 		if (t)
-			src.name = text("Crematorium- '[]'", t)
+			name = "Crematorium- '[t]'"
 		else
-			src.name = "Crematorium"
-	src.add_fingerprint(user)
+			name = "Crematorium"
+	add_fingerprint(user)
 	return
 
 /obj/structure/morgue/crematorium/relaymove(mob/user as mob)
@@ -299,7 +293,7 @@ GLOBAL_LIST_BOILERPLATE(all_crematoriums, /obj/structure/morgue/crematorium)
 			return
 
 	else
-		if(!!length(src.search_contents_for(/obj/item/disk/nuclear)))
+		if(!!length(src.get_all_contents_filtered(cached_typecacheof(/obj/item/disk/nuclear))))
 			to_chat(user,"You get the feeling that you shouldn't cremate one of the items in the cremator.")
 			return
 
@@ -312,11 +306,11 @@ GLOBAL_LIST_BOILERPLATE(all_crematoriums, /obj/structure/morgue/crematorium)
 		for(var/mob/living/M in contents)
 			if (M.stat!=2)
 				if (!iscarbon(M))
-					M.emote("scream")
+					M.emote_nosleep("scream")
 				else
 					var/mob/living/carbon/C = M
 					if (C.can_feel_pain())
-						C.emote("scream")
+						C.emote_nosleep("scream")
 
 			M.death(1)
 			M.ghostize()
@@ -325,7 +319,7 @@ GLOBAL_LIST_BOILERPLATE(all_crematoriums, /obj/structure/morgue/crematorium)
 		for(var/obj/O in contents) //obj instead of obj/item so that bodybags and ashes get destroyed. We dont want tons and tons of ash piling up
 			qdel(O)
 
-		new /obj/effect/decal/cleanable/ash(src)
+		new /obj/effect/debris/cleanable/ash(src)
 		sleep(30)
 		cremating = 0
 		locked = 0
@@ -347,10 +341,10 @@ GLOBAL_LIST_BOILERPLATE(all_crematoriums, /obj/structure/morgue/crematorium)
 	desc = "Burn baby burn!"
 	icon = 'icons/obj/power.dmi'
 	icon_state = "crema_switch"
-	req_access = list(access_crematorium)
+	req_access = list(ACCESS_GENERAL_CREMATOR)
 	id = 1
 
-/obj/machinery/button/crematorium/attack_hand(mob/user as mob)
+/obj/machinery/button/crematorium/attack_hand(mob/user, datum/event_args/actor/clickchain/e_args)
 	if(..())
 		return
 	if(src.allowed(user))
@@ -362,7 +356,7 @@ GLOBAL_LIST_BOILERPLATE(all_crematoriums, /obj/structure/morgue/crematorium)
 		to_chat(user,"<span class='warning'>Access denied.</span>")
 
 
-//VR FILE MERGE
+//! ## VR FILE MERGE ## !//
 /obj/structure/morgue/crematorium/vr
 	var/list/allowed_items = list(/obj/item/organ,
 			/obj/item/implant,
@@ -379,7 +373,7 @@ GLOBAL_LIST_BOILERPLATE(all_crematoriums, /obj/structure/morgue/crematorium)
 			M.show_message("<span class='warning'>You hear a hollow crackle.</span>", 1)
 			return
 	else
-		if(!!length(src.search_contents_for(/obj/item/disk/nuclear)))
+		if(!!length(src.get_all_contents_filtered(cached_typecacheof(/obj/item/disk/nuclear))))
 			to_chat(usr, "You get the feeling that you shouldn't cremate one of the items in the cremator.")
 			return
 
@@ -403,11 +397,11 @@ GLOBAL_LIST_BOILERPLATE(all_crematoriums, /obj/structure/morgue/crematorium)
 		for(var/mob/living/M in contents)
 			if (M.stat!=2)
 				if (!iscarbon(M))
-					M.emote("scream")
+					M.emote_nosleep("scream")
 				else
 					var/mob/living/carbon/C = M
 					if (C.can_feel_pain())
-						C.emote("scream")
+						C.emote_nosleep("scream")
 
 			M.death(1)
 			M.ghostize()
@@ -416,7 +410,7 @@ GLOBAL_LIST_BOILERPLATE(all_crematoriums, /obj/structure/morgue/crematorium)
 		for(var/obj/O in contents) //obj instead of obj/item so that bodybags and ashes get destroyed. We dont want tons and tons of ash piling up
 			qdel(O)
 
-		new /obj/effect/decal/cleanable/ash(src)
+		new /obj/effect/debris/cleanable/ash(src)
 		sleep(30)
 		cremating = 0
 		locked = 0

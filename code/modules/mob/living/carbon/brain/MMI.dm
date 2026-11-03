@@ -13,20 +13,24 @@
 	desc = "The Warrior's bland acronym, MMI, obscures the true horror of this monstrosity."
 	icon = 'icons/obj/assemblies.dmi'
 	icon_state = "mmi_empty"
-	w_class = ITEMSIZE_NORMAL
+	w_class = WEIGHT_CLASS_NORMAL
 	can_speak = TRUE
 	origin_tech = list(TECH_BIO = 3)
 	catalogue_data = list(/datum/category_item/catalogue/fauna/brain/assisted)
 
-	req_access = list(access_robotics)
+	req_access = list(ACCESS_SCIENCE_ROBOTICS)
 
 	//Revised. Brainmob is now contained directly within object of transfer. MMI in this case.
 
 	var/locked = FALSE
-	var/mob/living/carbon/brain/brainmob = null//The current occupant.
-	var/obj/item/organ/internal/brain/brainobj = null	//The current brain organ.
-	var/obj/mecha = null//This does not appear to be used outside of reference in mecha.dm.
-	var/obj/item/radio/headset/mmi_radio/radio = null//Let's give it a radio.
+	/// The current occupant.
+	var/mob/living/carbon/brain/brainmob = null
+	/// The current brain organ.
+	var/obj/item/organ/internal/brain/brainobj = null
+	/// This does not appear to be used outside of reference in mecha.dm.
+	var/obj/vehicle/sealed/mecha = null
+	/// Let's give it a radio.
+	var/obj/item/radio/headset/mmi_radio/radio = null
 
 /obj/item/mmi/Initialize(mapload)
 	. = ..()
@@ -35,10 +39,10 @@
 /obj/item/mmi/verb/toggle_radio()
 	set name = "Toggle Brain Radio"
 	set desc = "Enables or disables the integrated brain radio, which is only usable outside of a body."
-	set category = "Object"
+	set category = VERB_CATEGORY_OBJECT
 	set src in usr
 	set popup_menu = 1
-	if(!usr.canmove || usr.stat || usr.restrained())
+	if(!CHECK_MOBILITY(usr, MOBILITY_CAN_USE))
 		return 0
 
 	if (radio.radio_enabled == 1)
@@ -56,10 +60,7 @@
 	if(istype(O,/obj/item/organ/internal/brain) && !brainmob) //Time to stick a brain in it --NEO
 
 		var/obj/item/organ/internal/brain/B = O
-		if(B.health <= 0)
-			to_chat(user, SPAN_WARNING("That brain is well and truly dead."))
-			return
-		else if(!B.brainmob)
+		if(!B.brainmob)
 			to_chat(user, SPAN_WARNING("You aren't sure where this brain came from, but you're pretty sure it's useless."))
 			return
 
@@ -67,9 +68,11 @@
 			if(istype(modifier_type, /datum/modifier/no_borg))
 				to_chat(user, SPAN_WARNING("\The [src] appears to reject this brain.  It is incompatable."))
 				return
+		if(!user.attempt_insert_item_for_installation(O, src))
+			return
 
 		user.visible_message(SPAN_NOTICE("\The [user] sticks \a [O] into \the [src]."))
-		B.preserved = TRUE
+		B.preserve(MMI_TRAIT)
 
 		brainmob = B.brainmob
 		B.brainmob = null
@@ -79,9 +82,7 @@
 		dead_mob_list -= brainmob//Update dem lists
 		living_mob_list += brainmob
 
-		user.drop_item()
 		brainobj = O
-		brainobj.loc = src
 
 		name = "man-machine interface ([brainmob.real_name])"
 		icon_state = "mmi_full"
@@ -100,12 +101,15 @@
 			to_chat(user, "<span class='warning'>Access denied.</span>")
 		return
 	if(brainmob)
-		O.attack(brainmob, user)//Oh noooeeeee
+		O.lazy_melee_interaction_chain(brainmob, user)//Oh noooeeeee
 		return
 	..()
 
 //TODO: ORGAN REMOVAL UPDATE. Make the brain remain in the MMI so it doesn't lose organ data.
-/obj/item/mmi/attack_self(mob/user as mob)
+/obj/item/mmi/attack_self(mob/user, datum/event_args/actor/actor)
+	. = ..()
+	if(.)
+		return
 	if(!brainmob)
 		to_chat(user, "<span class='warning'>You upend the MMI, but there's nothing in it.</span>")
 	else if(locked)
@@ -119,7 +123,7 @@
 			brainobj = null
 		else	//Or make a new one if empty.
 			brain = new(user.loc)
-		brain.preserved = FALSE
+		brain.unpreserve(MMI_TRAIT)
 		brainmob.container = null//Reset brainmob mmi var.
 		brainmob.loc = brain//Throw mob into brain.
 		living_mob_list -= brainmob//Get outta here
@@ -147,12 +151,12 @@
 	return
 
 /obj/item/mmi/relaymove(var/mob/user, var/direction)
-	if(user.stat || user.stunned)
+	if(!CHECK_MOBILITY(user, MOBILITY_CAN_MOVE))
 		return
-	var/obj/item/rig/rig = src.get_rig()
-	if(rig)
-		if(istype(rig,/obj/item/rig))
-			rig.forced_move(direction, user)
+	var/obj/item/hardsuit/hardsuit = src.get_hardsuit()
+	if(hardsuit)
+		if(istype(hardsuit,/obj/item/hardsuit))
+			hardsuit.forced_move(direction, user)
 
 /obj/item/mmi/Destroy()
 	if(isrobot(loc))
@@ -185,58 +189,55 @@
 /obj/item/mmi/digital
 	var/searching = 0
 	var/askDelay = 10 * 60 * 1
-	req_access = list(access_robotics)
+	req_access = list(ACCESS_SCIENCE_ROBOTICS)
 	locked = 0
 	mecha = null//This does not appear to be used outside of reference in mecha.dm.
 	var/ghost_query_type = null
 
 /obj/item/mmi/digital/Initialize(mapload)
 	. = ..()
-	src.brainmob = new(src)
-//	src.brainmob.add_language("Robot Talk")//No binary without a binary communication device
-	src.brainmob.add_language(LANGUAGE_GALCOM)
-	src.brainmob.add_language(LANGUAGE_EAL)
-	src.brainmob.loc = src
-	src.brainmob.container = src
-	src.brainmob.set_stat(CONSCIOUS)
-	src.brainmob.silent = 0
+	// HACK: if we're in repository subsystem load, skip brainmob
+	if(!SSrepository.initialized)
+		return
+	brainmob = new(src)
+//	brainmob.add_language("Robot Talk")//No binary without a binary communication device
+	brainmob.add_language(LANGUAGE_GALCOM)
+	brainmob.add_language(LANGUAGE_EAL)
+	brainmob.container = src
+	brainmob.set_stat(CONSCIOUS)
+	brainmob.silent = FALSE
 	radio = new(src)
-	dead_mob_list -= src.brainmob
+	dead_mob_list -= brainmob
 
-/obj/item/mmi/digital/attackby(var/obj/item/O as obj, var/mob/user as mob)
-	return	//Doesn't do anything right now because none of the things that can be done to a regular MMI make any sense for these
+/obj/item/mmi/digital/attackby(obj/item/O as obj, mob/user as mob)
+	return //Doesn't do anything right now because none of the things that can be done to a regular MMI make any sense for these
 
-/obj/item/mmi/digital/examine(mob/user)
+/obj/item/mmi/digital/examine(mob/user, dist)
 	. = ..()
-
-	var/msg = "<span class='info'>*---------*</span>\nThis is [icon2html(thing = src, target = user)] \a <EM>[src]</EM>!\n[desc]\n"
-	msg += "<span class='warning'>"
-
-	if(src.brainmob && src.brainmob.key)
-		switch(src.brainmob.stat)
-			if(CONSCIOUS)
-				if(!src.brainmob.client)	msg += "It appears to be in stand-by mode.\n" //afk
-			if(UNCONSCIOUS)		msg += "<span class='warning'>It doesn't seem to be responsive.</span>\n"
-			if(DEAD)			msg += "<span class='deadsay'>It appears to be completely inactive.</span>\n"
-	else
-		msg += "<span class='deadsay'>It appears to be completely inactive.</span>\n"
-	msg += "</span><span class='info'>*---------*</span>"
-	. += msg
-	return
+	if(radio)
+		. += SPAN_NOTICE("There is a switch to toggle the radio system [radio.radio_enabled ? "off" : "on"].[brainobj ? " It is currently being covered by [brainobj]." : null]")
+	if(brainmob)
+		var/mob/living/carbon/brain/B = brainmob
+		if(!B.key || !B.mind || B.stat == DEAD)
+			. += SPAN_WARNING("\The [src] indicates that the brain is completely unresponsive.")
+		else if(!B.client)
+			. += SPAN_WARNING("\The [src] indicates that the brain is currently inactive; it might change.")
+		else
+			. += SPAN_NOTICE("\The [src] indicates that the brain is active.")
 
 /obj/item/mmi/digital/emp_act(severity)
-	if(!src.brainmob)
+	if(!brainmob)
 		return
 	else
 		switch(severity)
 			if(1)
-				src.brainmob.emp_damage += rand(20,30)
+				brainmob.emp_damage += rand(20,30)
 			if(2)
-				src.brainmob.emp_damage += rand(10,20)
+				brainmob.emp_damage += rand(10,20)
 			if(3)
-				src.brainmob.emp_damage += rand(5,10)
+				brainmob.emp_damage += rand(5,10)
 			if(4)
-				src.brainmob.emp_damage += rand(0,5)
+				brainmob.emp_damage += rand(0,5)
 	..()
 
 /obj/item/mmi/digital/transfer_identity(var/mob/living/carbon/H)
@@ -244,10 +245,10 @@
 	brainmob.timeofhostdeath = H.timeofdeath
 	brainmob.set_stat(CONSCIOUS)
 	if(H.mind)
-		H.mind.transfer_to(brainmob)
+		H.mind.transfer(brainmob)
 	return
 
-/obj/item/mmi/digital/attack_self(mob/user as mob)
+/obj/item/mmi/digital/attack_self(mob/user, datum/event_args/actor/actor)
 	if(brainmob && !brainmob.key && searching == 0)
 		//Start the process of searching for a new user.
 		to_chat(user, "<font color=#4F49AF>You carefully locate the manual activation switch and start the [src]'s boot process.</font>")
@@ -267,7 +268,7 @@
 		reset_search()
 
 /obj/item/mmi/digital/proc/reset_search() //We give the players sixty seconds to decide, then reset the timer.
-	if(src.brainmob && src.brainmob.key)
+	if(brainmob && brainmob.key)
 		return
 
 	src.searching = 0
@@ -280,15 +281,15 @@
 	announce_ghost_joinleave(candidate, 0, "They are occupying a synthetic brain now.")
 	src.searching = 0
 	if(candidate.mind)
-		src.brainmob.mind = candidate.mind
-		src.brainmob.mind.reset()
-	src.brainmob.ckey = candidate.ckey
-	src.name = "[name] ([src.brainmob.name])"
-	to_chat(src.brainmob, "<b>You are [src.name], brought into existence on [station_name()].</b>")
-	to_chat(src.brainmob, "<b>As a synthetic intelligence, you are designed with organic values in mind.</b>")
-	to_chat(src.brainmob, "<b>However, unless placed in a lawed chassis, you are not obligated to obey any individual crew member.</b>") //it's not like they can hurt anyone
-//	to_chat(src.brainmob, "<b>Use say #b to speak to other artificial intelligences.</b>")
-	src.brainmob.mind.assigned_role = "Synthetic Brain"
+		brainmob.mind = candidate.mind
+		brainmob.mind.reset()
+	candidate.transfer_client_to(src.brainmob)
+	src.name = "[name] ([brainmob.name])"
+	to_chat(brainmob, "<b>You are [src.name], brought into existence on [station_name()].</b>")
+	to_chat(brainmob, "<b>As a synthetic intelligence, you are designed with organic values in mind.</b>")
+	to_chat(brainmob, "<b>However, unless placed in a lawed chassis, you are not obligated to obey any individual crew member.</b>") //it's not like they can hurt anyone
+//	to_chat(brainmob, "<b>Use say #b to speak to other artificial intelligences.</b>")
+	brainmob.mind.assigned_role = "Synthetic Brain"
 
 	var/turf/T = get_turf_or_move(src.loc)
 	for (var/mob/M in viewers(T))
@@ -298,16 +299,18 @@
 	name = "robotic intelligence circuit"
 	desc = "The pinnacle of artifical intelligence which can be achieved using classical computer science."
 	catalogue_data = list(/datum/category_item/catalogue/technology/drone/drones)
-	icon = 'icons/obj/module.dmi'
+	icon = 'icons/items/circuits.dmi'
 	icon_state = "mainboard"
-	w_class = ITEMSIZE_NORMAL
+	w_class = WEIGHT_CLASS_NORMAL
 	origin_tech = list(TECH_ENGINEERING = 4, TECH_MATERIAL = 3, TECH_DATA = 4)
 	ghost_query_type = /datum/ghost_query/drone_brain
+	// we ARE the mirror
+	integrity_flags = INTEGRITY_INDESTRUCTIBLE
 
 /obj/item/mmi/digital/robot/Initialize(mapload)
 	. = ..()
-	src.brainmob.name = "[pick(list("ADA","DOS","GNU","MAC","WIN","NJS","SKS","DRD","IOS","CRM","IBM","TEX","LVM","BSD",))]-[rand(1000, 9999)]"
-	src.brainmob.real_name = src.brainmob.name
+	brainmob?.name = "[pick(list("ADA","DOS","GNU","MAC","WIN","NJS","SKS","DRD","IOS","CRM","IBM","TEX","LVM","BSD",))]-[rand(1000, 9999)]"
+	brainmob?.real_name = brainmob.name
 
 /obj/item/mmi/digital/robot/transfer_identity(var/mob/living/carbon/H)
 	..()
@@ -331,15 +334,16 @@
 	catalogue_data = list(/datum/category_item/catalogue/technology/positronics)
 	icon = 'icons/obj/assemblies.dmi'
 	icon_state = "posibrain"
-	w_class = ITEMSIZE_NORMAL
+	w_class = WEIGHT_CLASS_NORMAL
 	origin_tech = list(TECH_ENGINEERING = 4, TECH_MATERIAL = 4, TECH_BLUESPACE = 2, TECH_DATA = 4)
 	ghost_query_type = /datum/ghost_query/posi_brain
 	catalogue_data = list(/datum/category_item/catalogue/fauna/brain/posibrain)
+	// we ARE the mirror
+	integrity_flags = INTEGRITY_INDESTRUCTIBLE
 
 /obj/item/mmi/digital/posibrain/request_player()
 	icon_state = "posibrain-searching"
 	..()
-
 
 /obj/item/mmi/digital/posibrain/transfer_identity(var/mob/living/carbon/H)
 	..()
@@ -359,8 +363,8 @@
 
 /obj/item/mmi/digital/posibrain/Initialize(mapload)
 	. = ..()
-	src.brainmob.name = "[pick(list("PBU","HIU","SINA","ARMA","OSI"))]-[rand(100, 999)]"
-	src.brainmob.real_name = src.brainmob.name
+	brainmob?.name = "[pick(list("PBU","HIU","SINA","ARMA","OSI"))]-[rand(100, 999)]"
+	brainmob?.real_name = brainmob.name
 
 // This type shouldn't care about brainmobs.
 /obj/item/mmi/inert
@@ -370,7 +374,7 @@
 /obj/item/mmi/inert/ai_remote
 	name = "\improper AI remote interface"
 	desc = "A sophisticated board which allows for an artificial intelligence to remotely control a synthetic chassis."
-	icon = 'icons/obj/module.dmi'
+	icon = 'icons/items/circuits.dmi'
 	icon_state = "mainboard"
-	w_class = ITEMSIZE_NORMAL
+	w_class = WEIGHT_CLASS_NORMAL
 	origin_tech = list(TECH_ENGINEERING = 2, TECH_MATERIAL = 2, TECH_BLUESPACE = 2, TECH_DATA = 3)

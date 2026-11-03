@@ -1,4 +1,3 @@
-//This file was auto-corrected by findeclaration.exe on 25.5.2012 20:42:31
 
 var/global/list/priority_air_alarms = list()
 var/global/list/minor_air_alarms = list()
@@ -14,23 +13,23 @@ var/global/list/minor_air_alarms = list()
 
 /obj/machinery/computer/atmos_alert/Initialize(mapload)
 	. = ..()
-	atmosphere_alarm.register_alarm(src, /atom/proc/update_icon)
+	atmosphere_alarm.register_alarm(src, PROC_REF(on_alarm_update))
 
 /obj/machinery/computer/atmos_alert/Destroy()
 	atmosphere_alarm.unregister_alarm(src)
 	return ..()
 
-/obj/machinery/computer/atmos_alert/attack_hand(mob/user)
+/obj/machinery/computer/atmos_alert/attack_hand(mob/user, datum/event_args/actor/clickchain/e_args)
 	ui_interact(user)
 
-/obj/machinery/computer/atmos_alert/ui_interact(mob/user, datum/tgui/ui)
+/obj/machinery/computer/atmos_alert/ui_interact(mob/user, datum/tgui/ui, datum/tgui/parent_ui)
 	ui = SStgui.try_update_ui(user, src, ui)
 	if(!ui)
 		ui = new(user, src, "AtmosAlertConsole", name)
 		ui.open()
 
-/obj/machinery/computer/atmos_alert/ui_data(mob/user)
-	var/list/data = list()
+/obj/machinery/computer/atmos_alert/ui_data(mob/user, datum/tgui/ui)
+	. = ..()
 	var/list/major_alarms = list()
 	var/list/minor_alarms = list()
 
@@ -40,13 +39,11 @@ var/global/list/minor_air_alarms = list()
 	for(var/datum/alarm/alarm in atmosphere_alarm.minor_alarms())
 		minor_alarms[++minor_alarms.len] = list("name" = sanitize(alarm.alarm_name()), "ref" = "\ref[alarm]")
 
-	data["priority_alarms"] = major_alarms
-	data["minor_alarms"] = minor_alarms
-
-	return data
+	.["priority_alarms"] = major_alarms
+	.["minor_alarms"] = minor_alarms
 
 /obj/machinery/computer/atmos_alert/update_icon()
-	if(!(stat & (NOPOWER|BROKEN)))
+	if(!(machine_stat & (NOPOWER|BROKEN)))
 		var/list/alarms = atmosphere_alarm.major_alarms()
 		if(alarms.len)
 			icon_screen = "alert:2"
@@ -58,7 +55,10 @@ var/global/list/minor_air_alarms = list()
 				icon_screen = initial(icon_screen)
 	..()
 
-/obj/machinery/computer/atmos_alert/ui_act(action, params)
+/obj/machinery/computer/atmos_alert/proc/on_alarm_update()
+	update_icon()
+
+/obj/machinery/computer/atmos_alert/ui_act(action, list/params, datum/tgui/ui, datum/ui_state/state, datum/event_args/actor/actor)
 	if(..())
 		return TRUE
 
@@ -67,7 +67,7 @@ var/global/list/minor_air_alarms = list()
 			var/datum/alarm/alarm = locate(params["ref"]) in atmosphere_alarm.alarms
 			if(alarm)
 				for(var/datum/alarm_source/alarm_source in alarm.sources)
-					var/obj/machinery/alarm/air_alarm = alarm_source.source
+					var/obj/machinery/air_alarm/air_alarm = alarm_source.source
 					if(istype(air_alarm))
 						// I have to leave a note here:
 						// Once upon a time, this called air_alarm.Topic() with a custom topic state

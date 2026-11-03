@@ -2,7 +2,7 @@
 	name = "alien machine"
 	desc = "It's some kind of pod with strange wires and gadgets all over it."
 	icon = 'icons/obj/xenoarchaeology.dmi'
-	icon_state = "borgcharger0(old)"
+	icon_state = "replicator"
 	density = TRUE
 
 	idle_power_usage = 100
@@ -29,7 +29,7 @@
 	/obj/structure/closet/acloset,
 	/mob/living/simple_mob/mechanical/viscerator,
 	/mob/living/simple_mob/mechanical/hivebot,
-	/obj/item/analyzer,
+	/obj/item/atmos_analyzer,
 	/obj/item/camera,
 	/obj/item/flash,
 	/obj/item/flashlight,
@@ -47,7 +47,9 @@
 	/obj/item/clothing/head/cone,
 	/obj/item/tool/crowbar,
 	/obj/item/clipboard,
-	/obj/item/cell,
+	/obj/item/cell/basic/tier_3/weapon,
+	/obj/item/cell/basic/tier_2/medium,
+	/obj/item/cell/basic/tier_1/large,
 	/obj/item/surgical/circular_saw,
 	/obj/item/material/knife/machete/hatchet,
 	/obj/item/handcuffs,
@@ -62,8 +64,8 @@
 	/obj/item/tool/wirecutters,
 	/obj/item/tool/wrench,
 	/obj/item/tool/screwdriver,
-	/obj/item/grenade/chem_grenade/cleaner,
-	/obj/item/grenade/chem_grenade/metalfoam,
+	/obj/item/grenade/simple/chemical/premade/cleaner,
+	/obj/item/grenade/simple/chemical/premade/metalfoam,
 	/obj/structure/closet/crate/mimic/
 	)
 
@@ -138,7 +140,7 @@
 
 	last_process_time = world.time
 
-/obj/machinery/replicator/attack_hand(mob/user as mob)
+/obj/machinery/replicator/attack_hand(mob/user, datum/event_args/actor/clickchain/e_args)
 	ui_interact(user)
 
 /obj/machinery/replicator/ui_interact(mob/user, datum/tgui/ui)
@@ -147,12 +149,12 @@
 		ui = new(user, src, "XenoarchReplicator", name)
 		ui.open()
 
-/obj/machinery/replicator/ui_data(mob/user, datum/tgui/ui, datum/ui_state/state)
+/obj/machinery/replicator/ui_data(mob/user, datum/tgui/ui)
 	var/list/data = ..()
 	data["tgui_construction"] = tgui_construction
 	return data
 
-/obj/machinery/replicator/ui_act(action, list/params, datum/tgui/ui, datum/ui_state/state)
+/obj/machinery/replicator/ui_act(action, list/params, datum/tgui/ui, datum/ui_state/state, datum/event_args/actor/actor)
 	if(..())
 		return TRUE
 
@@ -173,10 +175,7 @@
 					visible_message(fail_message)
 
 /obj/machinery/replicator/attackby(obj/item/W as obj, mob/living/user as mob)
-	if(!W.canremove || !user.canUnEquip(W)) //No armblades, no grabs. No other-thing-I-didn't-think-of.
-		to_chat(user, SPAN_NOTICE("You cannot put \the [W] into the machine."))
+	if(!user.attempt_insert_item_for_installation(W, src))
 		return
-	user.drop_item()
-	W.loc = src
 	stored_materials.Add(W)
 	visible_message(SPAN_NOTICE("\The [user] inserts \the [W] into \the [src]."))

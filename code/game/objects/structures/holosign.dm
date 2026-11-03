@@ -4,8 +4,15 @@
 	name = "holo sign"
 	icon = 'icons/effects/effects.dmi'
 	anchored = TRUE
+
+	integrity = 20
+	integrity_max = 20
+
+	hit_sound_brute = 'sound/weapons/egloves.ogg'
+	hit_sound_burn = 'sound/weapons/egloves.ogg'
+
 	var/obj/item/holosign_creator/projector
-	var/health = 10
+
 	explosion_resistance = 1
 
 /obj/structure/holosign/Initialize(mapload, source_projector)
@@ -24,14 +31,6 @@
 		projector = null
 	return ..()
 
-/obj/structure/holosign/attack_hand(mob/living/user)
-	. = ..()
-	if(.)
-		return
-	user.do_attack_animation(src)
-	take_damage(5, BRUTE, "melee", 1)
-	playsound(loc, 'sound/weapons/egloves.ogg', 80, 1)
-
 /obj/structure/holosign/wetsign
 	name = "wet floor sign"
 	desc = "The words flicker as if they mean nothing."
@@ -44,7 +43,7 @@
 	icon_state = "holo_combifan"
 	anchored = TRUE
 	density = FALSE
-	can_atmos_pass = ATMOS_PASS_NO
+	CanAtmosPass = ATMOS_PASS_AIR_BLOCKED
 	layer = ABOVE_TURF_LAYER
 	alpha = 150
 

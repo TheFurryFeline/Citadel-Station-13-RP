@@ -35,15 +35,17 @@
 	health = 225
 	taser_kill = FALSE //You will need more than a peashooter to kill the juggernaut.
 
-	melee_damage_lower = 25
-	melee_damage_upper = 40
+	legacy_melee_damage_lower = 25
+	legacy_melee_damage_upper = 40
 	attack_armor_pen = 15
 
-	movement_cooldown = 15
+	movement_base_speed = 10 / 15
 
 	poison_chance = 30
 	poison_per_bite = 0.5
 	poison_type = "phoron"
+
+	exotic_type = /obj/item/reagent_containers/glass/venomgland/spider/phoron
 
 	var/exploded = FALSE
 	var/explosion_dev_range		= 1
@@ -77,3 +79,22 @@
 			exploded = TRUE
 			explosion(src.loc, explosion_dev_range, explosion_heavy_range, explosion_light_range, explosion_flash_range)
 	return ..()
+
+/obj/item/reagent_containers/glass/venomgland/spider/phoron
+	name = "Phoronic Venom Gland"
+	desc = "A venom sac full of phoron. Maybe NT should have taken up spider ranching."
+
+/obj/item/reagent_containers/glass/venomgland/spider/phoron/Initialize(mapload)
+	. = ..()
+	reagents.add_reagent("phoron", 15)
+
+// Weakened version of Phoron spiders
+/mob/living/simple_mob/animal/giant_spider/phorogenic/weak
+	maxHealth = 100
+	health = 100
+
+	legacy_melee_damage_lower = 10
+	legacy_melee_damage_upper = 25
+	attack_armor_pen = 10
+
+	poison_chance = 20

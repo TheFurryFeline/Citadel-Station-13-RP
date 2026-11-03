@@ -13,7 +13,7 @@
 	light_strength = 3
 	max_damage = 200
 	broken_damage = 100
-	w_class = ITEMSIZE_NORMAL
+	w_class = WEIGHT_CLASS_NORMAL
 	var/icon_state_closed = "laptop-closed"
 
 /obj/item/modular_computer/laptop/AltClick(mob/living/carbon/user)
@@ -25,14 +25,12 @@
 	if(!istype(loc, /turf/))
 		to_chat(usr, "\The [src] has to be on a stable surface first!")
 		return
-	//VOREStation Addition Begin
 	var/supported = FALSE
 	for(var/obj/structure/table/S in loc)
 		supported = TRUE
 	if(!supported && !anchored)
 		to_chat(usr, "You will need a better supporting surface before opening \the [src]!")
 		return
-	//VOREStation Addition End
 	anchored = !anchored
 	screen_on = anchored
 	update_icon()
@@ -41,7 +39,7 @@
 	if(anchored)
 		..()
 	else
-		overlays.Cut()
+		cut_overlays()
 		set_light(0)		// No glow from closed laptops
 		icon_state = icon_state_closed
 

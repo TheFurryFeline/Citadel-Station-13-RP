@@ -1,14 +1,14 @@
 /obj/machinery/sleep_console
 	name = "sleeper console"
-	icon = 'icons/obj/Cryogenic2.dmi' //VOREStation Edit - Better icon.
+	icon = 'icons/obj/medical/cryogenic2.dmi'
 	icon_state = "sleeperconsole"
 	var/obj/machinery/sleeper/sleeper
-	anchored = 1 //About time someone fixed this.
-	density = 1 //VOREStation Edit - Big console
+	anchored = TRUE
+	density = TRUE
 	dir = 8
 	use_power = USE_POWER_IDLE
 	idle_power_usage = 40
-	interact_offline = 1
+	interaction_flags_machine = INTERACT_MACHINE_OFFLINE | INTERACT_MACHINE_ALLOW_SILICON
 	circuit = /obj/item/circuitboard/sleeper_console
 
 /obj/machinery/sleep_console/Initialize(mapload, newdir)
@@ -16,7 +16,6 @@
 	return INITIALIZE_HINT_LATELOAD
 
 /obj/machinery/sleep_console/LateInitialize()
-	. = ..()
 	findsleeper()
 
 /obj/machinery/sleep_console/Destroy()
@@ -29,17 +28,15 @@
 	for(dir in list(NORTH, EAST, SOUTH, WEST)) // Loop through every direction
 		sleepernew = locate(/obj/machinery/sleeper, get_step(src, dir)) // Try to find a scanner in that direction
 		if(sleepernew)
-			// VOREStation Edit Start
 			sleeper = sleepernew
 			sleepernew.console = src
 			break
-			// VOREStation Edit End
 
 
-/obj/machinery/sleep_console/attack_ai(var/mob/user)
+/obj/machinery/sleep_console/attack_ai(mob/user)
 	return attack_hand(user)
 
-/obj/machinery/sleep_console/attack_hand(var/mob/user)
+/obj/machinery/sleep_console/attack_hand(mob/user, datum/event_args/actor/clickchain/e_args)
 	if(..())
 		return 1
 
@@ -56,7 +53,7 @@
 	if(sleeper)
 		return nano_ui_interact(user)
 
-/obj/machinery/sleep_console/attackby(var/obj/item/I, var/mob/user)
+/obj/machinery/sleep_console/attackby(obj/item/I, mob/user)
 	if(computer_deconstruction_screwdriver(user, I))
 		return
 	else
@@ -64,7 +61,7 @@
 
 /obj/machinery/sleep_console/power_change()
 	..()
-	if(stat & (NOPOWER|BROKEN))
+	if(machine_stat & (NOPOWER|BROKEN))
 		icon_state = "sleeperconsole-p"
 	else
 		icon_state = initial(icon_state)
@@ -75,7 +72,7 @@
 	var/obj/machinery/sleeper/S = sleeper
 	var/mob/living/carbon/human/occupant = sleeper.occupant
 
-	data["power"] = S.stat & (NOPOWER|BROKEN) ? 0 : 1
+	data["power"] = S.machine_stat & (NOPOWER|BROKEN) ? FALSE : TRUE
 
 	var/list/reagents = list()
 	for(var/T in S.available_chemicals)
@@ -108,7 +105,7 @@
 	else
 		data["occupant"] = 0
 	if(S.beaker)
-		data["beaker"] = S.beaker.reagents.get_free_space()
+		data["beaker"] = S.beaker.reagents.available_volume()
 	else
 		data["beaker"] = -1
 	data["filtering"] = S.filtering
@@ -161,8 +158,8 @@
 
 /obj/machinery/sleeper
 	name = "sleeper"
-	desc = "A stasis pod with built-in injectors, a dialysis machine, and a limited health scanner."
-	icon = 'icons/obj/Cryogenic2.dmi'
+	desc = "A stasis pod with built-in injectors, a dialysis machine, and a limited health scanner.\n <span class='notice'>\[Accepts Upgrades\]</span>"
+	icon = 'icons/obj/medical/cryogenic2.dmi'
 	icon_state = "sleeper_0"
 	density = TRUE
 	anchored = TRUE
@@ -181,18 +178,19 @@
 	idle_power_usage = 15
 	active_power_usage = 200 //builtin health analyzer, dialysis machine, injectors.
 
+	/// filter flags we use for dialysis
+	var/dialysis_reagent_filter_flags = ~REAGENT_FILTER_NO_COMMON_BIOANALYSIS
+
 /obj/machinery/sleeper/Initialize(mapload)
 	. = ..()
 	beaker = new /obj/item/reagent_containers/glass/beaker/large(src)
-	default_apply_parts()
-	RefreshParts()
 
 /obj/machinery/sleeper/Destroy()
 	if(console)
 		console.sleeper = null
 	return ..()
 
-/obj/machinery/sleeper/RefreshParts(var/limited = 0)
+/obj/machinery/sleeper/RefreshParts(limited = FALSE)
 	var/man_rating = 0
 	var/cap_rating = 0
 
@@ -241,33 +239,45 @@
 	update_icon()
 
 /obj/machinery/sleeper/process(delta_time)
-	if(stat & (NOPOWER|BROKEN))
+	if(machine_stat & (NOPOWER|BROKEN))
 		return
 	if(occupant)
 		occupant.Stasis(stasis_level)
 
 		if(filtering > 0)
 			if(beaker)
-				if(beaker.reagents.total_volume < beaker.reagents.maximum_volume)
-					var/pumped = 0
-					for(var/datum/reagent/x in occupant.reagents.reagent_list)
-						occupant.reagents.trans_to_obj(beaker, 3)
-						pumped++
-					if(ishuman(occupant))
-						occupant.vessel.trans_to_obj(beaker, pumped + 1)
+				// filter 3 units per chem-type inside them, or remaining volume, whichever is lesser
+				// we will also pump out 1/3 of that volume as their blood.
+				var/remaining_beaker_volume_for_dialysis = beaker.reagents.maximum_volume - beaker.reagents.total_volume
+				var/filtered_volume = occupant.reagents?.filter_to_holder(
+					beaker.reagents,
+					min(
+						remaining_beaker_volume_for_dialysis * (3 / 4),
+						length(occupant.reagents.reagent_volumes) * 3,
+					),
+					dialysis_reagent_filter_flags,
+				)
+				occupant.take_blood_legacy(beaker, filtered_volume * (1 / 3))
 			else
 				toggle_filter()
 
 		if(pumping > 0)
 			if(beaker)
-				if(beaker.reagents.total_volume < beaker.reagents.maximum_volume)
-					for(var/datum/reagent/x in occupant.ingested.reagent_list)
-						occupant.ingested.trans_to_obj(beaker, 3)
+				// filter 3 units per chem-type inside them, or remaining volume, whichever is lesser
+				occupant.ingested?.filter_to_holder(
+					beaker.reagents,
+					min(
+						beaker.reagents.maximum_volume - beaker.reagents.total_volume,
+						length(occupant.ingested.reagent_volumes) * 3,
+					),
+					dialysis_reagent_filter_flags,
+				)
 			else
 				toggle_pump()
 
-/obj/machinery/sleeper/update_icon()
+/obj/machinery/sleeper/update_icon_state()
 	icon_state = "sleeper_[occupant ? TRUE : FALSE]"
+	return ..()
 
 /obj/machinery/sleeper/attackby(var/obj/item/I, var/mob/user)
 	if(istype(I, /obj/item/grab))
@@ -287,9 +297,9 @@
 	if(istype(I, /obj/item/reagent_containers/glass))
 		add_fingerprint(user)
 		if(!beaker)
+			if(!user.attempt_insert_item_for_installation(I, src))
+				return
 			beaker = I
-			user.drop_item()
-			I.loc = src
 			user.visible_message(SPAN_NOTICE("\The [user] adds \a [I] to \the [src]."), SPAN_NOTICE("You add \a [I] to \the [src]."))
 		else
 			to_chat(user, SPAN_WARNING("\The [src] has a beaker already."))
@@ -299,7 +309,7 @@
 
 /obj/machinery/sleeper/verb/move_eject()
 	set name = "Eject occupant"
-	set category = "Object"
+	set category = VERB_CATEGORY_OBJECT
 	set src in oview(1)
 	if(usr == occupant)
 		switch(usr.stat)
@@ -317,7 +327,7 @@
 		go_out()
 	add_fingerprint(usr)
 
-/obj/machinery/sleeper/MouseDrop_T(var/mob/target, var/mob/user)
+/obj/machinery/sleeper/MouseDroppedOnLegacy(var/mob/target, var/mob/user)
 	if(user.stat || user.lying || !Adjacent(user) || !target.Adjacent(user) || !ishuman(target))
 		return
 	go_in(target, user)
@@ -333,7 +343,7 @@
 	if(pumping)
 		toggle_pump()
 
-	if(stat & (BROKEN|NOPOWER))
+	if(machine_stat & (BROKEN|NOPOWER))
 		..(severity)
 		return
 
@@ -356,7 +366,7 @@
 /obj/machinery/sleeper/proc/go_in(var/mob/M, var/mob/user)
 	if(!M)
 		return
-	if(stat & (BROKEN|NOPOWER))
+	if(machine_stat & (BROKEN|NOPOWER))
 		return
 	if(occupant)
 		to_chat(user, SPAN_WARNING("\The [src] is already occupied."))
@@ -407,8 +417,8 @@
 		beaker = null
 		toggle_filter()
 
-/obj/machinery/sleeper/proc/inject_chemical(var/mob/living/user, var/chemical, var/amount)
-	if(stat & (BROKEN|NOPOWER))
+/obj/machinery/sleeper/proc/inject_chemical(mob/living/user, chemical, amount)
+	if(machine_stat & (BROKEN|NOPOWER))
 		return
 
 	if(occupant && occupant.reagents)
@@ -424,7 +434,7 @@
 //Survival/Stasis sleepers
 /obj/machinery/sleeper/survival_pod
 	desc = "A limited functionality sleeper, all it can do is put patients into stasis. It lacks the medication and configuration of the larger units."
-	icon_state = "sleeper"
+	icon_state = "sleeper_0"
 	stasis_level = 100 //Just one setting
 
 /obj/machinery/sleeper/survival_pod/Initialize(mapload)

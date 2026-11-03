@@ -21,12 +21,12 @@ var/global/list/obj/item/communicator/all_communicators = list()
 	communications across different stations, planets, or even star systems."
 	icon = 'icons/obj/device.dmi'
 	icon_state = "communicator_home"
-	w_class = ITEMSIZE_SMALL
+	w_class = WEIGHT_CLASS_SMALL
 	slot_flags = SLOT_ID | SLOT_BELT
 	show_messages = 1
 
 	origin_tech = list(TECH_ENGINEERING = 2, TECH_MAGNET = 2, TECH_BLUESPACE = 2, TECH_DATA = 2)
-	matter = list(MAT_STEEL = 30, MAT_GLASS = 20)
+	materials_base = list(MAT_STEEL = 30, MAT_GLASS = 20)
 
 	var/video_range = 3
 	var/obj/machinery/camera/communicator/video_source	// Their camera
@@ -79,11 +79,11 @@ var/global/list/obj/item/communicator/all_communicators = list()
 // Parameters: None
 // Description: Adds the new communicator to the global list of all communicators, sorts the list, obtains a reference to the Exonet node, then tries to
 //				assign the device to the holder's name automatically in a spectacularly shitty way.
-/obj/item/communicator/Initialize()
+/obj/item/communicator/Initialize(mapload)
 	. = ..()
 	all_communicators += src
-	sortTim(all_communicators, /proc/cmp_name_asc)
-	node = get_exonet_node()
+	tim_sort(all_communicators, GLOBAL_PROC_REF(cmp_name_asc))
+	node = get_exonet_node(src)
 	START_PROCESSING(SSobj, src)
 	camera = new(src)
 	camera.name = "[src] #[rand(100,999)]"
@@ -92,7 +92,7 @@ var/global/list/obj/item/communicator/all_communicators = list()
 	setup_tgui_camera()
 
 	//This is a pretty terrible way of doing this.
-	addtimer(CALLBACK(src, .proc/register_to_holder), 5 SECONDS)
+	addtimer(CALLBACK(src, PROC_REF(register_to_holder)), 5 SECONDS)
 
 // Proc: register_to_holder()
 // Parameters: None
@@ -120,13 +120,13 @@ var/global/list/obj/item/communicator/all_communicators = list()
 	if(!exonet.address)
 		exonet.make_address("communicator-[user.client]-[user.name]")
 	if(!node)
-		node = get_exonet_node()
+		node = get_exonet_node(src)
 	populate_known_devices()
 
 // Proc: examine()
 // Parameters: 1 (user - the person examining the device)
 // Description: Shows all the voice mobs inside the device, and their status.
-/obj/item/communicator/examine(mob/user)
+/obj/item/communicator/examine(mob/user, dist)
 	. = ..()
 
 	for(var/mob/living/voice/voice in contents)
@@ -193,7 +193,7 @@ var/global/list/obj/item/communicator/all_communicators = list()
 	update_ticks++
 	if(update_ticks % 5)
 		if(!get_connection_to_tcomms())
-			node = get_exonet_node()
+			node = get_exonet_node(src)
 		if(!get_connection_to_tcomms())
 			close_connection(reason = "Connection timed out")
 
@@ -218,7 +218,10 @@ var/global/list/obj/item/communicator/all_communicators = list()
 // Parameters: 1 (user - the mob that clicked the device in their hand)
 // Description: Makes an exonet datum if one does not exist, allocates an address for it, maintains the lists of all devies, clears the alert icon, and
 //				finally makes NanoUI appear.
-/obj/item/communicator/attack_self(mob/user)
+/obj/item/communicator/attack_self(mob/user, datum/event_args/actor/actor)
+	. = ..()
+	if(.)
+		return
 	initialize_exonet(user)
 	alert_called = 0
 	update_icon()
@@ -229,7 +232,7 @@ var/global/list/obj/item/communicator/all_communicators = list()
 
 // Proc: MouseDrop()
 //Same thing PDAs do
-/obj/item/communicator/MouseDrop(obj/over_object as obj)
+/obj/item/communicator/OnMouseDropLegacy(obj/over_object as obj)
 	var/mob/M = usr
 	if (!(src.loc == usr) || (src.loc && src.loc.loc == usr))
 		return
@@ -245,14 +248,13 @@ var/global/list/obj/item/communicator/all_communicators = list()
 	populate_known_devices() //Update the devices so ghosts can see the list on NanoUI.
 	..()
 
-/mob/observer/dead
-	var/datum/exonet_protocol/exonet = null
-	var/list/exonet_messages = list()
+/mob/observer/dead/var/datum/exonet_protocol/exonet = null
+/mob/observer/dead/var/list/exonet_messages = list()
 
 // Proc: New()
 // Parameters: None
 // Description: Gives ghosts an exonet address based on their key and ghost name.
-/mob/observer/dead/Initialize()
+/mob/observer/dead/Initialize(mapload)
 	. = ..()
 	exonet = new(src)
 	if(client)
@@ -264,10 +266,7 @@ var/global/list/obj/item/communicator/all_communicators = list()
 // Parameters: None
 // Description: Removes the ghost's address and nulls the exonet datum, to allow qdel()ing.
 /mob/observer/dead/Destroy()
-	. = ..()
-	if(exonet)
-		exonet.remove_address()
-		exonet = null
+	QDEL_NULL(exonet)
 	return ..()
 
 // Proc: register_device()
@@ -307,9 +306,10 @@ var/global/list/obj/item/communicator/all_communicators = list()
 	QDEL_NULL(exonet)
 
 	last_camera_turf = null
-	qdel(cam_screen)
-	QDEL_LIST(cam_plane_masters)
-	qdel(cam_background)
+	QDEL_NULL(cam_screen)
+	QDEL_NULL(cam_background)
+	QDEL_NULL(planes)
+	QDEL_NULL(parallax)
 
 	return ..()
 
@@ -348,6 +348,7 @@ var/global/list/obj/item/communicator/all_communicators = list()
 	communications across different stations, planets, or even star systems. You can wear this one on your wrist!"
 	icon = 'icons/obj/device.dmi'
 	icon_state = "commwatch"
+	item_flags = CLOTHING_ALLOW_SINGLE_LIMB | ITEM_ENCUMBERS_WHILE_HELD
 	slot_flags = SLOT_GLOVES
 
 /obj/item/communicator/watch/update_icon_state()

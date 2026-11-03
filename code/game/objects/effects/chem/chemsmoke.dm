@@ -1,22 +1,22 @@
 /////////////////////////////////////////////
 // Chem smoke
 /////////////////////////////////////////////
-/obj/effect/smoke/chem
+/obj/effect/particle_effect/smoke/chem
 	icon = 'icons/effects/chemsmoke.dmi'
 	opacity = 0
 	time_to_live = 300
-	pass_flags = PASSTABLE | PASSGRILLE | PASSGLASS //PASSGLASS is fine here, it's just so the visual effect can "flow" around glass
+	pass_flags = ATOM_PASS_TABLE | ATOM_PASS_GRILLE | ATOM_PASS_GLASS //ATOM_PASS_GLASS is fine here, it's just so the visual effect can "flow" around glass
 
-/obj/effect/smoke/chem/Initialize(mapload)
+/obj/effect/particle_effect/smoke/chem/Initialize(mapload)
 	. = ..()
 	create_reagents(500)
 
-/obj/effect/smoke/chem/Destroy()
+/obj/effect/particle_effect/smoke/chem/Destroy()
 	walk(src, 0) // Because we might have called walk_to, we must stop the walk loop or BYOND keeps an internal reference to us forever.
 	return ..()
 
 /datum/effect_system/smoke_spread/chem
-	smoke_type = /obj/effect/smoke/chem
+	smoke_type = /obj/effect/particle_effect/smoke/chem
 	var/obj/chemholder
 	var/range
 	var/list/targetTurfs
@@ -44,7 +44,7 @@
 // Calculates the max range smoke can travel, then gets all turfs in that view range.
 // Culls the selected turfs to a (roughly) circle shape, then calls smokeFlow() to make
 // sure the smoke can actually path to the turfs. This culls any turfs it can't reach.
-/datum/effect_system/smoke_spread/chem/set_up(var/datum/reagents/carry = null, n = 10, c = 0, loca, direct)
+/datum/effect_system/smoke_spread/chem/set_up(var/datum/reagent_holder/carry = null, n = 10, c = 0, loca, direct)
 	range = n * 0.3
 	cardinals = c
 	carry.trans_to_obj(chemholder, carry.total_volume, copy = 1)
@@ -99,16 +99,10 @@
 	if(!location)
 		return
 
-	if(chemholder.reagents.reagent_list.len) //reagent application - only run if there are extra reagents in the smoke
-		for(var/turf/T in wallList)
-			chemholder.reagents.touch_turf(T)
-		for(var/turf/T in targetTurfs)
-			chemholder.reagents.touch_turf(T)
-			for(var/atom/A in T.contents)
-				if(istype(A, /obj/effect/smoke/chem) || istype(A, /mob))
-					continue
-				else if(isobj(A) && !A.simulated)
-					chemholder.reagents.touch_obj(A)
+	var/list/reapplication_exclusion_injection = list()
+	if(length(chemholder.reagents.reagent_volumes))
+		for(var/turf/T in wallList + targetTurfs)
+			chemholder.reagents.perform_uniform_contact(T, 1, null, reapplication_exclusion_injection)
 
 	var/color = chemholder.reagents.get_color() //build smoke icon
 	var/icon/I
@@ -149,16 +143,15 @@
 // Randomizes and spawns the smoke effect.
 // Also handles deleting the smoke once the effect is finished.
 //------------------------------------------
-/datum/effect_system/smoke_spread/chem/proc/spawnSmoke(var/turf/T, var/icon/I, var/dist = 1, var/obj/effect/smoke/chem/passed_smoke)
+/datum/effect_system/smoke_spread/chem/proc/spawnSmoke(var/turf/T, var/icon/I, var/dist = 1, var/obj/effect/particle_effect/smoke/chem/passed_smoke)
 
-	var/obj/effect/smoke/chem/smoke
+	var/obj/effect/particle_effect/smoke/chem/smoke
 	if(passed_smoke)
 		smoke = passed_smoke
 	else
-		smoke = new /obj/effect/smoke/chem(location)
+		smoke = new /obj/effect/particle_effect/smoke/chem(location)
 
-	if(chemholder.reagents.reagent_list.len)
-		chemholder.reagents.trans_to_obj(smoke, chemholder.reagents.total_volume / dist, copy = 1) //copy reagents to the smoke so mob/breathe() can handle inhaling the reagents
+	chemholder.reagents.transfer_to_holder(smoke.reagents, null, chemholder.reagents.total_volume / dist, TRUE)
 	smoke.icon = I
 	smoke.plane = ABOVE_PLANE
 	smoke.setDir(pick(GLOB.cardinal))
@@ -172,7 +165,7 @@
 	qdel(smoke)
 
 /datum/effect_system/smoke_spread/chem/spores/spawnSmoke(var/turf/T, var/icon/I, var/dist = 1)
-	var/obj/effect/smoke/chem/spores = new /obj/effect/smoke/chem(location)
+	var/obj/effect/particle_effect/smoke/chem/spores = new /obj/effect/particle_effect/smoke/chem(location)
 	spores.name = "cloud of [seed.seed_name] [seed.seed_noun]"
 	..(T, I, dist, spores)
 
@@ -211,9 +204,7 @@
 					continue
 				if(!(target in targetTurfs))
 					continue
-				if(current.c_airblock(target)) //this is needed to stop chemsmoke from passing through thin window walls
-					continue
-				if(target.c_airblock(current))
+				if(current.CheckAirBlock(target) == ATMOS_PASS_AIR_BLOCKED) //this is needed to stop chemsmoke from passing through thin window walls
 					continue
 				pending += target
 
@@ -223,3 +214,5 @@
 	targetTurfs = complete
 
 	return
+
+

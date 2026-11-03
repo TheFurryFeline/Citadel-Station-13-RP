@@ -21,14 +21,14 @@
 	icon_living = "floating"
 	maxHealth = 200
 	health = 200
-	melee_damage_lower = 25
-	melee_damage_upper = 30
+	legacy_melee_damage_lower = 25
+	legacy_melee_damage_upper = 30
 	attack_armor_pen = 15
 	attack_sharp = 1
 	attack_edge = 1
 	attacktext = list("slashed")
 	friendly = list("pinches")
-	movement_cooldown = 0
+	movement_base_speed = 7
 	attack_sound = 'sound/weapons/rapidslice.ogg'
 	construct_spells = list(/spell/targeted/ethereal_jaunt/shift,
 							/spell/targeted/ambush_mode
@@ -36,13 +36,17 @@
 
 	catalogue_data = list(/datum/category_item/catalogue/fauna/construct/wraith)
 
-	ai_holder_type = /datum/ai_holder/simple_mob/melee/evasive
+	ai_holder_type = /datum/ai_holder/polaris/simple_mob/melee/evasive
 
 	var/jaunt_warning = 0.5 SECONDS	// How long the jaunt telegraphing is.
 	var/jaunt_tile_speed = 20		// How long to wait between each tile. Higher numbers result in an easier to dodge tunnel attack.
 
 
 //	environment_smash = 1	// Whatever this gets renamed to, Wraiths need to break things
+
+/mob/living/simple_mob/construct/wraith/Initialize(mapload)
+	. = ..()
+	AddComponent(/datum/component/horror_aura)
 
 /mob/living/simple_mob/construct/wraith/apply_melee_effects(var/atom/A)
 	if(isliving(A))
@@ -101,7 +105,7 @@
 
 		visible_message(SPAN_DANGER("\The [src] appears in a flurry of slashes \the [L]!"))
 		playsound(L, 'sound/weapons/heavysmash.ogg', 75, 1)
-		L.Weaken(3)
+		L.afflict_paralyze(20 * 3)
 		overshoot = FALSE
 
 	if(!overshoot) // We hit the target, or something, at destination, so we're done.
@@ -144,7 +148,7 @@
 		if(T.check_density(ignore_mobs = TRUE))
 			to_chat(src, SPAN_CRITICAL("You hit something really solid!"))
 			playsound(src, "punch", 75, 1)
-			Weaken(5)
+			afflict_paralyze(20 * 5)
 			add_modifier(/datum/modifier/tunneler_vulnerable, 10 SECONDS)
 			return FALSE // Hit a wall.
 

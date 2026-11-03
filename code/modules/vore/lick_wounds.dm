@@ -1,4 +1,4 @@
-/mob/living/carbon/human/proc/lick_wounds(var/mob/living/carbon/M in living_mobs(1))
+/mob/living/carbon/human/proc/lick_wounds(var/mob/living/carbon/M in view(1))
 	set name = "Lick Wounds"
 	set category = "Abilities"
 	set desc = "Disinfect and heal small wounds with your saliva."
@@ -50,7 +50,7 @@
 			visible_message("<span class='notice'>\The [src] starts licking the wounds on [M]'s [affecting.name] clean.</span>", \
 					             "<span class='notice'>You start licking the wounds on [M]'s [affecting.name] clean.</span>" )
 
-			for (var/datum/wound/W in affecting.wounds)
+			for (var/datum/wound/W as anything in affecting.wounds)
 
 				if(W.bandaged && W.salved && W.disinfected)
 					continue
@@ -74,5 +74,5 @@
 					W.salve()
 					W.bandage()
 					W.disinfect()
-					H.UpdateDamageIcon()
+					H.update_damage_overlay()
 					playsound(src, 'sound/effects/ointment.ogg', 25)

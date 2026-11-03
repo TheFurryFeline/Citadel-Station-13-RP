@@ -7,13 +7,14 @@
 	opacity = 0
 	density = 0
 	anchored = 0.0
-	force = 1.0
-	throwforce = 1.0
+	damage_force = 1.0
+	throw_force = 1.0
 	throw_speed = 1
 	throw_range = 2
-	w_class = ITEMSIZE_SMALL
+	w_class = WEIGHT_CLASS_SMALL
+	suit_storage_class = SUIT_STORAGE_CLASS_SOFTWEAR
 	var/access = list()
-	access = access_crate_cash
+	access = ACCESS_MISC_CASHCRATE
 	var/worth = 0
 	drop_sound = 'sound/items/drop/paper.ogg'
 	pickup_sound = 'sound/items/pickup/paper.ogg'
@@ -28,20 +29,23 @@
 		if(istype(user, /mob/living/carbon/human))
 			var/mob/living/carbon/human/h_user = user
 
-			h_user.drop_from_inventory(src)
-			h_user.drop_from_inventory(SC)
+			h_user.temporarily_remove_from_inventory(src, INV_OP_FORCE | INV_OP_SHOULD_NOT_INTERCEPT | INV_OP_SILENT)
+			h_user.temporarily_remove_from_inventory(SC, INV_OP_FORCE | INV_OP_SHOULD_NOT_INTERCEPT | INV_OP_SILENT)
 			h_user.put_in_hands(SC)
 		to_chat(user, "<span class='notice'>You combine the Thalers to a bundle of [SC.worth] Thalers.</span>")
 		qdel(src)
 
 /obj/item/spacecash/update_icon()
-	overlays.Cut()
+	cut_overlays()
+	var/list/overlays_to_add = list()
+
 	name = "[worth] Thaler\s"
 	if(worth in list(1000,500,200,100,50,20,10,1))
 		icon_state = "spacecash[worth]"
 		desc = "It's worth [worth] Thalers."
 		return
-	var/sum = src.worth
+
+	var/sum = worth
 	var/num = 0
 	for(var/i in list(1000,500,200,100,50,20,10,1))
 		while(sum >= i && num < 50)
@@ -52,15 +56,19 @@
 			M.Translate(rand(-6, 6), rand(-4, 8))
 			M.Turn(pick(-45, -27.5, 0, 0, 0, 0, 0, 0, 0, 27.5, 45))
 			banknote.transform = M
-			src.overlays += banknote
+			overlays_to_add += banknote
+
 	if(num == 0) // Less than one thaler, let's just make it look like 1 for ease
 		var/image/banknote = image('icons/obj/items.dmi', "spacecash1")
 		var/matrix/M = matrix()
 		M.Translate(rand(-6, 6), rand(-4, 8))
 		M.Turn(pick(-45, -27.5, 0, 0, 0, 0, 0, 0, 0, 27.5, 45))
 		banknote.transform = M
-		src.overlays += banknote
-	src.desc = "They are worth [worth] Thalers."
+		overlays_to_add += banknote
+
+	desc = "They are worth [worth] Thalers."
+
+	add_overlay(overlays_to_add)
 
 /obj/item/spacecash/proc/adjust_worth(var/adjust_worth = 0, var/update = 1)
 	worth += adjust_worth
@@ -78,7 +86,10 @@
 		update_icon()
 	return worth
 
-/obj/item/spacecash/attack_self()
+/obj/item/spacecash/attack_self(mob/user, datum/event_args/actor/actor)
+	. = ..()
+	if(.)
+		return
 	var/amount = input(usr, "How many Thalers do you want to take? (0 to [src.worth])", "Take Money", 20) as num
 	if(!src || QDELETED(src))
 		return
@@ -96,7 +107,7 @@
 	return (prevent_types & PAYMENT_TYPE_CASH)? NOT_STATIC_CURRENCY : PLURAL_STATIC_CURRENCY
 
 /obj/item/spacecash/do_static_currency_feedback(amount, mob/user, atom/target, range)
-	user.visible_message(SPAN_NOTICE("[user] inserts some cash into [target]."), SPAN_NOTICE("You insert [amount] [CURRENCY_NAME_PLURAL_PROPERR] into [target]."), SPAN_NOTICE("You hear some papers shuffling."), range)
+	user.visible_message(SPAN_NOTICE("[user] inserts some cash into [target]."), SPAN_NOTICE("You insert [amount] [CURRENCY_NAME_PLURAL_PROPER] into [target]."), SPAN_NOTICE("You hear some papers shuffling."), range)
 
 /obj/item/spacecash/consume_static_currency(amount, force, mob/user, atom/target, range)
 	if(force)
@@ -108,6 +119,8 @@
 	. = amount
 	if(!worth)
 		qdel(src)
+		return
+	update_appearance()
 
 /obj/item/spacecash/amount_static_currency()
 	return worth
@@ -164,7 +177,7 @@
 	var/obj/item/spacecash/SC = new (spawnloc)
 
 	SC.set_worth(sum)
-	if (ishuman(human_user) && !human_user.get_active_hand())
+	if (ishuman(human_user) && !human_user.get_active_held_item())
 		human_user.put_in_hands(SC)
 
 /obj/item/spacecash/ewallet
@@ -174,11 +187,20 @@
 	drop_sound = 'sound/items/drop/card.ogg'
 	pickup_sound = 'sound/items/pickup/card.ogg'
 	var/owner_name = "" //So the ATM can set it so the EFTPOS can put a valid name on transactions.
-	attack_self() return  //Don't act
-	attackby()    return  //like actual
-	update_icon() return  //space cash
 
-/obj/item/spacecash/ewallet/examine(mob/user)
+/obj/item/spacecash/ewallet/attack_self(mob/user, datum/event_args/actor/actor)
+	. = ..()
+	if(.)
+		return
+	return //Don't act
+
+/obj/item/spacecash/ewallet/attackby()
+	return //like actual
+
+/obj/item/spacecash/ewallet/update_icon()
+	return //space cash
+
+/obj/item/spacecash/ewallet/examine(mob/user, dist)
 	. = ..()
 	if (!(user in view(2)) && user!=src.loc)
 		return

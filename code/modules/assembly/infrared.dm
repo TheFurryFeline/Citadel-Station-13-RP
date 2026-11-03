@@ -3,7 +3,7 @@
 	desc = "Emits a visible or invisible beam and is triggered when the beam is interrupted."
 	icon_state = "infrared"
 	origin_tech = list(TECH_MAGNET = 2)
-	matter = list(MAT_STEEL = 1000, MAT_GLASS = 500)
+	materials_base = list(MAT_STEEL = 1000, MAT_GLASS = 500)
 
 	wires = WIRE_PULSE
 
@@ -47,7 +47,7 @@
 	on = TRUE
 	Rebuild()
 	update_icon()
-	START_PROCESSING(SSfastprocess, src)
+	START_PROCESSING(SSprocess_5fps, src)
 
 /obj/item/assembly/infra/proc/turn_off()
 	if(!on)
@@ -58,14 +58,14 @@
 	on = FALSE
 	Rebuild()
 	update_icon()
-	STOP_PROCESSING(SSfastprocess, src)
+	STOP_PROCESSING(SSprocess_5fps, src)
 
 /obj/item/assembly/infra/update_icon()
-	overlays.Cut()
+	cut_overlays()
 	attached_overlays = list()
 	if(on)
-		overlays += "infrared_on"
-		attached_overlays += "infrared_on"
+		add_overlay("infrared_on")
+		attached_overlays += "infrared_on" // TODO: Investigate???
 	if(holder)
 		holder.update_icon()
 
@@ -96,7 +96,7 @@
 		if(listening)
 			UnregisterSignal(listening, COMSIG_MOVABLE_MOVED)
 		listening = loc
-		RegisterSignal(loc, COMSIG_MOVABLE_MOVED, .proc/Queue)
+		RegisterSignal(loc, COMSIG_MOVABLE_MOVED, PROC_REF(Queue))
 	if(!isturf(loc) && !isturf(loc.loc))	// only allow nesting 1 deep
 		return
 	// spread
@@ -145,7 +145,7 @@
 	if(listening)
 		UnregisterSignal(listening, COMSIG_MOVABLE_MOVED)
 	if(on && ismovable(loc))
-		RegisterSignal(loc, COMSIG_MOVABLE_MOVED, .proc/Queue)
+		RegisterSignal(loc, COMSIG_MOVABLE_MOVED, PROC_REF(Queue))
 		listening = loc
 
 /obj/item/assembly/infra/proc/trigger_beam()
@@ -157,7 +157,7 @@
 		for(var/mob/hearing_mob in get_hearers_in_view(hearing_range, src))
 			hearing_mob.playsound_local(get_turf(src), 'sound/machines/triple_beep.ogg', ASSEMBLY_BEEP_VOLUME, TRUE)
 	cooldown = 2
-	addtimer(CALLBACK(src, /obj/item/assembly/proc/process_cooldown), 10)
+	addtimer(CALLBACK(src, TYPE_PROC_REF(/obj/item/assembly, process_cooldown)), 10)
 
 /obj/item/assembly/infra/ui_interact(mob/user, datum/tgui/ui)
 	if(!secured)
@@ -168,7 +168,7 @@
 		ui = new(user, src, "AssemblyInfrared", name)
 		ui.open()
 
-/obj/item/assembly/infra/ui_data(mob/user)
+/obj/item/assembly/infra/ui_data(mob/user, datum/tgui/ui)
 	var/list/data = ..()
 
 	data["on"] = on
@@ -176,7 +176,7 @@
 
 	return data
 
-/obj/item/assembly/infra/ui_act(action, list/params, datum/tgui/ui, datum/ui_state/state)
+/obj/item/assembly/infra/ui_act(action, list/params, datum/tgui/ui, datum/ui_state/state, datum/event_args/actor/actor)
 	if(..())
 		return TRUE
 
@@ -194,7 +194,7 @@
 
 /obj/item/assembly/infra/verb/rotate_clockwise()
 	set name = "Rotate Infrared Laser Clockwise"
-	set category = "Object"
+	set category = VERB_CATEGORY_OBJECT
 	set src in usr
 
 	setDir(turn(dir, 90))
@@ -206,7 +206,7 @@
 	icon = 'icons/obj/projectiles.dmi'
 	icon_state = "ibeam"
 	anchored = TRUE
-	pass_flags = PASSTABLE|PASSGLASS|PASSGRILLE
+	pass_flags = ATOM_PASS_TABLE|ATOM_PASS_GLASS|ATOM_PASS_GRILLE
 	/// the next beam
 	var/obj/effect/beam/i_beam/next
 	/// the previous beam
@@ -219,6 +219,7 @@
 	var/propagate = 0
 
 /obj/effect/beam/i_beam/Initialize(mapload, _master, _propagate, _visible, _prev)
+	. = ..()
 	if(_propagate)
 		src.propagate = min(100, _propagate)
 	if(_master)

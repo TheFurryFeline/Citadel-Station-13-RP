@@ -18,7 +18,7 @@
 
 	randomized = TRUE
 
-	ai_holder_type = /datum/ai_holder/simple_mob/passive/parrot
+	ai_holder_type = /datum/ai_holder/polaris/simple_mob/passive/parrot
 
 	// A headset, so that talking parrots can yell at the crew over comms.
 	// If set to a type, on initialize it will be instantiated into that type.
@@ -72,7 +72,10 @@
 	return ..()
 
 // Clicked on by empty hand.
-/mob/living/simple_mob/animal/passive/bird/parrot/attack_hand(mob/living/L)
+/mob/living/simple_mob/animal/passive/bird/parrot/attack_hand(mob/user, datum/event_args/actor/clickchain/e_args)
+	var/mob/living/L = user
+	if(!istype(L))
+		return
 	if(L.a_intent == INTENT_GRAB && my_headset)
 		remove_headset(L)
 	else
@@ -87,9 +90,9 @@
 		to_chat(user, SPAN_WARNING( "\The [src] is already wearing \a [my_headset]."))
 		return
 	else
-		user.drop_item(new_headset)
+		if(!user.attempt_insert_item_for_installation(new_headset, src))
+			return
 		my_headset = new_headset
-		new_headset.forceMove(src)
 		to_chat(user, SPAN_WARNING( "You place \a [new_headset] on \the [src]. You monster."))
 		to_chat(src, SPAN_NOTICE("\The [user] gives you \a [new_headset]. You should put it to good use immediately."))
 		return
@@ -99,13 +102,12 @@
 		to_chat(user, "<span class='warning'>\The [src] doesn't have a headset to remove, thankfully.</span>")
 	else
 		ISay("BAWWWWWK LEAVE THE HEADSET BAWKKKKK!")
-		my_headset.forceMove(get_turf(src))
-		user.put_in_hands(my_headset)
+		user.put_in_hands_or_drop(my_headset)
 		to_chat(user, SPAN_NOTICE("You take away \the [src]'s [my_headset.name]. Finally."))
 		to_chat(src, SPAN_WARNING( "\The [user] takes your [my_headset.name] away! How cruel!"))
 		my_headset = null
 
-/mob/living/simple_mob/animal/passive/bird/parrot/examine(mob/user)
+/mob/living/simple_mob/animal/passive/bird/parrot/examine(mob/user, dist)
 	. = ..()
 	if(my_headset)
 		. += "It is wearing \a [my_headset]."
@@ -258,11 +260,11 @@
 
 
 // AI
-/datum/ai_holder/simple_mob/passive/parrot
+/datum/ai_holder/polaris/simple_mob/passive/parrot
 	speak_chance = 2
 	base_wander_delay = 8
 
-/datum/ai_holder/simple_mob/passive/parrot/on_hear_say(mob/living/speaker, message)
+/datum/ai_holder/polaris/simple_mob/passive/parrot/on_hear_say(mob/living/speaker, message)
 	if(holder.stat || !holder.say_list || !message || speaker == holder)
 		return
 	var/datum/say_list/S = holder.say_list

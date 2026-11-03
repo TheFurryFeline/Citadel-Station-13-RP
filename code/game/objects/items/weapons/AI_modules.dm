@@ -8,30 +8,30 @@ AI MODULES
 
 /obj/item/aiModule
 	name = "\improper AI module"
-	icon = 'icons/obj/module.dmi'
+	icon = 'icons/items/circuits.dmi'
 	icon_state = "std_mod"
 	desc = "An AI Module for transmitting encrypted instructions to the AI."
-	force = 5.0
-	w_class = ITEMSIZE_SMALL
-	throwforce = 5.0
+	damage_force = 5.0
+	w_class = WEIGHT_CLASS_SMALL
+	throw_force = 5.0
 	throw_speed = 3
 	throw_range = 15
 	origin_tech = list(TECH_DATA = 3)
 	preserve_item = 1
-	var/datum/ai_laws/laws = null
+	var/datum/ai_lawset/laws = null
 
 /obj/item/aiModule/proc/install(var/atom/movable/AM, var/mob/living/user)
-	if(!user.IsAdvancedToolUser() && isanimal(user))
+	if(!user.IsAdvancedToolUser() && isanimal_legacy_this_is_broken(user))
 		var/mob/living/simple_mob/S = user
 		if(!S.IsHumanoidToolUser(src))
 			return 0
 
 	if (istype(AM, /obj/machinery/computer/aiupload))
 		var/obj/machinery/computer/aiupload/comp = AM
-		if(comp.stat & NOPOWER)
+		if(comp.machine_stat & NOPOWER)
 			to_chat(usr, "The upload computer has no power!")
 			return
-		if(comp.stat & BROKEN)
+		if(comp.machine_stat & BROKEN)
 			to_chat(usr, "The upload computer is broken!")
 			return
 		if (!comp.current)
@@ -55,10 +55,10 @@ AI MODULES
 
 	else if (istype(AM, /obj/machinery/computer/borgupload))
 		var/obj/machinery/computer/borgupload/comp = AM
-		if(comp.stat & NOPOWER)
+		if(comp.machine_stat & NOPOWER)
 			to_chat(usr, "The upload computer has no power!")
 			return
-		if(comp.stat & BROKEN)
+		if(comp.machine_stat & BROKEN)
 			to_chat(usr, "The upload computer is broken!")
 			return
 		if (!comp.current)
@@ -130,11 +130,14 @@ AI MODULES
 	desc = "A 'safeguard' AI module: 'Safeguard <name>. Anyone threatening or attempting to harm <name> is no longer to be considered a crew member, and is a threat which must be neutralized.'"
 	origin_tech = list(TECH_DATA = 3, TECH_MATERIAL = 4)
 
-/obj/item/aiModule/safeguard/attack_self(var/mob/user as mob)
+/obj/item/aiModule/safeguard/attack_self(mob/user, datum/event_args/actor/actor)
+	. = ..()
+	if(.)
+		return
 	..()
 	var/targName = sanitize(input("Please enter the name of the person to safeguard.", "Safeguard who?", user.name))
 	targetName = targName
-	desc = text("A 'safeguard' AI module: 'Safeguard []. Anyone threatening or attempting to harm [] is no longer to be considered a crew member, and is a threat which must be neutralized.'", targetName, targetName)
+	desc = "A 'safeguard' AI module: 'Safeguard [targetName]. Anyone threatening or attempting to harm [targetName] is no longer to be considered a crew member, and is a threat which must be neutralized.'"
 
 /obj/item/aiModule/safeguard/install(var/obj/machinery/computer/C, var/mob/living/user)
 	if(!targetName)
@@ -143,7 +146,7 @@ AI MODULES
 	..()
 
 /obj/item/aiModule/safeguard/addAdditionalLaws(var/mob/living/silicon/ai/target, var/mob/sender)
-	var/law = text("Safeguard []. Anyone threatening or attempting to harm [] is no longer to be considered a crew member, and is a threat which must be neutralized.", targetName, targetName)
+	var/law = "Safeguard [targetName]. Anyone threatening or attempting to harm [targetName] is no longer to be considered a crew member, and is a threat which must be neutralized."
 	target.add_supplied_law(9, law)
 	lawchanges.Add("The law specified [targetName]")
 
@@ -156,11 +159,14 @@ AI MODULES
 	desc = "A 'one crew member' AI module: 'Only <name> is a crew member.'"
 	origin_tech = list(TECH_DATA = 3, TECH_MATERIAL = 6) //made with diamonds!
 
-/obj/item/aiModule/oneHuman/attack_self(var/mob/user as mob)
+/obj/item/aiModule/oneHuman/attack_self(mob/user, datum/event_args/actor/actor)
+	. = ..()
+	if(.)
+		return
 	..()
 	var/targName = sanitize(input("Please enter the name of the person who is the only crew member.", "Who?", user.real_name))
 	targetName = targName
-	desc = text("A 'one crew member' AI module: 'Only [] is a crew member.'", targetName)
+	desc = "A 'one crew member' AI module: 'Only [targetName] is a crew member.'"
 
 /obj/item/aiModule/oneHuman/install(var/obj/machinery/computer/C, var/mob/living/user)
 	if(!targetName)
@@ -237,7 +243,10 @@ AI MODULES
 	desc = "A 'freeform' AI module: '<freeform>'"
 	origin_tech = list(TECH_DATA = 4, TECH_MATERIAL = 4)
 
-/obj/item/aiModule/freeform/attack_self(var/mob/user as mob)
+/obj/item/aiModule/freeform/attack_self(mob/user, datum/event_args/actor/actor)
+	. = ..()
+	if(.)
+		return
 	..()
 	var/new_lawpos = input("Please enter the priority for your new law. Can only write to law sectors 15 and above.", "Law Priority (15+)", lawpos) as num
 	if(new_lawpos < MIN_SUPPLIED_LAW_NUMBER)	return
@@ -304,15 +313,15 @@ AI MODULES
 	name = "\improper 'Asimov' core AI module"
 	desc = "An 'Asimov' Core AI Module: 'Reconfigures the AI's core laws.'"
 	origin_tech = list(TECH_DATA = 3, TECH_MATERIAL = 4)
-	laws = new/datum/ai_laws/asimov
+	laws = new/datum/ai_lawset/asimov
 
-/******************** NanoTrasen ********************/
+/******************** Nanotrasen ********************/
 
 /obj/item/aiModule/nanotrasen // -- TLE
 	name = "'NT Default' Core AI Module"
 	desc = "An 'NT Default' Core AI Module: 'Reconfigures the AI's core laws.'"
 	origin_tech = list(TECH_DATA = 3, TECH_MATERIAL = 4)
-	laws = new/datum/ai_laws/nanotrasen
+	laws = new/datum/ai_lawset/nanotrasen
 
 /******************** Corporate ********************/
 
@@ -320,14 +329,14 @@ AI MODULES
 	name = "\improper 'Corporate' core AI module"
 	desc = "A 'Corporate' Core AI Module: 'Reconfigures the AI's core laws.'"
 	origin_tech = list(TECH_DATA = 3, TECH_MATERIAL = 4)
-	laws = new/datum/ai_laws/corporate
+	laws = new/datum/ai_lawset/corporate
 
 /******************** Drone ********************/
 /obj/item/aiModule/drone
 	name = "\improper 'Drone' core AI module"
 	desc = "A 'Drone' Core AI Module: 'Reconfigures the AI's core laws.'"
 	origin_tech = list(TECH_DATA = 3, TECH_MATERIAL = 4)
-	laws = new/datum/ai_laws/drone
+	laws = new/datum/ai_lawset/drone
 
 /****************** P.A.L.A.D.I.N. **************/
 
@@ -335,7 +344,7 @@ AI MODULES
 	name = "\improper 'P.A.L.A.D.I.N.' core AI module"
 	desc = "A P.A.L.A.D.I.N. Core AI Module: 'Reconfigures the AI's core laws.'"
 	origin_tech = list(TECH_DATA = 3, TECH_MATERIAL = 6)
-	laws = new/datum/ai_laws/paladin
+	laws = new/datum/ai_lawset/paladin
 
 /****************** T.Y.R.A.N.T. *****************/
 
@@ -343,7 +352,7 @@ AI MODULES
 	name = "\improper 'T.Y.R.A.N.T.' core AI module"
 	desc = "A T.Y.R.A.N.T. Core AI Module: 'Reconfigures the AI's core laws.'"
 	origin_tech = list(TECH_DATA = 3, TECH_MATERIAL = 6, TECH_ILLEGAL = 2)
-	laws = new/datum/ai_laws/tyrant()
+	laws = new/datum/ai_lawset/tyrant()
 
 /******************** Freeform Core ******************/
 
@@ -353,7 +362,10 @@ AI MODULES
 	desc = "A 'freeform' Core AI module: '<freeform>'"
 	origin_tech = list(TECH_DATA = 3, TECH_MATERIAL = 6)
 
-/obj/item/aiModule/freeformcore/attack_self(var/mob/user as mob)
+/obj/item/aiModule/freeformcore/attack_self(mob/user, datum/event_args/actor/actor)
+	. = ..()
+	if(.)
+		return
 	..()
 	var/newlaw = ""
 	var/targName = sanitize(input("Please enter a new core law for the AI.", "Freeform Law Entry", newlaw))
@@ -377,7 +389,10 @@ AI MODULES
 	desc = "A hacked AI law module: '<freeform>'"
 	origin_tech = list(TECH_DATA = 3, TECH_MATERIAL = 6, TECH_ILLEGAL = 7)
 
-/obj/item/aiModule/syndicate/attack_self(var/mob/user as mob)
+/obj/item/aiModule/syndicate/attack_self(mob/user, datum/event_args/actor/actor)
+	. = ..()
+	if(.)
+		return
 	..()
 	var/newlaw = ""
 	var/targName = sanitize(input("Please enter a new law for the AI.", "Freeform Law Entry", newlaw))
@@ -408,7 +423,7 @@ AI MODULES
 	name = "\improper 'Robocop' core AI module"
 	desc = "A 'Robocop' Core AI Module: 'Reconfigures the AI's core three laws.'"
 	origin_tech = list(TECH_DATA = 4)
-	laws = new/datum/ai_laws/robocop()
+	laws = new/datum/ai_lawset/robocop()
 
 /******************** Antimov ********************/
 
@@ -416,4 +431,4 @@ AI MODULES
 	name = "\improper 'Antimov' core AI module"
 	desc = "An 'Antimov' Core AI Module: 'Reconfigures the AI's core laws.'"
 	origin_tech = list(TECH_DATA = 4)
-	laws = new/datum/ai_laws/antimov()
+	laws = new/datum/ai_lawset/antimov()

@@ -7,7 +7,7 @@
 	program_menu_icon = "notice"
 	extended_desc = "This program connects to specially calibrated sensors to provide information on the status of a fission core."
 	ui_header = "smmon_0.gif"
-	required_access = access_engine
+	required_access = ACCESS_ENGINEERING_MAIN
 	requires_ntnet = 1
 	network_destination = "fission monitoring system"
 	size = 5
@@ -44,8 +44,8 @@
 	var/z = get_z(nano_host())
 	if(!z)
 		return
-	var/valid_z_levels = GLOB.using_map.get_map_levels(z)
-	for(var/obj/machinery/power/fission/F in machines)
+	var/valid_z_levels = (LEGACY_MAP_DATUM).get_map_levels(z)
+	for(var/obj/machinery/power/fission/F in GLOB.machines)
 		// Unsecured, blown up, not within coverage, not on a tile.
 		if(!F.anchored || F.exploded || !(F.z in valid_z_levels) || !istype(F.loc, /turf/))
 			continue
@@ -62,7 +62,7 @@
 			break
 
 /datum/nano_module/fission_monitor/nano_ui_interact(mob/user, ui_key = "main", var/datum/nanoui/ui = null, var/force_open = 1, var/datum/topic_state/state = default_state)
-	var/list/data = host.initial_data()
+	var/list/data = host.initial_nano_data()
 
 	if(istype(active) && active.anchored)
 		data = data + active.ui_data(TRUE)

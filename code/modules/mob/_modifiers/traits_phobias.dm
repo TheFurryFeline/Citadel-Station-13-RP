@@ -26,7 +26,7 @@
 
 /datum/modifier/trait/phobia/proc/adjust_fear(var/amount)
 	var/last_fear = current_fear
-	current_fear = between(0, current_fear + amount, max_fear)
+	current_fear = clamp( current_fear + amount, 0,  max_fear)
 
 	// Handle messages.  SAFEPICK() is used so that if no messages are defined, it just does nothing, verses runtiming.
 	var/message = null
@@ -99,17 +99,17 @@
 		..()
 
 /datum/modifier/trait/phobia/haemophobia/should_fear()
-	if(holder.blinded)
+	if(holder.has_status_effect(/datum/status_effect/sight/blindness))
 		return 0 // Can't fear what cannot be seen.
 
 	var/fear_amount = 0
 	for(var/atom/thing in view(5, holder)) // It's 5 and not 7 so players have a chance to go away before getting the prompts, and for performance.
 		// Blood stains are bad.
-		if(istype(thing, /obj/effect/decal/cleanable/blood))
-			var/obj/effect/decal/cleanable/blood/B = thing
+		if(istype(thing, /obj/effect/debris/cleanable/blood))
+			var/obj/effect/debris/cleanable/blood/B = thing
 			// Tracks are special, apparently.
-			if(istype(thing, /obj/effect/decal/cleanable/blood/tracks))
-				var/obj/effect/decal/cleanable/blood/tracks/T = B
+			if(istype(thing, /obj/effect/debris/cleanable/blood/tracks))
+				var/obj/effect/debris/cleanable/blood/tracks/T = B
 				for(var/datum/fluidtrack/F in T.stack)
 					if(F.basecolor != SYNTH_BLOOD_COLOUR)
 						fear_amount++
@@ -130,7 +130,7 @@
 				human_blood_fear_amount += 1
 
 			// List of slots.  Some slots like pockets are omitted due to not being visible, if H isn't the holder.
-			var/list/clothing_slots = list(H.back, H.wear_mask, H.l_hand, H.r_hand, H.wear_id, H.glasses, H.gloves, H.head, H.shoes, H.belt, H.wear_suit, H.w_uniform, H.s_store, H.l_ear, H.r_ear)
+			var/list/clothing_slots = list(H.back, H.wear_mask, H.wear_id, H.glasses, H.gloves, H.head, H.shoes, H.belt, H.wear_suit, H.w_uniform, H.s_store, H.l_ear, H.r_ear) + H.get_held_items()
 			if(H == holder)
 				clothing_slots += list(H.l_store, H.r_store)
 
@@ -190,15 +190,15 @@
 		)
 
 /datum/modifier/trait/phobia/arachnophobe/should_fear()
-	if(holder.blinded)
+	if(holder.has_status_effect(/datum/status_effect/sight/blindness))
 		return 0 // Can't fear what cannot be seen.
 
 	var/fear_amount = 0
 	for(var/atom/thing in view(5, holder)) // See haemophobia for why this is 5.
-		if(istype(thing, /obj/effect/decal/cleanable/spiderling_remains)) // Dead spiderlings are a bit spooky.
+		if(istype(thing, /obj/effect/debris/cleanable/spiderling_remains)) // Dead spiderlings are a bit spooky.
 			fear_amount += 1
 
-		if(istype(thing, /obj/effect/spider/spiderling)) // Live spiderlings are also spooky.
+		if(istype(thing, /obj/structure/spider/spiderling)) // Live spiderlings are also spooky.
 			fear_amount += 2
 
 		if(istype(thing, /obj/item/toy/plushie/spider)) // Plushies are spooky so people can be assholes with them.
@@ -256,7 +256,7 @@
 		)
 
 /datum/modifier/trait/phobia/nyctophobe/should_fear()
-	if(holder.blinded)
+	if(holder.has_status_effect(/datum/status_effect/sight/blindness))
 		return 5 // Unlike most other fears coded here, being blind when afraid of darkness is pretty bad, I imagine.
 
 	if(holder.see_in_dark >= 5)
@@ -288,7 +288,7 @@
 				fear_amount += 1
 
 	var/turf/T = get_turf(holder)
-	if(T.get_lumcount() <= LIGHTING_SOFT_THRESHOLD) // Standing in complete darkness.
+	if(T.get_lumcount() <= 0) // Standing in complete darkness.
 		fear_amount += 5
 
 	return fear_amount
@@ -333,7 +333,7 @@
 		)
 
 /datum/modifier/trait/phobia/claustrophobe/should_fear()
-	if(holder.blinded)
+	if(holder.has_status_effect(/datum/status_effect/sight/blindness))
 		return 0 // No idea if this is accurate.
 
 	if(holder.loc && !isturf(holder.loc)) // Hiding in a locker or inside an exosuit is spooky.
@@ -396,7 +396,7 @@
 		)
 
 /datum/modifier/trait/phobia/blennophobe/should_fear()
-	if(holder.blinded)
+	if(holder.has_status_effect(/datum/status_effect/sight/blindness))
 		return 0 // Can't fear what cannot be seen.
 
 	var/fear_amount = 0
@@ -404,13 +404,13 @@
 		if(istype(thing, /obj/structure/blob)) // blobs are uncomfortable things
 			fear_amount += 3
 
-		if(istype(thing, /obj/effect/alien/resin)) // Resin's a bit slimy according to its own description.
+		if(istype(thing, /obj/structure/alien/resin)) // Resin's a bit slimy according to its own description.
 			fear_amount += 1
 
 		if(istype(thing, /obj/item/weed_extract))
 			fear_amount += 1
 
-		if(istype(thing, /obj/effect/decal/cleanable/mucus)) // Blennophobia apparently includes mucus, so!
+		if(istype(thing, /obj/effect/debris/cleanable/mucus)) // Blennophobia apparently includes mucus, so!
 			fear_amount += 2
 
 		if(istype(thing, /obj/item/slime_extract)) // Gooey.
@@ -484,7 +484,7 @@
 		)
 
 /datum/modifier/trait/phobia/trypanophobe/should_fear()
-	if(holder.blinded)
+	if(holder.has_status_effect(/datum/status_effect/sight/blindness))
 		return 0 //Cannot feareth what cannot beest seen
 
 	var/fear_amount = 0
@@ -496,7 +496,7 @@
 
 		if(istype(thing, /obj/machinery/iv_drip))
 			var/obj/machinery/iv_drip/I = thing
-			if(I.beaker)
+			if(I.reagent_container)
 				fear_amount += 8
 			else
 				fear_amount += 6
@@ -507,13 +507,13 @@
 		if(istype(thing, /obj/item/reagent_containers/hypospray/autoinjector)) //Don't know if I need to define autoinjectors too. Meh.
 			fear_amount += 3
 
-		if(istype(thing, /obj/item/rig_module/chem_dispenser))
+		if(istype(thing, /obj/item/hardsuit_module/chem_dispenser))
 			fear_amount += 5
 
 		if(istype(thing, /obj/item/storage/box/syringes))
 			fear_amount += 2
 
-		if(istype(thing, /obj/item/mecha_parts/mecha_equipment/tool/syringe_gun))
+		if(istype(thing, /obj/item/vehicle_module/tool/syringe_gun))
 			fear_amount += 8 //Syringe gun for a big ass mech.
 
 		if(istype(thing, /obj/machinery/sleep_console)) //Sleepers got them needles in them.
@@ -522,20 +522,18 @@
 		if(istype(thing, /obj/item/implanter))
 			fear_amount += 8 //Very big needle.
 
-		if(istype(thing, /obj/item/gun/launcher/syringe))
+		if(istype(thing, /obj/item/gun/projectile/ballistic/syringe))
 			fear_amount += 6
 
 		if(istype(thing, /mob/living/carbon/human))
 			var/mob/living/carbon/human/H = thing
-			if(H.l_hand && istype(H.l_hand, /obj/item/reagent_containers/syringe) || H.r_hand && istype(H.r_hand, /obj/item/reagent_containers/syringe))
+			if(H.get_held_item_of_type(/obj/item/reagent_containers/syringe))
 				fear_amount += 10
 
 			if(H.l_ear && istype(H.l_ear, /obj/item/reagent_containers/syringe) || H.r_ear && istype(H.r_ear, /obj/item/reagent_containers/syringe))
-				fear_amount +=10
-
+				fear_amount += 10
 
 	return fear_amount
-
 
 // Note for the below 'phobias' are of the xeno-phobic variety, and are less centered on pure fear as above, and more on a mix of distrust, fear, and disdainfulness.
 // As such, they are mechanically different than the fear-based phobias, in that instead of a buildup of fearful messages, it does intermittent messages specific to what holder sees.
@@ -670,4 +668,3 @@
 		"WetSkrell was a mistake."
 		)
 	return pick(generic_responses)
-

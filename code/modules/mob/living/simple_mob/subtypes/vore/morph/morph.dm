@@ -9,9 +9,9 @@
 	icon_state = "morph"
 	icon_living = "morph"
 	icon_dead = "morph_dead"
-	movement_cooldown = 1
-	status_flags = CANPUSH
-	pass_flags = PASSTABLE
+	movement_base_speed = 10 / 1
+	status_flags = STATUS_CAN_PUSH
+	pass_flags = ATOM_PASS_TABLE
 	mob_bump_flag = SLIME
 
 	min_oxy = 0
@@ -27,8 +27,8 @@
 	maxHealth = 250
 	health = 250
 	taser_kill = FALSE
-	melee_damage_lower = 15
-	melee_damage_upper = 20
+	legacy_melee_damage_lower = 15
+	legacy_melee_damage_upper = 20
 	see_in_dark = 8
 
 	response_help = "touches"
@@ -39,9 +39,6 @@
 
 	meat_amount = 2
 
-	showvoreprefs = 0
-	vore_active = 1
-
 	var/morphed = FALSE
 	var/tooltip = TRUE
 	var/melee_damage_disguised = 0
@@ -49,20 +46,22 @@
 	var/atom/movable/form = null
 	var/morph_time = 0
 	var/our_size_multiplier = 1
-	var/static/list/blacklist_typecache = typecacheof(list(
-	/atom/movable/screen,
-	/obj/singularity,
-	/mob/living/simple_mob/vore/hostile/morph,
-	/obj/effect))
+	var/list/blacklist_typecache
 
 /mob/living/simple_mob/vore/hostile/morph/Initialize(mapload)
-	verbs += /mob/living/proc/ventcrawl
+	blacklist_typecache = cached_typecacheof(list(
+		/atom/movable/screen,
+		/obj/singularity,
+		/mob/living/simple_mob/vore/hostile/morph,
+		/obj/effect,
+	))
+	add_verb(src, /mob/living/proc/ventcrawl)
 	return ..()
 
 /mob/living/simple_mob/vore/hostile/morph/proc/allowed(atom/movable/A)
 	return !is_type_in_typecache(A, blacklist_typecache) && (isobj(A) || ismob(A))
 
-/mob/living/simple_mob/vore/hostile/morph/examine(mob/user)
+/mob/living/simple_mob/vore/hostile/morph/examine(mob/user, dist)
 	if(morphed)
 		form.examine(user)
 		if(get_dist(user,src)<=3)
@@ -70,7 +69,8 @@
 			. += "<span class='warning'>It doesn't look quite right...</span>"
 	return
 
-/mob/living/simple_mob/vore/hostile/morph/ShiftClickOn(atom/movable/A)
+/mob/living/simple_mob/vore/hostile/morph/shift_click_on(atom/target, location, control, list/params)
+	var/atom/A = target
 	if(Adjacent(A))
 		if(morph_time <= world.time && !stat)
 			if(A == src)
@@ -80,8 +80,9 @@
 				assume(A)
 		else
 			to_chat(src, "<span class='warning'>Your chameleon skin is still repairing itself!</span>")
+		return TRUE
 	else
-		..()
+		return ..()
 
 /mob/living/simple_mob/vore/hostile/morph/proc/assume(atom/movable/target)
 	if(morphed)
@@ -109,9 +110,9 @@
 	density = target.density
 
 	//Morphed is weaker
-	melee_damage_lower = melee_damage_disguised
-	melee_damage_upper = melee_damage_disguised
-	movement_cooldown = 5
+	legacy_melee_damage_lower = melee_damage_disguised
+	legacy_melee_damage_upper = melee_damage_disguised
+	movement_base_speed = 10 / 5
 
 	morph_time = world.time + MORPH_COOLDOWN
 	return
@@ -135,13 +136,13 @@
 	icon_state = initial(icon_state)
 	size_multiplier = 0
 	resize(our_size_multiplier)
-	overlays.Cut()
+	cut_overlays()
 	density = initial(density)
 
 	//Baseline stats
-	melee_damage_lower = initial(melee_damage_lower)
-	melee_damage_upper = initial(melee_damage_upper)
-	movement_cooldown = initial(movement_cooldown)
+	legacy_melee_damage_lower = initial(legacy_melee_damage_lower)
+	legacy_melee_damage_upper = initial(legacy_melee_damage_upper)
+	movement_base_speed = initial(movement_base_speed)
 
 	morph_time = world.time + MORPH_COOLDOWN
 
@@ -170,11 +171,7 @@
 		return
 	return ..()
 
-/mob/living/simple_mob/vore/hostile/morph/update_transform()
-	if(morphed)
-		var/matrix/M = matrix()
-		M.Scale(icon_scale_x, icon_scale_y)
-		M.Turn(icon_rotation)
-		src.transform = M
-	else
-		..()
+/mob/living/simple_mob/vore/hostile/morph/base_transform(matrix/applying)
+	var/old_size_multiplier = size_multiplier
+	. = ..()
+	size_multiplier = old_size_multiplier

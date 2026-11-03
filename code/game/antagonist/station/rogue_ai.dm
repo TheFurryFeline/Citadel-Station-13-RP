@@ -57,7 +57,7 @@ var/datum/antagonist/rogue_ai/malf
 			return
 
 		A.setup_for_malf()
-		A.laws = new /datum/ai_laws/nanotrasen/malfunction
+		A.laws = new /datum/ai_lawset/nanotrasen/malfunction
 
 
 		var/mob/living/silicon/ai/malf = player.current
@@ -87,7 +87,7 @@ var/datum/antagonist/rogue_ai/malf
 	if((flags & ANTAG_OVERRIDE_MOB) && (!player.current || (mob_path && !istype(player.current, mob_path))))
 		var/mob/holder = player.current
 		player.current = new mob_path(get_turf(player.current), null, null, 1)
-		player.transfer_to(player.current)
+		player.transfer(player.current)
 		if(holder) qdel(holder)
 	player.original = player.current
 	return player.current

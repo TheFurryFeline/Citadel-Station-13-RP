@@ -10,7 +10,7 @@
 	desc = "Just your average condiment container."
 	icon = 'icons/obj/food.dmi'
 	icon_state = "emptycondiment"
-	flags = OPENCONTAINER
+	atom_flags = OPENCONTAINER
 	possible_transfer_amounts = list(1,5,10)
 	center_of_mass = list("x"=16, "y"=6)
 	volume = 50
@@ -18,14 +18,19 @@
 /obj/item/reagent_containers/food/condiment/attackby(var/obj/item/W as obj, var/mob/user as mob)
 	return
 
-/obj/item/reagent_containers/food/condiment/attack_self(var/mob/user as mob)
+/obj/item/reagent_containers/food/condiment/attack_self(mob/user, datum/event_args/actor/actor)
+	. = ..()
+	if(.)
+		return
 	return
 
-/obj/item/reagent_containers/food/condiment/attack(var/mob/M as mob, var/mob/user as mob, var/def_zone)
-	if(standard_feed_mob(user, M))
-		return
+/obj/item/reagent_containers/food/condiment/legacy_mob_melee_hook(mob/target, mob/user, clickchain_flags, list/params, mult, target_zone, intent)
+	if(user.a_intent == INTENT_HARM)
+		return ..()
+	. = CLICKCHAIN_DO_NOT_PROPAGATE
+	standard_feed_mob(user, target)
 
-/obj/item/reagent_containers/food/condiment/afterattack(var/obj/target, var/mob/user, var/flag)
+/obj/item/reagent_containers/food/condiment/afterattack(atom/target, mob/user, clickchain_flags, list/params)
 	if(standard_dispenser_refill(user, target))
 		return
 	if(standard_pour_into(user, target))
@@ -36,7 +41,7 @@
 			to_chat(user, "<span class='notice'>There is no condiment left in \the [src].</span>")
 			return
 
-		if(!target.reagents.get_free_space())
+		if(!target.reagents.available_volume())
 			to_chat(user, "<span class='notice'>You can't add more condiment to \the [target].</span>")
 			return
 
@@ -52,8 +57,8 @@
 	to_chat(user, "<span class='notice'>You swallow some of contents of \the [src].</span>")
 
 /obj/item/reagent_containers/food/condiment/on_reagent_change()
-	if(reagents.reagent_list.len > 0)
-		switch(reagents.get_master_reagent_id())
+	if(reagents.total_volume)
+		switch(reagents.get_majority_reagent_id())
 			if("ketchup")
 				name = "Ketchup"
 				desc = "You feel more American already."
@@ -112,10 +117,10 @@
 				center_of_mass = list("x"=16, "y"=6) // END CITADEL CHANGE - AURORA KITCHEN PORT
 			else
 				name = "Misc Condiment Bottle"
-				if (reagents.reagent_list.len==1)
-					desc = "Looks like it is [reagents.get_master_reagent_name()], but you are not sure."
+				if (length(reagents.reagent_volumes) > 1)
+					desc = "Looks like it is [reagents.get_majority_reagent_name()], but you are not sure."
 				else
-					desc = "A mixture of various condiments. [reagents.get_master_reagent_name()] is one of them."
+					desc = "A mixture of various condiments. [reagents.get_majority_reagent_name()] is one of them."
 				icon_state = "mixedcondiments"
 				center_of_mass = list("x"=16, "y"=6)
 	else
@@ -198,8 +203,8 @@
 
 /obj/item/reagent_containers/food/condiment/small/packet
 	icon_state = "packet_small"
-	w_class = ITEMSIZE_TINY
-	possible_transfer_amounts = "1;5;10"
+	w_class = WEIGHT_CLASS_TINY
+	possible_transfer_amounts = list(1, 5, 10)
 	amount_per_transfer_from_this = 1
 	volume = 5
 
@@ -220,15 +225,6 @@
 /obj/item/reagent_containers/food/condiment/small/packet/pepper/Initialize(mapload)
 	. = ..()
 	reagents.add_reagent("blackpepper", 5)
-
-/obj/item/reagent_containers/food/condiment/small/packet/sugar
-	name = "sugar packet"
-	desc = "Contains 5u of refined sugar."
-	icon_state = "packet_small_white"
-
-/obj/item/reagent_containers/food/condiment/small/packet/sugar/Initialize(mapload)
-	. = ..()
-	reagents.add_reagent("sugar", 5)
 
 /obj/item/reagent_containers/food/condiment/small/packet/jelly
 	name = "jelly packet"
@@ -352,6 +348,22 @@
 	. = ..()
 	reagents.add_reagent("protein", 10)
 
+/obj/item/reagent_containers/food/condiment/small/packet/matchapowder
+	name = "matcha powder packet"
+	desc = "Contains 5u of green tea powder. Mix with 25u of water and heat."
+
+/obj/item/reagent_containers/food/condiment/small/packet/matchapowder/Initialize(mapload)
+	. = ..()
+	reagents.add_reagent("matchapowder", 5)
+
+/obj/item/reagent_containers/food/condiment/small/packet/taropowder
+	name = "taro powder packet"
+	desc = "Contains 5u of taro powder."
+
+/obj/item/reagent_containers/food/condiment/small/packet/taropowder/Initialize(mapload)
+	. = ..()
+	reagents.add_reagent("taropowder", 5)
+
 /obj/item/reagent_containers/food/condiment/small/packet/crayon
 	name = "crayon powder packet"
 	desc = "Contains 10u of powdered crayon. Mix with 30u of water."
@@ -417,3 +429,38 @@
 /obj/item/reagent_containers/food/condiment/spacespice/Initialize(mapload)
 	. = ..()
 	reagents.add_reagent("spacespice", 40)
+
+
+/// Meme stuff that someone made for Lythios. Moved here cause we hate map dependent items!
+/obj/item/reagent_containers/food/condiment/cursed
+	name = "NileRed's Red Hot, Hot Sauce"
+	desc = "An unknown brand of supposedly synthetic hotsauce. A disclaimer sticker says, 'Do not try at home.' Good thing you're at work."
+	icon_state = "ketchup"
+
+/obj/item/reagent_containers/food/condiment/cursed/Initialize()
+	.  = ..()
+	reagents.add_reagent(pick("condensedcapsaicin_v", "hydrophoron"), 50)
+
+/obj/item/reagent_containers/food/condiment/small/packet/creamer
+	name = "creamer pack"
+	desc = "A small packet of coffee creamer."
+
+/obj/item/reagent_containers/food/condiment/small/packet/creamer/Initialize(mapload)
+	. = ..()
+	reagents.add_reagent("creamer", 5)
+
+/obj/item/reagent_containers/food/condiment/small/packet/sugar
+	name = "sugar pack"
+	desc = "A small packet of sugar."
+
+/obj/item/reagent_containers/food/condiment/small/packet/sugar/Initialize(mapload)
+	. = ..()
+	reagents.add_reagent("sugar", 5)
+
+/obj/item/reagent_containers/food/condiment/small/packet/astrotame
+	name = "astrotame pack"
+	desc = "A small packet of sweetener."
+
+/obj/item/reagent_containers/food/condiment/small/packet/astrotame/Initialize(mapload)
+	. = ..()
+	reagents.add_reagent("astrotame", 5)

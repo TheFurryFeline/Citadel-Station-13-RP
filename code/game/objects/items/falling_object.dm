@@ -1,10 +1,10 @@
 /obj/effect/falling_effect
 	name = "you should not see this"
 	desc = "no data"
-	invisibility = 101
+	invisibility = INVISIBILITY_ABSTRACT
 	anchored = TRUE
 	density = FALSE
-	unacidable = TRUE
+	integrity_flags = INTEGRITY_ACIDPROOF | INTEGRITY_FIREPROOF | INTEGRITY_INDESTRUCTIBLE | INTEGRITY_INDESTRUCTIBLE
 	var/falling_type = /obj/item/reagent_containers/food/snacks/sliceable/pizza/margherita
 	var/crushing = TRUE
 
@@ -21,14 +21,14 @@
 	dropped.density = FALSE
 	dropped.opacity = FALSE
 	animate(dropped, pixel_y = initial_y, pixel_x = initial_x , time = 7)
-	addtimer(CALLBACK(dropped, /atom/movable.proc/end_fall), 7)
+	addtimer(CALLBACK(dropped, TYPE_PROC_REF(/atom/movable, end_fall)), 7)
 	return INITIALIZE_HINT_QDEL
 
 /atom/movable/proc/end_fall(var/crushing = FALSE)
 	if(crushing)
 		for(var/atom/movable/AM in loc)
 			if(AM != src)
-				AM.ex_act(1)
+				LEGACY_EX_ACT(AM, 1, null)
 				explosion(src.loc, 0, 0, 1, 1, 0)
 
 	for(var/mob/living/M in oviewers(3, src))
@@ -45,5 +45,5 @@
 /obj/effect/falling_effect/singularity_pull()
 	return
 
-/obj/effect/falling_effect/ex_act()
+/obj/effect/falling_effect/legacy_ex_act()
 	return

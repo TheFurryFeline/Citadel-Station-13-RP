@@ -2,13 +2,12 @@
 	name = "wolfgirl"
 	desc = "AwooOOOOoooo!"
 	tt_desc = "Homo lupus"
-	
+
 	icon_state = "wolfgirl"
 	icon_living = "wolfgirl"
 	icon_dead = "wolfgirl-dead"
 	icon = 'icons/mob/vore.dmi'
 
-	faction = "wolfgirl"
 	maxHealth = 30
 	health = 30
 
@@ -17,12 +16,12 @@
 	response_harm = "hits the"
 
 	harm_intent_damage = 8
-	melee_damage_lower = 7
-	melee_damage_upper = 7
+	legacy_melee_damage_lower = 7
+	legacy_melee_damage_upper = 7
 	attacktext = list("slashed")
 
 	say_list_type = /datum/say_list/wolfgirl
-	ai_holder_type = /datum/ai_holder/simple_mob/retaliate/cooperative/wolfgirl
+	ai_holder_type = /datum/ai_holder/polaris/simple_mob/retaliate/cooperative/wolfgirl
 
 	var/loopstop = 0 //To prevent circular awoooos.
 /*
@@ -35,11 +34,8 @@
 */
 // Activate Noms!
 /mob/living/simple_mob/vore/wolfgirl
-	vore_active = 1
-	vore_pounce_chance = 40
-	vore_icons = SA_ICON_LIVING
 
-/datum/ai_holder/simple_mob/retaliate/cooperative/wolfgirl/on_hear_say(mob/living/speaker, message)
+/datum/ai_holder/polaris/simple_mob/retaliate/cooperative/wolfgirl/on_hear_say(mob/living/speaker, message)
 
 	if(!speaker.client)
 		return

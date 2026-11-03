@@ -1,4 +1,4 @@
-/hook/startup/proc/xenochems_vr() //A chemical whitelist. Adds on to the other chemical whitelist. This is required, as you don't want users getting certain chemicals (See: Adminordizine) and also don't want them to just get pure stock chemicals, as that'd be boring for the player.
+/legacy_hook/startup/proc/xenochems_vr() //A chemical whitelist. Adds on to the other chemical whitelist. This is required, as you don't want users getting certain chemicals (See: Adminordizine) and also don't want them to just get pure stock chemicals, as that'd be boring for the player.
 	xenoChemList += "inaprovaline"
 	xenoChemList += "bicaridine"
 	xenoChemList += "dylovene"
@@ -20,10 +20,6 @@
 	xenoChemList += "methylphenidate"
 	xenoChemList += "citalopram"
 	xenoChemList += "paroxetine"
-	xenoChemList += "macrocillin"
-	xenoChemList += "microcillin"
-	xenoChemList += "normalcillin"
-	xenoChemList += "sizeoxadone"
 	xenoChemList += "ickypak"
 	xenoChemList += "unsorbitol"
 	xenoChemList += "toxin"

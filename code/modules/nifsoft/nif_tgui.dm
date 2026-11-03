@@ -31,7 +31,7 @@
 
 /datum/component/nif_menu/RegisterWithParent()
 	. = ..()
-	RegisterSignal(parent, COMSIG_MOB_CLIENT_LOGIN, .proc/create_mob_button)
+	RegisterSignal(parent, COMSIG_MOB_CLIENT_LOGIN, PROC_REF(create_mob_button))
 	var/mob/owner = parent
 	if(owner.client)
 		create_mob_button(parent)
@@ -43,29 +43,28 @@
 		var/mob/owner = parent
 		if(screen_icon)
 			owner?.client?.screen -= screen_icon
-			UnregisterSignal(screen_icon, COMSIG_CLICK)
+			UnregisterSignal(screen_icon, COMSIG_ATOM_CLICK)
 			QDEL_NULL(screen_icon)
 		if(ishuman(parent))
-			owner.verbs -= /mob/living/carbon/human/proc/nif_menu
-
+			remove_verb(owner, /mob/living/carbon/human/proc/nif_menu)
 
 /datum/component/nif_menu/proc/create_mob_button(mob/user)
 	var/datum/hud/HUD = user.hud_used
 	if(!screen_icon)
 		screen_icon = new()
-		RegisterSignal(screen_icon, COMSIG_CLICK, .proc/nif_menu_click)
+		RegisterSignal(screen_icon, COMSIG_ATOM_CLICK, PROC_REF(nif_menu_click))
 	screen_icon.icon = HUD.ui_style
 	screen_icon.color = HUD.ui_color
 	screen_icon.alpha = HUD.ui_alpha
 	LAZYADD(HUD.other_important, screen_icon)
 	user.client?.screen += screen_icon
 
-	user.verbs |= /mob/living/carbon/human/proc/nif_menu
+	add_verb(user, /mob/living/carbon/human/proc/nif_menu)
 
-/datum/component/nif_menu/proc/nif_menu_click(source, location, control, params, user)
+/datum/component/nif_menu/proc/nif_menu_click(datum/source, mob/user, location, control, params)
 	var/mob/living/carbon/human/H = user
 	if(istype(H) && H.nif)
-		INVOKE_ASYNC(H.nif, .proc/ui_interact, user)
+		INVOKE_ASYNC(H.nif, PROC_REF(ui_interact), user)
 
 /**
  * Screen atom for NIF menu access
@@ -76,17 +75,17 @@
 	icon_state = "nif"
 	screen_loc = ui_smallquad
 
-/atom/movable/screen/nif_menu/Click(location, control, params)
-	..()
-	var/datum/component/nif_menu/N = usr.GetComponent(/datum/component/nif_menu)
-	N?.nif_menu_click(usr)
+/atom/movable/screen/nif/Click(location, control, params)
+	if(ishuman(usr))
+		var/mob/living/carbon/human/H = usr
+		H.nif?.ui_interact(usr)
 
 /**
  * Verb to open the interface
  */
 /mob/living/carbon/human/proc/nif_menu()
 	set name = "NIF Menu"
-	set category = "IC"
+	set category = VERB_CATEGORY_IC
 	set desc = "Open the NIF user interface."
 
 	var/obj/item/nif/N = nif
@@ -96,7 +95,7 @@
 /**
  * The NIF State ensures that only our authorized implanted user can touch us.
  */
-/obj/item/nif/ui_state(mob/user)
+/obj/item/nif/ui_state()
 	return GLOB.ui_nif_main_state
 
 /**
@@ -109,10 +108,10 @@
 		ui.open()
 
 /**
- * tgui_data gives the UI any relevant data it needs.
+ * ui_data gives the UI any relevant data it needs.
  * In our case, that's basically everything from our statpanel.
  */
-/obj/item/nif/ui_data(mob/user, datum/tgui/ui, datum/ui_state/state)
+/obj/item/nif/ui_data(mob/user, datum/tgui/ui)
 	var/list/data = ..()
 
 	data["theme"] = save_data["ui_theme"]
@@ -150,9 +149,9 @@
 	return data
 
 /**
- * tgui_act handles all user input in the UI.
+ * ui_act handles all user input in the UI.
  */
-/obj/item/nif/ui_act(action, list/params, datum/tgui/ui, datum/ui_state/state)
+/obj/item/nif/ui_act(action, list/params, datum/tgui/ui, datum/ui_state/state, datum/event_args/actor/actor)
 	if(..())
 		return TRUE
 

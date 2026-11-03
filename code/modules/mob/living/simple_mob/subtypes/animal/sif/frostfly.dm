@@ -15,13 +15,25 @@
 	to anything other than Diyaabs, which they seem to have formed a tangential symbiosis with."
 	value = CATALOGUER_REWARD_MEDIUM
 
+/datum/armor/physiology/frostfly
+	melee = 0.4
+	melee_tier = 2
+	bullet = 0.1
+	bullet_tier = 2
+	laser = 0.15
+	laser_tier = 2
+	laser_soak = 15
+	bomb = 0.1
+	bio = 1.0
+	rad = 1.0
+
 /mob/living/simple_mob/animal/sif/frostfly
 	name = "frostfly"
 	desc = "A large insect with glittering wings."
 	tt_desc = "S Carabidae glacios"
 	catalogue_data = list(/datum/category_item/catalogue/fauna/frostfly)
 
-	faction = "diyaab"
+	iff_factions = MOB_IFF_FACTION_BIND_TO_MAP
 
 	icon_state = "firefly"
 	icon_living = "firefly"
@@ -34,49 +46,30 @@
 	health = 65
 	randomized = TRUE
 
-	pass_flags = PASSTABLE
+	pass_flags = ATOM_PASS_TABLE
 
 	var/energy = 100
 	var/max_energy = 100
 
-	movement_cooldown = 0.5
+	movement_base_speed = 5
 
-	melee_damage_lower = 5
-	melee_damage_upper = 10
+	legacy_melee_damage_lower = 5
+	legacy_melee_damage_upper = 10
 	base_attack_cooldown = 1.5 SECONDS
 	attacktext = list("nipped", "bit", "pinched")
 
-	projectiletype = /obj/item/projectile/energy/blob/freezing
+	projectiletype = /obj/projectile/energy/blob/freezing
 
 	special_attack_cooldown = 5 SECONDS
 	special_attack_min_range = 0
 	special_attack_max_range = 4
 
-	armor = list(
-		"melee" = 20,
-		"bullet" = 10,
-		"laser" = 5,
-		"energy" = 0,
-		"bomb" = 10,
-		"bio" = 100,
-		"rad" = 100
-		)
-
-	// The frostfly's body is incredibly cold at all times, natural resistance to things trying to burn it.
-	armor_soak = list(
-		"melee" = 0,
-		"bullet" = 0,
-		"laser" = 15,
-		"energy" = 0,
-		"bomb" = 0,
-		"bio" = 0,
-		"rad" = 0
-		)
+	armor_type = /datum/armor/physiology/frostfly
 
 	var/datum/effect_system/smoke_spread/frost/smoke_special
 
 	say_list_type = /datum/say_list/frostfly
-	ai_holder_type = /datum/ai_holder/simple_mob/ranged/kiting/threatening/frostfly
+	ai_holder_type = /datum/ai_holder/polaris/simple_mob/ranged/kiting/threatening/frostfly
 
 /mob/living/simple_mob/animal/sif/frostfly/get_cold_protection()
 	return 1	// It literally produces a cryogenic mist inside itself. Cold doesn't bother it.
@@ -84,8 +77,8 @@
 /mob/living/simple_mob/animal/sif/frostfly/Initialize(mapload)
 	. = ..()
 	smoke_special = new
-	verbs += /mob/living/proc/ventcrawl
-	verbs += /mob/living/proc/hide
+	add_verb(src, /mob/living/proc/ventcrawl)
+	add_verb(src, /mob/living/proc/hide)
 
 /datum/say_list/frostfly
 	speak = list("Zzzz.", "Kss.", "Zzt?")
@@ -101,7 +94,7 @@
 	say_escalate = list("Rszt!")
 
 	threaten_sound = 'sound/effects/refill.ogg'
-	stand_down_sound = 'sound/effects/sparks5.ogg'
+	stand_down_sound = /datum/soundbyte/sparks
 
 /mob/living/simple_mob/animal/sif/frostfly/handle_special()
 	..()
@@ -109,15 +102,11 @@
 	if(energy < max_energy)
 		energy++
 
-/mob/living/simple_mob/animal/sif/frostfly/Stat()
-	..()
-	if(client.statpanel == "Status")
-		statpanel("Status")
-		if(SSemergencyshuttle)
-			var/eta_status = SSemergencyshuttle.get_status_panel_eta()
-			if(eta_status)
-				stat(null, eta_status)
-		stat("Energy", energy)
+/mob/living/simple_mob/animal/sif/frostfly/statpanel_data(client/C)
+	. = ..()
+	if(C.statpanel_tab("Status"))
+		INJECT_STATPANEL_DATA_LINE(., "")
+		INJECT_STATPANEL_DATA_ENTRY(., "Energy", energy)
 
 /mob/living/simple_mob/animal/sif/frostfly/should_special_attack(atom/A)
 	if(energy >= 20)
@@ -140,25 +129,25 @@
 
 			return FALSE
 
-/datum/ai_holder/simple_mob/ranged/kiting/threatening/frostfly
+/datum/ai_holder/polaris/simple_mob/ranged/kiting/threatening/frostfly
 	can_flee = TRUE
 	dying_threshold = 0.5
 	flee_when_outmatched = TRUE
 	run_if_this_close = 3
 
-/datum/ai_holder/simple_mob/ranged/kiting/threatening/frostfly/special_flee_check()
+/datum/ai_holder/polaris/simple_mob/ranged/kiting/threatening/frostfly/special_flee_check()
 	var/mob/living/simple_mob/animal/sif/frostfly/F = holder
 	if(F.energy < F.max_energy * 0.2)
 		return TRUE
 	return FALSE
 
-/datum/ai_holder/simple_mob/ranged/kiting/threatening/frostfly/pre_special_attack(atom/A)
+/datum/ai_holder/polaris/simple_mob/ranged/kiting/threatening/frostfly/pre_special_attack(atom/A)
 	if(isliving(A))
 		holder.a_intent = INTENT_DISARM
 	else
 		holder.a_intent = INTENT_HARM
 
-/datum/ai_holder/simple_mob/ranged/kiting/threatening/frostfly/post_ranged_attack(atom/A)
+/datum/ai_holder/polaris/simple_mob/ranged/kiting/threatening/frostfly/post_ranged_attack(atom/A)
 	var/mob/living/simple_mob/animal/sif/frostfly/F = holder
 	if(istype(A,/mob/living))
 		var/new_dir = turn(F.dir, -90)

@@ -3,7 +3,7 @@
 /datum/category_item/catalogue/fauna/slime
 	name = "Slime"
 	desc = "Often referred to as Slimes, this mysterious alien \
-	species represents a larger biological curiosity to NanoTrasen. \
+	species represents a larger biological curiosity to Nanotrasen. \
 	Highly mutable, these carnivorous blobs of gelatinous tissue may \
 	be trained and farmed, but their temperament makes them a constant danger."
 	value = CATALOGUER_REWARD_EASY
@@ -24,14 +24,17 @@
 	gender = NEUTER
 	catalogue_data = list(/datum/category_item/catalogue/fauna/slime)
 
-	faction = "slime" // Note that slimes are hostile to other slimes of different color regardless of faction (unless Unified).
+	iff_factions = MOB_IFF_FACTION_SLIME // Note that slimes are hostile to other slimes of different color regardless of faction (unless Unified).
 	maxHealth = 150
-	movement_cooldown = 0
-	pass_flags = PASSTABLE
-	makes_dirt = FALSE	// Goop
+	movement_base_speed = 6.66
+	pass_flags = ATOM_PASS_TABLE
+	makes_dirt = FALSE	// Goopw
 	mob_class = MOB_CLASS_SLIME
 
 	response_help = "pets"
+
+	base_attack_cooldown = 2 SECONDS
+	composition_reagent = "slimejelly"
 
 	// Atmos stuff.
 	minbodytemp = T0C-30
@@ -51,15 +54,14 @@
 	taser_kill = FALSE
 	water_resist = 0 // Slimes are very weak to water.
 
-	melee_damage_lower = 10
-	melee_damage_upper = 15
-	base_attack_cooldown = 10 // One attack a second.
+	legacy_melee_damage_lower = 10
+	legacy_melee_damage_upper = 15
 	attack_sound = 'sound/weapons/bite.ogg'
 	attacktext = list("glomped")
 	speak_emote = list("chirps")
 	friendly = list("pokes")
 
-	ai_holder_type = /datum/ai_holder/simple_mob/melee
+	ai_holder_type = /datum/ai_holder/polaris/simple_mob/melee
 	say_list_type = /datum/say_list/slime
 
 	var/cores = 1 // How many cores you get when placed in a Processor.
@@ -70,16 +72,15 @@
 	var/reagent_injected = null // Some slimes inject reagents on attack.  This tells the game what reagent to use.
 	var/injection_amount = 5 // This determines how much.
 	var/mood = ":3" // Icon to use to display 'mood', as an overlay.
+	var/allowed_attack_types = list(
+		/obj/item/melee/baton/slime,
+		/obj/item/slimepotion,
+	)
 
 	can_enter_vent_with = list(/obj/item/clothing/head)
 
-/datum/say_list/slime
-	speak = list("Blorp...", "Blop...")
-	emote_see = list("bounces", "jiggles", "sways")
-	emote_hear = list("squishes")
-
 /mob/living/simple_mob/slime/Initialize(mapload)
-	verbs += /mob/living/proc/ventcrawl
+	add_verb(src, /mob/living/proc/ventcrawl)
 	update_mood()
 	glow_color = color
 	handle_light()
@@ -87,25 +88,24 @@
 	return ..()
 
 /mob/living/simple_mob/slime/Destroy()
-	if(hat)
-		drop_hat()
+	QDEL_NULL(hat)
 	return ..()
 
-/mob/living/simple_mob/slime/death()
-	// Make dead slimes stop glowing.
-	glow_toggle = FALSE
-	handle_light()
-	..()
+/datum/say_list/slime
+	speak = list("Blorp...", "Blop...", "Blorble...")
+	emote_see = list("bounces", "jiggles", "sways")
+	emote_hear = list("squishes")
 
-/mob/living/simple_mob/slime/revive()
-	// Make revived slimes resume glowing.
-	glow_toggle = initial(glow_toggle)
-	handle_light()
-	..()
+/mob/living/simple_mob/slime/set_stat(new_stat, update_mobility)
+	. = ..()
+	if(!.)
+		return
+	glow_toggle = IS_ALIVE(src)? FALSE : initial(glow_toggle)
 
 /mob/living/simple_mob/slime/update_icon()
 	..() // Do the regular stuff first.
 
+	cut_overlays()
 	if(stat != DEAD)
 		// General slime shine.
 		var/image/I = image(icon, src, "slime light")
@@ -125,11 +125,10 @@
 
 	// Hat simulator.
 	if(hat)
-		var/hat_state = hat.item_state ? hat.item_state : hat.icon_state
-		var/image/I = image('icons/mob/head.dmi', src, hat_state)
-		I.pixel_y = -7 // Slimes are small.
-		I.appearance_flags = RESET_COLOR
-		add_overlay(I)
+		var/mutable_appearance/MA = hat.render_mob_appearance(src, SLOT_ID_HEAD)
+		MA.pixel_y = -7
+		MA.appearance_flags |= RESET_COLOR
+		add_overlay(MA)
 
 // Controls the 'mood' overlay. Overrided in subtypes for specific behaviour.
 /mob/living/simple_mob/slime/proc/update_mood()
@@ -150,6 +149,10 @@
 			return TRUE
 		else
 			return FALSE
+	if(ishuman(L))
+		var/mob/living/carbon/human/H = L
+		if(istype(H.species, /datum/species/monkey))	// Monke always food
+			return FALSE
 	// The other stuff was already checked in parent proc, and the . variable will implicitly return the correct value.
 
 // Slimes regenerate passively.
@@ -161,7 +164,10 @@
 	adjustBruteLoss(-1)
 
 // Clicked on by empty hand.
-/mob/living/simple_mob/slime/attack_hand(mob/living/L)
+/mob/living/simple_mob/slime/attack_hand(mob/user, datum/event_args/actor/clickchain/e_args)
+	var/mob/living/L = user
+	if(!istype(L))
+		return
 	if(L.a_intent == INTENT_GRAB && hat)
 		remove_hat(L)
 	else
@@ -173,18 +179,16 @@
 		give_hat(I, user)
 		return
 
-	//VOREStation Edit Start
 	var/can_miss = TRUE
 	for(var/item_type in allowed_attack_types)
 		if(istype(I, item_type))
 			can_miss = FALSE
 			break
-	//VOREStation Edit End
 
 	// Otherwise they're probably fighting the slime.
-	if(prob(25) && can_miss)	//VOREStation Edit
+	if(prob(25) && can_miss)
 		visible_message(SPAN_WARNING( "\The [user]'s [I] passes right through \the [src]!"))
-		user.setClickCooldown(user.get_attack_speed(I))
+		user.setClickCooldownLegacy(user.get_attack_speed_legacy(I))
 		return
 	..()
 
@@ -202,9 +206,9 @@
 		to_chat(user, SPAN_WARNING( "\The [src] is already wearing \a [hat]."))
 		return
 	else
-		user.drop_item(new_hat)
+		if(!user.attempt_insert_item_for_installation(new_hat, src))
+			return
 		hat = new_hat
-		new_hat.forceMove(src)
 		to_chat(user, SPAN_NOTICE("You place \a [new_hat] on \the [src].  How adorable!"))
 		update_icon()
 		return

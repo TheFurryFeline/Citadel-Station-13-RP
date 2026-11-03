@@ -4,7 +4,7 @@
 	var/mob/living/carbon/occupant
 	var/locked
 	name = "Body Scanner"
-	icon = 'icons/obj/Cryogenic2.dmi'
+	icon = 'icons/obj/medical/cryogenic2.dmi'
 	icon_state = "scanner_open"
 	density = 1
 	anchored = 1
@@ -15,11 +15,6 @@
 	light_color = "#00FF00"
 	var/obj/machinery/body_scanconsole/console
 
-/obj/machinery/bodyscanner/Initialize(mapload, newdir)
-	. = ..()
-	default_apply_parts()
-	RefreshParts()
-
 /obj/machinery/bodyscanner/Destroy()
 	if(console)
 		console.scanner = null
@@ -27,7 +22,7 @@
 
 /obj/machinery/bodyscanner/power_change()
 	..()
-	if(!(stat & (BROKEN|NOPOWER)))
+	if(!(machine_stat & (BROKEN|NOPOWER)))
 		set_light(2)
 	else
 		set_light(0)
@@ -57,7 +52,7 @@
 			return
 		M.forceMove(src)
 		occupant = M
-		update_icon() //icon_state = "body_scanner_1" //VOREStation Edit - Health display for consoles with light and such.
+		update_icon() //icon_state = "body_scanner_1" // Health display for consoles with light and such.
 		playsound(src, 'sound/machines/medbayscanner1.ogg', 50) // Beepboop you're being scanned. <3
 		add_fingerprint(user)
 		qdel(G)
@@ -67,7 +62,7 @@
 		if(default_deconstruction_crowbar(user, G))
 			return
 
-/obj/machinery/bodyscanner/MouseDrop_T(mob/living/carbon/O, mob/user as mob)
+/obj/machinery/bodyscanner/MouseDroppedOnLegacy(mob/living/carbon/O, mob/user as mob)
 	if(!istype(O))
 		return FALSE //not a mob
 	if(user.incapacitated())
@@ -112,7 +107,7 @@
 
 /obj/machinery/bodyscanner/verb/eject()
 	set src in oview(1)
-	set category = "Object"
+	set category = VERB_CATEGORY_OBJECT
 	set name = "Eject Body Scanner"
 
 	if(usr.incapacitated())
@@ -129,12 +124,12 @@
 	update_icon() //Health display for consoles with light and such.
 	return
 
-/obj/machinery/bodyscanner/ex_act(severity)
+/obj/machinery/bodyscanner/legacy_ex_act(severity)
 	switch(severity)
 		if(1.0)
 			for(var/atom/movable/A as mob|obj in src)
 				A.loc = src.loc
-				ex_act(severity)
+				legacy_ex_act(severity)
 				//Foreach goto(35)
 			//SN src = null
 			qdel(src)
@@ -143,7 +138,7 @@
 			if (prob(50))
 				for(var/atom/movable/A as mob|obj in src)
 					A.loc = src.loc
-					ex_act(severity)
+					legacy_ex_act(severity)
 					//Foreach goto(108)
 				//SN src = null
 				qdel(src)
@@ -152,7 +147,7 @@
 			if (prob(25))
 				for(var/atom/movable/A as mob|obj in src)
 					A.loc = src.loc
-					ex_act(severity)
+					legacy_ex_act(severity)
 					//Foreach goto(181)
 				//SN src = null
 				qdel(src)
@@ -163,11 +158,21 @@
 //Body Scan Console
 /obj/machinery/body_scanconsole
 	var/obj/machinery/bodyscanner/scanner
-	var/known_implants = list(/obj/item/implant/health, /obj/item/implant/chem, /obj/item/implant/death_alarm, /obj/item/implant/loyalty, /obj/item/implant/tracking, /obj/item/implant/language, /obj/item/implant/language/eal, /obj/item/implant/backup, /obj/item/nif, /obj/item/implant/mirror)
+	var/known_implants = list(
+		/obj/item/implant/health,
+		/obj/item/implant/chem,
+		/obj/item/implant/death_alarm,
+		/obj/item/implant/loyalty,
+		/obj/item/implant/tracking,
+		/obj/item/implant/language,
+		/obj/item/implant/language/eal,
+		/obj/item/nif,
+		/obj/item/organ/internal/mirror,
+	)
 	var/delete
 	var/temphtml
 	name = "Body Scanner Console"
-	icon = 'icons/obj/Cryogenic2.dmi'
+	icon = 'icons/obj/medical/cryogenic2.dmi'
 	icon_state = "scanner_terminal_off"
 	dir = 8
 	density = 1
@@ -182,7 +187,6 @@
 	return INITIALIZE_HINT_LATELOAD
 
 /obj/machinery/body_scanconsole/LateInitialize()
-	. = ..()
 	findscanner()
 
 /obj/machinery/body_scanconsole/Destroy()
@@ -209,20 +213,9 @@
 		return attack_hand(user)
 
 /obj/machinery/body_scanconsole/power_change()
-	/* VOREStation Removal
-	if(stat & BROKEN)
-		icon_state = "body_scannerconsole-p"
-	else if(powered() && !panel_open)
-		icon_state = initial(icon_state)
-		stat &= ~NOPOWER
-	else
-		spawn(rand(0, 15))
-			icon_state = "body_scannerconsole-p"
-			stat |= NOPOWER
-	*/
 	update_icon() //Health display for consoles with light and such.
 
-/obj/machinery/body_scanconsole/ex_act(severity)
+/obj/machinery/body_scanconsole/legacy_ex_act(severity)
 	switch(severity)
 		if(1.0)
 			//SN src = null
@@ -256,8 +249,8 @@
 	. = ..()
 	return attack_hand(user)
 
-/obj/machinery/body_scanconsole/attack_hand(user as mob)
-	if(stat & (NOPOWER|BROKEN))
+/obj/machinery/body_scanconsole/attack_hand(mob/user, datum/event_args/actor/clickchain/e_args)
+	if(machine_stat & (NOPOWER|BROKEN))
 		return
 
 	if(!scanner)
@@ -284,10 +277,10 @@
 
 		var/occupantData[0]
 		if(scanner.occupant && ishuman(scanner.occupant))
-			update_icon() //VOREStation Edit - Health display for consoles with light and such.
+			update_icon() // Update health display for consoles with light and such.
 			var/mob/living/carbon/human/H = scanner.occupant
 			occupantData["name"] = H.name
-			occupantData["stat"] = H.stat
+			occupantData["stbat"] = H.stat
 			occupantData["health"] = H.health
 			occupantData["maxHealth"] = H.getMaxHealth()
 
@@ -301,16 +294,16 @@
 			occupantData["radLoss"] = H.radiation
 			occupantData["cloneLoss"] = H.getCloneLoss()
 			occupantData["brainLoss"] = H.getBrainLoss()
-			occupantData["paralysis"] = H.paralysis
-			occupantData["paralysisSeconds"] = round(H.paralysis / 4)
+			occupantData["paralysis"] = H.is_unconscious()
+			occupantData["paralysisSeconds"] = round(H.is_unconscious()?.time_left() / 10)
 			occupantData["bodyTempC"] = H.bodytemperature-T0C
 			occupantData["bodyTempF"] = (((H.bodytemperature-T0C) * 1.8) + 32)
 
 			occupantData["hasBorer"] = H.has_brain_worms()
 
 			var/bloodData[0]
-			if(H.vessel)
-				var/blood_volume = round(H.vessel.get_reagent_amount("blood"))
+			if(H.blood_holder && H.species.blood_volume)
+				var/blood_volume = round(H.blood_holder.get_total_volume())
 				var/blood_max = H.species.blood_volume
 				bloodData["volume"] = blood_volume
 				bloodData["percent"] = round(((blood_volume / blood_max)*100))
@@ -318,18 +311,22 @@
 			occupantData["blood"] = bloodData
 
 			var/reagentData[0]
-			if(H.reagents.reagent_list.len >= 1)
-				for(var/datum/reagent/R in H.reagents.reagent_list)
-					reagentData[++reagentData.len] = list("name" = R.name, "amount" = R.volume)
+			if(length(H.reagents.reagent_volumes))
+				for(var/id in H.reagents?.reagent_volumes)
+					var/datum/reagent/R = SSchemistry.fetch_reagent(id)
+					var/volume = H.reagents.reagent_volumes[id]
+					reagentData[++reagentData.len] = list("name" = R.name, "amount" = volume)
 			else
 				reagentData = null
 
 			occupantData["reagents"] = reagentData
 
 			var/ingestedData[0]
-			if(H.ingested.reagent_list.len >= 1)
-				for(var/datum/reagent/R in H.ingested.reagent_list)
-					ingestedData[++ingestedData.len] = list("name" = R.name, "amount" = R.volume)
+			if(length(H.ingested.reagent_volumes))
+				for(var/id in H.ingested?.reagent_volumes)
+					var/datum/reagent/R = SSchemistry.fetch_reagent(id)
+					var/volume = H.ingested.reagent_volumes[id]
+					ingestedData[++ingestedData.len] = list("name" = R.name, "amount" = volume)
 			else
 				ingestedData = null
 
@@ -350,7 +347,7 @@
 					implantSubData["name"] = I.name
 					if(is_type_in_list(I, known_implants))
 						implantSubData["known"] = 1
-					for(var/obj/item/implant/mirror/P in E.implants)
+					for(var/obj/item/organ/internal/mirror/P in E.implants)
 						mirror = P
 
 					implantData.Add(list(implantSubData))
@@ -371,7 +368,7 @@
 					organStatus["bleeding"] = 1
 				if(E.status & ORGAN_DEAD)
 					organStatus["dead"] = 1
-				for(var/datum/wound/W in E.wounds)
+				for(var/datum/wound/W as anything in E.wounds)
 					if(W.internal)
 						organStatus["internalBleeding"] = 1
 						break
@@ -402,9 +399,9 @@
 
 			occupantData["intOrgan"] = intOrganData
 
-			occupantData["blind"] = (H.sdisabilities & BLIND)
-			occupantData["nearsighted"] = (H.disabilities & NEARSIGHTED)
-			occupantData = attempt_vr(scanner,"get_occupant_data_vr",list(occupantData,H)) //VOREStation Insert
+			occupantData["blind"] = (HAS_TRAIT(H, TRAIT_BLIND))
+			occupantData["nearsighted"] = (H.disabilities & DISABILITY_NEARSIGHTED)
+			occupantData = attempt_vr(scanner,"get_occupant_data_vr",list(occupantData,H))
 		data["occupant"] = occupantData
 
 	ui = SSnanoui.try_update_ui(user, src, ui_key, ui, data, force_open)
@@ -434,17 +431,6 @@
 			P.name = "Body Scan - [href_list["name"]] ([worldtime2stationtime(world.time)])"
 			printing = null
 			printing_text = null
-
-	if (href_list["backup"])
-		if(mirror != null)
-			var/obj/item/implant/mirror/E = mirror
-			E.post_implant(scanner.occupant)
-			visible_message(SPAN_NOTICE("Manual backup complete."))
-		else
-			visible_message(SPAN_NOTICE("No mirror detected!"))
-		return
-
-
 
 /obj/machinery/body_scanconsole/proc/generate_printing_text()
 	var/dat = ""
@@ -479,7 +465,7 @@
 			extra_font = "<font color=[occupant.getFireLoss() < 60 ? "blue" : "red"]>"
 			dat += "[extra_font]\t-Burn Severity %: [occupant.getFireLoss()]</font><br>"
 
-			extra_font = "<font color=[occupant.radiation < 10 ? "blue" : "red"]>"
+			extra_font = "<font color=[occupant.radiation < 400 ? "blue" : "red"]>"
 			dat += "[extra_font]\tRadiation Level %: [occupant.radiation]</font><br>"
 
 			extra_font = "<font color=[occupant.getCloneLoss() < 1 ? "blue" : "red"]>"
@@ -488,7 +474,7 @@
 			extra_font = "<font color=[occupant.getBrainLoss() < 1 ? "blue" : "red"]>"
 			dat += "[extra_font]\tApprox. Brain Damage %: [occupant.getBrainLoss()]</font><br>"
 
-			dat += "Paralysis Summary %: [occupant.paralysis] ([round(occupant.paralysis / 4)] seconds left!)<br>"
+			dat += "Paralysis Summary: [round(occupant.is_unconscious()?.time_left() / 10)] seconds left!)<br>"
 			dat += "Body Temperature: [occupant.bodytemperature-T0C]&deg;C ([occupant.bodytemperature*1.8-459.67]&deg;F)<br>"
 
 			dat += "<hr>"
@@ -496,8 +482,8 @@
 			if(occupant.has_brain_worms())
 				dat += "Large growth detected in frontal lobe, possibly cancerous. Surgical removal is recommended.<br>"
 
-			if(occupant.vessel)
-				var/blood_volume = round(occupant.vessel.get_reagent_amount("blood"))
+			if(occupant.blood_holder)
+				var/blood_volume = round(occupant.blood_holder.get_total_volume())
 				var/blood_max = occupant.species.blood_volume
 				var/blood_percent =  blood_volume / blood_max
 				blood_percent *= 100
@@ -505,13 +491,15 @@
 				extra_font = "<font color=[blood_volume > 448 ? "blue" : "red"]>"
 				dat += "[extra_font]\tBlood Level %: [blood_percent] ([blood_volume] units)</font><br>"
 
-			if(occupant.reagents)
-				for(var/datum/reagent/R in occupant.reagents.reagent_list)
-					dat += "Reagent: [R.name], Amount: [R.volume]<br>"
+			for(var/id in occupant.reagents?.reagent_volumes)
+				var/datum/reagent/R = SSchemistry.fetch_reagent(id)
+				var/volume = occupant.reagents.reagent_volumes[id]
+				dat += "Reagent: [R.name], Amount: [volume]<br>"
 
-			if(occupant.ingested)
-				for(var/datum/reagent/R in occupant.ingested.reagent_list)
-					dat += "Stomach: [R.name], Amount: [R.volume]<br>"
+			for(var/id in occupant.ingested?.reagent_volumes)
+				var/datum/reagent/R = SSchemistry.fetch_reagent(id)
+				var/volume = occupant.ingested.reagent_volumes[id]
+				dat += "Stomach: [R.name], Amount: [volume]<br>"
 
 			dat += "<hr><table border='1'>"
 			dat += "<tr>"
@@ -533,9 +521,10 @@
 				var/internal_bleeding = ""
 				var/lung_ruptured = ""
 				var/o_dead = ""
-				for(var/datum/wound/W in e.wounds) if(W.internal)
-					internal_bleeding = "<br>Internal bleeding"
-					break
+				for(var/datum/wound/W as anything in e.wounds)
+					if(W.internal)
+						internal_bleeding = "<br>Internal bleeding"
+						break
 				if(istype(e, /obj/item/organ/external/chest) && occupant.is_lung_ruptured())
 					lung_ruptured = "Lung ruptured:"
 				if(e.splinted)
@@ -612,9 +601,9 @@
 				dat += "<td>[i.name]</td><td>N/A</td><td>[i.damage]</td><td>[infection]:[mech][i_dead]</td><td></td>"
 				dat += "</tr>"
 			dat += "</table>"
-			if(occupant.sdisabilities & BLIND)
-				dat += "<font color='red'>Cataracts detected.</font><BR>"
-			if(occupant.disabilities & NEARSIGHTED)
+			if(HAS_TRAIT(occupant, TRAIT_BLIND))
+				dat += "<font color='red'>Severe impairment of the eyes or visual nerves detected.</font><BR>"
+			if(occupant.disabilities & DISABILITY_NEARSIGHTED)
 				dat += "<font color='red'>Retinal misalignment detected.</font><BR>"
 		else
 			dat += "\The [src] is empty."
@@ -646,7 +635,8 @@
 	return incoming
 
 /obj/machinery/bodyscanner/update_icon()
-	if(stat & (NOPOWER|BROKEN))
+	. = ..()
+	if(machine_stat & (NOPOWER|BROKEN))
 		icon_state = "scanner_off"
 		set_light(0)
 	else
@@ -673,7 +663,8 @@
 			console.update_icon(h_ratio)
 
 /obj/machinery/body_scanconsole/update_icon(var/h_ratio)
-	if(stat & (NOPOWER|BROKEN))
+	. = ..()
+	if(machine_stat & (NOPOWER|BROKEN))
 		icon_state = "scanner_terminal_off"
 		set_light(0)
 	else

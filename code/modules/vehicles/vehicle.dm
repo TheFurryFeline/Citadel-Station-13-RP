@@ -1,433 +1,329 @@
-//Dummy object for holding items in vehicles.
-//Prevents items from being interacted with.
-/datum/vehicle_dummy_load
-	var/name = "dummy load"
-	var/actual_load
-
+TYPE_REGISTER_SPATIAL_GRID(/obj/vehicle, SSspatial_grids.vehicles)
+/**
+ * generic, multiseat-capable vehicles system
+ *
+ * ! Port of old vehicles underway. Maintain typepath if possible.
+ */
 /obj/vehicle
-	name = "vehicle"
+	name = "generic vehicle"
+	desc = "Yell at coderbus."
 	icon = 'icons/obj/vehicles.dmi'
-	layer = MOB_LAYER + 0.1 //so it sits above objects including mobs
-	density = 1
-	anchored = 1
-	animate_movement=1
-	light_range = 3
+	icon_state = "fuckyou"
+	// integrity_max = 300
+	// armor = list(MELEE = 30, BULLET = 30, LASER = 30, ENERGY = 0, BOMB = 30, BIO = 0, RAD = 0, FIRE = 60, ACID = 60)
+	density = TRUE
+	anchored = FALSE
+	buckle_flags = BUCKLING_PASS_PROJECTILES_UPWARDS
+	COOLDOWN_DECLARE(cooldown_vehicle_move)
 
-	can_buckle = 1
-	buckle_movable = 1
-	buckle_lying = 0
+	//* Occupants *//
+	/// list of mobs associated to their control flags
+	var/list/mob/occupants
 
-	var/mechanical = TRUE // If false, doesn't care for things like cells, engines, EMP, keys, etc.
-	var/attack_log = null
-	var/on = 0
-	var/health = 0	//do not forget to set health for your vehicle!
-	var/maxhealth = 0
-	var/fire_dam_coeff = 1.0
-	var/brute_dam_coeff = 1.0
-	var/open = 0	//Maint panel
-	var/locked = 1
-	var/stat = 0
-	var/emagged = 0
-	var/powered = 0		//set if vehicle is powered and should use fuel when moving
-	var/move_delay = 1	//set this to limit the speed of the vehicle
+	//* Occupants - Actions *//
+	/// actions to give everyone; set to typepaths to init
+	///
+	/// * all of these must be /datum/action/vehicle's
+	var/list/occupant_actions
 
-	var/obj/item/cell/cell
-	var/charge_use = 5	//set this to adjust the amount of power the vehicle uses per move
+	//* Occupants - HUDs *//
+	/// list of typepaths or ids of /datum/atom_hud_providers that occupants with [VEHICLE_CONTROL_USE_HUDS] get added to their perspective
+	var/list/occupant_huds
 
-	var/paint_color = "#666666" //For vehicles with special paint overlays.
+	var/max_occupants = 1
+	var/max_drivers = 1
+	var/movedelay = 2
+	var/lastmove = 0
+	var/key_type
+	var/obj/item/key/inserted_key
+	var/key_type_exact = TRUE		//can subtypes work
+	var/canmove = TRUE
+	// todo: emulate_door_bumps is shitcode please change it
+	var/emulate_door_bumps = TRUE	//when bumping a door try to make occupants bump them to open them.
+	var/default_driver_move = TRUE	//handle driver movement instead of letting something else do it like riding datums.
+	var/enclosed = FALSE	// is the rider protected from bullets? assume no
+	var/list/autogrant_actions_passenger	//plain list of typepaths
+	var/list/autogrant_actions_controller	//assoc list "[bitflag]" = list(typepaths)
+	var/list/occupant_actions_legacy			//assoc list mob = list(type = action datum assigned to mob)
+	var/obj/vehicle/trailer
+	var/mouse_pointer //do we have a special mouse
 
-	var/atom/movable/load		//all vehicles can take a load, since they should all be a least drivable
-	var/load_item_visible = 1	//set if the loaded item should be overlayed on the vehicle sprite
-	var/load_offset_x = 0		//pixel_x offset for item overlay
-	var/load_offset_y = 0		//pixel_y offset for item overlay
-	var/mob_offset_y = 0		//pixel_y offset for mob overlay
-
-	//var/datum/riding/riding_datum = null //VOREStation Edit - Moved to movables.
-
-//-------------------------------------------
-// Standard procs
-//-------------------------------------------
+/obj/vehicle/Initialize(mapload)
+	. = ..()
+	initialize_occupant_actions()
+	occupants = list()
+	autogrant_actions_passenger = list()
+	autogrant_actions_controller = list()
+	occupant_actions_legacy = list()
+	generate_actions()
 
 /obj/vehicle/Destroy()
-	QDEL_NULL(riding_datum)
+	// remove all occupants if any are left
+	if(length(occupants))
+		stack_trace("still had occupants on Destroy. how?")
+		for(var/mob/occupant in occupants)
+			remove_occupant(occupant)
+	// null out hud providers
+	occupant_huds = null // null them out
+	// delete our key
+	QDEL_NULL(inserted_key)
+	// legacy: get rid of trailer
+	trailer = null
+	// get rid of occupant actions
+	QDEL_LIST_NULL(occupant_actions)
 	return ..()
 
-//BUCKLE HOOKS
-
-/obj/vehicle/buckle_mob(mob/living/M, forced = FALSE, check_loc = TRUE)
+/obj/vehicle/examine(mob/user, dist)
 	. = ..()
-	M.update_water()
-	if(riding_datum)
-		riding_datum.ridden = src
-		riding_datum.handle_vehicle_offsets()
+	/*
+	if(resistance_flags & ON_FIRE)
+		. += "<span class='warning'>It's on fire!</span>"
+	var/healthpercent = obj_integrity/integrity_max * 100
+	switch(healthpercent)
+		if(50 to 99)
+			. += "It looks slightly damaged."
+		if(25 to 50)
+			. += "It appears heavily damaged."
+		if(0 to 25)
+			. += "<span class='warning'>It's falling apart!</span>"
+	*/
 
-/obj/vehicle/unbuckle_mob(mob/living/buckled_mob, force = FALSE)
-	. = ..(buckled_mob, force)
-	buckled_mob.update_water()
-	if(riding_datum)
-		riding_datum.restore_position(buckled_mob)
-		riding_datum.handle_vehicle_offsets() // So the person in back goes to the front.
+/obj/vehicle/proc/is_key(obj/item/I)
+	return I? (key_type_exact? (I.type == key_type) : istype(I, key_type)) : FALSE
 
-/obj/vehicle/setDir(newdir)
-	..(newdir)
-	if(riding_datum)
-		riding_datum.handle_vehicle_offsets()
+/obj/vehicle/proc/return_occupants()
+	return occupants
 
-//MOVEMENT
+/obj/vehicle/proc/occupant_amount()
+	return length(occupants)
+
+/obj/vehicle/proc/return_amount_of_controllers_with_flag(flag)
+	. = 0
+	for(var/i in occupants)
+		if(occupants[i] & flag)
+			.++
+
+/obj/vehicle/proc/return_controllers_with_flag(flag)
+	RETURN_TYPE(/list/mob)
+	. = list()
+	for(var/i in occupants)
+		if(occupants[i] & flag)
+			. += i
+
+/obj/vehicle/proc/return_drivers()
+	return return_controllers_with_flag(VEHICLE_CONTROL_DRIVE)
+
+/obj/vehicle/proc/driver_amount()
+	return return_amount_of_controllers_with_flag(VEHICLE_CONTROL_DRIVE)
+
+/obj/vehicle/proc/is_driver(mob/M)
+	return is_occupant(M) && occupants[M] & VEHICLE_CONTROL_DRIVE
+
+/obj/vehicle/proc/auto_assign_occupant_flags(mob/M) //override for each type that needs it. Default is assign driver if drivers is not at max.
+	if(driver_amount() < max_drivers)
+		add_control_flags(M, VEHICLE_CONTROL_DRIVE | VEHICLE_CONTROL_USE_HUDS | VEHICLE_CONTROL_EXIT)
+
 /obj/vehicle/relaymove(mob/user, direction)
-	if(riding_datum)
-		riding_datum.handle_ride(user, direction)
+	if(is_driver(user))
+		return driver_move(user, direction)
+	return FALSE
 
+/obj/vehicle/proc/driver_move(mob/user, direction)
+	if(key_type && !is_key(inserted_key))
+		to_chat(user, "<span class='warning'>[src] has no key inserted!</span>")
+		return FALSE
+	if(!default_driver_move)
+		return
+	vehicle_move(direction)
 
-/obj/vehicle/Moved()
+/obj/vehicle/proc/vehicle_move(direction)
+	if(!COOLDOWN_FINISHED(src, cooldown_vehicle_move))
+		return FALSE
+	COOLDOWN_START(src, cooldown_vehicle_move, movedelay)
+	if(trailer)
+		var/dir_to_move = get_dir(trailer.loc, loc)
+		var/did_move = step(src, direction)
+		if(did_move)
+			step(trailer, dir_to_move)
+		return did_move
+	else
+		after_move(direction)
+		return step(src, direction)
+
+/obj/vehicle/proc/after_move(direction)
+	return
+
+/obj/vehicle/Bump(atom/movable/M)
 	. = ..()
-	if(riding_datum)
-		riding_datum.handle_vehicle_layer()
-		riding_datum.handle_vehicle_offsets()
+	if(emulate_door_bumps)
+		if(istype(M, /obj/machinery/door))
+			for(var/m in occupants)
+				M.Bumped(m)
 
-/obj/vehicle/Move()
-	if(world.time > l_move_time + move_delay)
-		var/old_loc = get_turf(src)
-		if(mechanical && on && powered && cell.charge < charge_use)
-			turn_off()
+/obj/vehicle/Move(newloc, dir)
+	. = ..()
+	if(trailer && .)
+		var/dir_to_move = get_dir(trailer.loc, newloc)
+		step(trailer, dir_to_move)
 
-		var/init_anc = anchored
-		anchored = 0
-		if(!..())
-			anchored = init_anc
-			return 0
+//* Actions *//
 
-		setDir(get_dir(old_loc, loc))
-		anchored = init_anc
+/obj/vehicle/proc/initialize_occupant_actions()
+	for(var/i in 1 to length(occupant_actions))
+		var/datum/action/vehicle/actionlike = occupant_actions[i]
+		if(istype(actionlike))
+		else if(ispath(actionlike))
+			occupant_actions[i] = new actionlike(src)
 
-		if(mechanical && on && powered)
-			cell.use(charge_use)
-
-		//Dummy loads do not have to be moved as they are just an overlay
-		//See load_object() proc in cargo_trains.dm for an example
-		if(load && !istype(load, /datum/vehicle_dummy_load))
-			load.forceMove(loc)
-			load.setDir(dir)
-
-		return 1
-	else
-		return 0
-
-/obj/vehicle/attackby(obj/item/W as obj, mob/user as mob)
-	if(istype(W, /obj/item/hand_labeler))
+/obj/vehicle/proc/add_occupant_action(datum/action/vehicle/action)
+	if(action in occupant_actions)
 		return
-	if(mechanical)
-		if(W.is_screwdriver())
-			if(!locked)
-				open = !open
-				update_icon()
-				to_chat(user, "<span class='notice'>Maintenance panel is now [open ? "opened" : "closed"].</span>")
-				playsound(src, W.usesound, 50, 1)
-		else if(W.is_crowbar() && cell && open)
-			remove_cell(user)
+	occupant_actions += action
+	for(var/mob/occupant as anything in occupants)
+		if(action.required_control_flags && !(occupants[occupant] & action.required_control_flags))
+			continue
+		occupant.actions_controlled.add_action(action)
 
-		else if(istype(W, /obj/item/cell) && !cell && open)
-			insert_cell(W, user)
-		else if(istype(W, /obj/item/weldingtool))
-			var/obj/item/weldingtool/T = W
-			if(T.welding)
-				if(health < maxhealth)
-					if(open)
-						health = min(maxhealth, health+10)
-						user.setClickCooldown(user.get_attack_speed(W))
-						playsound(src, T.usesound, 50, 1)
-						user.visible_message("<font color='red'>[user] repairs [src]!</font>","<font color=#4F49AF> You repair [src]!</font>")
-					else
-						to_chat(user, "<span class='notice'>Unable to repair with the maintenance panel closed.</span>")
-				else
-					to_chat(user, "<span class='notice'>[src] does not need a repair.</span>")
-			else
-				to_chat(user, "<span class='notice'>Unable to repair while [src] is off.</span>")
-
-	else if(hasvar(W,"force") && hasvar(W,"damtype"))
-		user.setClickCooldown(user.get_attack_speed(W))
-		switch(W.damtype)
-			if("fire")
-				health -= W.force * fire_dam_coeff
-			if("brute")
-				health -= W.force * brute_dam_coeff
-		..()
-		healthcheck()
-	else
-		..()
-
-/obj/vehicle/bullet_act(var/obj/item/projectile/Proj)
-	health -= Proj.get_structure_damage()
-	..()
-	healthcheck()
-
-/obj/vehicle/proc/adjust_health(amount)
-	health = between(0, health + amount, maxhealth)
-	healthcheck()
-
-/obj/vehicle/ex_act(severity)
-	switch(severity)
-		if(1.0)
-			explode()
-			return
-		if(2.0)
-			health -= rand(5,10)*fire_dam_coeff
-			health -= rand(10,20)*brute_dam_coeff
-			healthcheck()
-			return
-		if(3.0)
-			if (prob(50))
-				health -= rand(1,5)*fire_dam_coeff
-				health -= rand(1,5)*brute_dam_coeff
-				healthcheck()
-				return
-	return
-
-/obj/vehicle/emp_act(severity)
-	if(!mechanical)
+/obj/vehicle/proc/remove_occupant_action(datum/action/vehicle/action)
+	if(!(action in occupant_actions))
 		return
+	occupant_actions -= action
+	for(var/mob/occupant as anything in occupants)
+		occupant.actions_controlled.remove_action(action)
 
-	var/was_on = on
-	stat |= EMPED
-	var/obj/effect/overlay/pulse2 = new /obj/effect/overlay(src.loc)
-	pulse2.icon = 'icons/effects/effects.dmi'
-	pulse2.icon_state = "empdisable"
-	pulse2.name = "emp sparks"
-	pulse2.anchored = 1
-	pulse2.setDir(pick(GLOB.cardinal))
+//* HUDs *//
 
-	spawn(10)
-		qdel(pulse2)
-	if(on)
-		turn_off()
-	spawn(severity*300)
-		stat &= ~EMPED
-		if(was_on)
-			turn_on()
+// todo: clear_occupant_huds()
+// todo: add_occupant_hud(datum/atom_hud/hud_like)
+// todo: remove_occupant_hud(datum/atom_hud/hud_like)
+// todo: resolve_occupant_huds() - make sure list is instances, not ids; needed to dedupe and resolve for add/remove
 
-/obj/vehicle/attack_ai(mob/user as mob)
-	return
+//* Control Flags *//
 
-// For downstream compatibility (in particular Paradise)
-/obj/vehicle/proc/handle_rotation()
-	return
-
-//-------------------------------------------
-// Vehicle procs
-//-------------------------------------------
-/obj/vehicle/proc/turn_on()
-	if(!mechanical || stat)
+/**
+ * called when someone is added to the vehicle as well; all additional flags are added then
+ */
+/obj/vehicle/proc/add_control_flags(mob/controller, flags)
+	if(!istype(controller) || !flags)
 		return FALSE
-	if(powered && cell.charge < charge_use)
-		return FALSE
-	on = 1
-	set_light(initial(light_range))
-	update_icon()
+	occupants[controller] |= flags
+	for(var/i in GLOB.bitflags)
+		if(flags & i)
+			grant_controller_actions_by_flag(controller, i)
+	on_change_control_flags(controller, flags_added = flags)
 	return TRUE
 
-/obj/vehicle/proc/turn_off()
-	if(!mechanical)
+/**
+ * called when someone exits the vehicle as well; all remaining flags are removed then
+ */
+/obj/vehicle/proc/remove_control_flags(mob/controller, flags)
+	if(!istype(controller) || !flags)
 		return FALSE
-	on = 0
-	set_light(0)
-	update_icon()
+	occupants[controller] &= ~flags
+	for(var/i in GLOB.bitflags)
+		if(flags & i)
+			remove_controller_actions_by_flag(controller, i)
+	on_change_control_flags(controller, flags_removed = flags)
+	return TRUE
 
-/obj/vehicle/emag_act(var/remaining_charges, mob/user as mob)
-	if(!mechanical)
+/**
+ * called to hook control flag changes
+ */
+/obj/vehicle/proc/on_change_control_flags(mob/controller, flags_added, flags_removed)
+	if(flags_added & flags_removed)
+		stack_trace("some flag was both added and removed. how and why?")
+		flags_added &= ~flags_removed
+	if(flags_added & VEHICLE_CONTROL_USE_HUDS)
+		var/datum/perspective/their_perspective = controller.get_perspective()
+		for(var/provider in occupant_huds)
+			their_perspective.add_atom_hud(provider, ATOM_HUD_SOURCE_VEHICLE(src))
+	if(flags_removed & VEHICLE_CONTROL_USE_HUDS)
+		var/datum/perspective/their_perspective = controller.get_perspective()
+		for(var/provider in occupant_huds)
+			their_perspective.remove_atom_hud(provider, ATOM_HUD_SOURCE_VEHICLE(src))
+	for(var/datum/action/vehicle/action as anything in occupant_actions)
+		if(action.required_control_flags & flags_added)
+			action.grant(controller.actions_controlled)
+		else if(action.required_control_flags & flags_removed)
+			action.revoke(controller.actions_controlled)
+
+//* Occupants *//
+
+/obj/vehicle/proc/is_occupant(mob/M)
+	return !isnull(occupants[M])
+
+/**
+ * Call to add a mob to occupants
+ *
+ * * this should usually be internally called by the specific abstraction of vehicles underneath our path
+ */
+/obj/vehicle/proc/add_occupant(mob/adding, control_flags)
+	SHOULD_NOT_OVERRIDE(TRUE)
+	if(!istype(adding) || occupants[adding])
 		return FALSE
+	occupants[adding] = NONE
+	add_control_flags(adding, control_flags)
+	grant_passenger_actions(adding)
+	// add only ones without flags; add_control_flags() handles the ones with
+	for(var/datum/action/vehicle/action as anything in occupant_actions)
+		if(action.required_control_flags)
+			continue
+		action.grant(adding.actions_controlled)
+	// call added hook
+	occupant_added(adding, new /datum/event_args/actor(adding), occupants[adding], FALSE)
+	return TRUE
 
-	if(!emagged)
-		emagged = 1
-		if(locked)
-			locked = 0
-			to_chat(user, "<span class='warning'>You bypass [src]'s controls.</span>")
-		return TRUE
+/**
+ * Called when an occupant is removed.
+ *
+ * This should be where physicality-agnostic hooks are made, like removing custom actions / handling
+ *
+ * @params
+ * * removing - the mob
+ * * actor - the person removing the mob, usually the mob themselves
+ * * control_flags - the old control flags of the mob
+ * * silent - suppress messages to user
+ * * suppressed - suppress visible messages to others
+ */
+/obj/vehicle/proc/occupant_added(mob/adding, datum/event_args/actor/actor, control_flags, silent, suppressed)
+	SHOULD_CALL_PARENT(TRUE)
+	// todo: this shoudln't be here
+	auto_assign_occupant_flags(adding)
 
-/obj/vehicle/proc/explode()
-	src.visible_message("<font color='red'><B>[src] blows apart!</B></font>", 1)
-	var/turf/Tsec = get_turf(src)
+/**
+ * Call to remove a mob from occupants
+ *
+ * * this should usually be internally called by the specific abstraction of vehicles underneath our path
+ */
+/obj/vehicle/proc/remove_occupant(mob/removing)
+	SHOULD_NOT_OVERRIDE(TRUE)
+	if(!istype(removing))
+		return FALSE
+	remove_control_flags(removing, ALL)
+	remove_passenger_actions(removing)
+	var/old_flags = occupants[removing]
+	occupants -= removing
+	cleanup_actions_for_mob(removing)
+	// remove only ones without flags; remove_control_flags() handles the ones with
+	for(var/datum/action/vehicle/action as anything in occupant_actions)
+		if(action.required_control_flags)
+			continue
+		action.revoke(removing.actions_controlled)
+	// call removed hook
+	occupant_removed(removing, new /datum/event_args/actor(removing), old_flags, FALSE)
+	return TRUE
 
-	//stuns people who are thrown off a train that has been blown up
-	if(istype(load, /mob/living))
-		var/mob/living/M = load
-		M.apply_effects(5, 5)
-
-	unload()
-
-	if(mechanical)
-		new /obj/item/stack/rods(Tsec)
-		new /obj/item/stack/rods(Tsec)
-		new /obj/item/stack/cable_coil/cut(Tsec)
-		new /obj/effect/gibspawner/robot(Tsec)
-		new /obj/effect/decal/cleanable/blood/oil(src.loc)
-
-		if(cell)
-			cell.forceMove(Tsec)
-			cell.update_icon()
-			cell = null
-
-	qdel(src)
-
-/obj/vehicle/proc/healthcheck()
-	if(health <= 0)
-		explode()
-
-/obj/vehicle/proc/powercheck()
-	if(!mechanical)
-		return
-
-	if(!cell && !powered)
-		return
-
-	if(!cell && powered)
-		turn_off()
-		return
-
-	if(cell.charge < charge_use)
-		turn_off()
-		return
-
-	if(cell && powered)
-		turn_on()
-		return
-
-/obj/vehicle/proc/insert_cell(var/obj/item/cell/C, var/mob/living/carbon/human/H)
-	if(!mechanical)
-		return
-	if(cell)
-		return
-	if(!istype(C))
-		return
-
-	H.drop_from_inventory(C)
-	C.forceMove(src)
-	cell = C
-	powercheck()
-	to_chat(usr, "<span class='notice'>You install [C] in [src].</span>")
-
-/obj/vehicle/proc/remove_cell(var/mob/living/carbon/human/H)
-	if(!mechanical)
-		return
-	if(!cell)
-		return
-
-	to_chat(usr, "<span class='notice'>You remove [cell] from [src].</span>")
-	cell.forceMove(get_turf(H))
-	H.put_in_hands(cell)
-	cell = null
-	powercheck()
-
-/obj/vehicle/proc/RunOver(var/mob/living/M)
-	return		//write specifics for different vehicles
-
-//-------------------------------------------
-// Loading/unloading procs
-//
-// Set specific item restriction checks in
-// the vehicle load() definition before
-// calling this parent proc.
-//-------------------------------------------
-/obj/vehicle/proc/load(var/atom/movable/C, var/mob/living/user)
-	//This loads objects onto the vehicle so they can still be interacted with.
-	//Define allowed items for loading in specific vehicle definitions.
-	if(!isturf(C.loc)) //To prevent loading things from someone's inventory, which wouldn't get handled properly.
-		return 0
-	if(load || C.anchored)
-		return 0
-
-	// if a create/closet, close before loading
-	var/obj/structure/closet/crate = C
-	if(istype(crate))
-		crate.close()
-
-	C.forceMove(loc)
-	C.setDir(dir)
-	C.anchored = 1
-
-	load = C
-
-	if(load_item_visible)
-		C.pixel_x += load_offset_x
-		if(ismob(C))
-			C.pixel_y += mob_offset_y
-		else
-			C.pixel_y += load_offset_y
-		C.layer = layer + 0.1
-
-	if(ismob(C))
-		user_buckle_mob(C, user)
-
-	return 1
-
-
-/obj/vehicle/proc/unload(var/mob/user, var/direction)
-	if(!load)
-		return
-
-	var/turf/dest = null
-
-	//find a turf to unload to
-	if(direction)	//if direction specified, unload in that direction
-		dest = get_step(src, direction)
-	else if(user)	//if a user has unloaded the vehicle, unload at their feet
-		dest = get_turf(user)
-
-	if(!dest)
-		dest = get_step_to(src, get_step(src, turn(dir, 90))) //try unloading to the side of the vehicle first if neither of the above are present
-
-	//if these all result in the same turf as the vehicle or nullspace, pick a new turf with open space
-	if(!dest || dest == get_turf(src))
-		var/list/options = new()
-		for(var/test_dir in GLOB.alldirs)
-			var/new_dir = get_step_to(src, get_step(src, test_dir))
-			if(new_dir && load.Adjacent(new_dir))
-				options += new_dir
-		if(options.len)
-			dest = pick(options)
-		else
-			dest = get_turf(src)	//otherwise just dump it on the same turf as the vehicle
-
-	if(!isturf(dest))	//if there still is nowhere to unload, cancel out since the vehicle is probably in nullspace
-		return 0
-
-	load.forceMove(dest)
-	load.setDir(get_dir(loc, dest))
-	load.anchored = 0		//we can only load non-anchored items, so it makes sense to set this to false
-	load.pixel_x = initial(load.pixel_x)
-	load.pixel_y = initial(load.pixel_y)
-	load.layer = initial(load.layer)
-
-	if(ismob(load))
-		unbuckle_mob(load)
-
-	load = null
-
-	return 1
-
-
-//-------------------------------------------------------
-// Stat update procs
-//-------------------------------------------------------
-/obj/vehicle/proc/update_stats()
-	return
-
-/obj/vehicle/attack_generic(var/mob/user, var/damage, var/attack_message)
-	if(!damage)
-		return
-	visible_message("<span class='danger'>[user] [attack_message] the [src]!</span>")
-	user.attack_log += text("\[[time_stamp()]\] <font color='red'>attacked [src.name]</font>")
-	user.do_attack_animation(src)
-	src.health -= damage
-	if(mechanical && prob(10))
-		new /obj/effect/decal/cleanable/blood/oil(src.loc)
-	spawn(1) healthcheck()
-	return 1
-
-/obj/vehicle/take_damage(var/damage)
-	if(!damage)
-		return
-	src.health -= damage
-	if(mechanical && prob(10))
-		new /obj/effect/decal/cleanable/blood/oil(src.loc)
-	spawn(1) healthcheck()
-	return 1
+/**
+ * Called when an occupant is removed.
+ *
+ * This should be where physicality-agnostic hooks are made, like removing custom actions / handling
+ *
+ * @params
+ * * removing - the mob
+ * * actor - the person removing the mob, usually the mob themselves
+ * * control_flags - the old control flags of the mob
+ * * silent - suppress messages to user
+ * * suppressed - suppress visible messages to others
+ */
+/obj/vehicle/proc/occupant_removed(mob/removing, datum/event_args/actor/actor, control_flags, silent, suppressed)
+	SHOULD_CALL_PARENT(TRUE)

@@ -1,7 +1,8 @@
 SUBSYSTEM_DEF(fail2topic)
 	name = "Fail2Topic"
 	init_order = INIT_ORDER_FAIL2TOPIC
-	flags = SS_BACKGROUND
+	init_stage = INIT_STAGE_BACKEND
+	subsystem_flags = SS_BACKGROUND
 	runlevels = ALL
 
 	var/list/rate_limiting = list()
@@ -25,10 +26,10 @@ SUBSYSTEM_DEF(fail2topic)
 		enabled = FALSE
 		subsystem_log("DISABLED - UNIX systems are not supported.")
 	if(!enabled)
-		flags |= SS_NO_FIRE
+		subsystem_flags |= SS_NO_FIRE
 		can_fire = FALSE
 
-	return ..()
+	return SS_INIT_SUCCESS
 
 /datum/controller/subsystem/fail2topic/fire()
 	if(length(rate_limiting))
@@ -47,7 +48,24 @@ SUBSYSTEM_DEF(fail2topic)
 /datum/controller/subsystem/fail2topic/Shutdown()
 	DropFirewallRule()
 
+/datum/controller/subsystem/fail2topic/vv_edit_var(var_name, var_value)
+	if(var_name == NAMEOF(src, rule_name))
+		return FALSE
+	return ..()
+
+/datum/controller/subsystem/fail2topic/CanProcCall(procname)
+	. = ..()
+	if(.)
+		switch(procname)
+			if("IsRateLimited")
+				return FALSE
+			if("BanFromFirewall")
+				return FALSE
+
 /datum/controller/subsystem/fail2topic/proc/IsRateLimited(ip)
+	if(IsAdminAdvancedProcCall())
+		return
+
 	var/last_attempt = rate_limiting[ip]
 
 	var/static/datum/config_entry/keyed_list/topic_rate_limit_whitelist/cached_whitelist_entry
@@ -84,6 +102,8 @@ SUBSYSTEM_DEF(fail2topic)
 
 /datum/controller/subsystem/fail2topic/proc/BanFromFirewall(ip)
 	if (!enabled)
+		return
+	if(IsAdminAdvancedProcCall())
 		return
 
 	active_bans[ip] = world.time

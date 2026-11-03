@@ -4,11 +4,13 @@
 	icon = 'icons/obj/device.dmi'
 	icon_state = "uv_off"
 	slot_flags = SLOT_BELT
-	w_class = ITEMSIZE_SMALL
+	w_class = WEIGHT_CLASS_SMALL
 	item_state = "electronic"
-	action_button_name = "Toggle UV light"
-	matter = list(MAT_STEEL = 150)
+	item_action_name = "Toggle UV light"
+	materials_base = list(MAT_STEEL = 150)
 	origin_tech = list(TECH_MAGNET = 1, TECH_ENGINEERING = 1)
+	suit_storage_class = SUIT_STORAGE_CLASS_SOFTWEAR | SUIT_STORAGE_CLASS_HARDWEAR
+	belt_storage_class = BELT_CLASS_SMALL
 
 	var/list/scanned = list()
 	var/list/stored_alpha = list()
@@ -18,7 +20,10 @@
 	var/on = 0
 	var/step_alpha = 50
 
-/obj/item/uv_light/attack_self(var/mob/user)
+/obj/item/uv_light/attack_self(mob/user, datum/event_args/actor/actor)
+	. = ..()
+	if(.)
+		return
 	on = !on
 	if(on)
 		set_light(range, 2, "#007fff")
@@ -43,7 +48,7 @@
 		stored_alpha.Cut()
 	if(reset_objects.len)
 		for(var/obj/item/I in reset_objects)
-			I.overlays -= I.blood_overlay
+			I.cut_overlay(I.blood_overlay)
 			if(I.fluorescent == 2) I.fluorescent = 1
 		reset_objects.Cut()
 
@@ -67,5 +72,5 @@
 					if(istype(A, /obj/item))
 						var/obj/item/O = A
 						if(O.was_bloodied && !(O.blood_overlay in O.overlays))
-							O.overlays |= O.blood_overlay
+							O.add_overlay(O.blood_overlay)
 							reset_objects |= O

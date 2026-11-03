@@ -45,7 +45,7 @@
 		else
 			return
 	else
-		imp_in.verbs -= assigned_proc
+		remove_verb(imp_in, assigned_proc)
 		return
 
 	if(reagents)
@@ -62,7 +62,7 @@
 /mob/living/carbon/human/proc/use_reagent_implant()
 	set name = "Transfer From Reagent Implant"
 	set desc = "Remove reagents from am internal reagent into a container."
-	set category = "Object"
+	set category = VERB_CATEGORY_OBJECT
 	set src in view(1)
 
 	do_reagent_implant(usr)
@@ -74,7 +74,7 @@
 	if(user.incapacitated() || user.stat > CONSCIOUS)
 		return
 
-	var/obj/item/reagent_containers/container = user.get_active_hand()
+	var/obj/item/reagent_containers/container = user.get_active_held_item()
 	if(!container)
 		to_chat(user,"<span class='notice'>You need an open container to do this!</span>")
 		return

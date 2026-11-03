@@ -8,10 +8,7 @@
 	severity = 1
 
 /datum/gm_action/viral_infection/set_up()
-	severity = pickweight(EVENT_LEVEL_MUNDANE = 20,
-		EVENT_LEVEL_MODERATE = 10,
-		EVENT_LEVEL_MAJOR = 3
-		)
+	severity = pick_weight(mundande_weight = 20, moderate_weight = 10, major_weight = 3)
 
 	//generate 1-3 viruses. This way there's an upper limit on how many individual diseases need to be cured if many people are initially infected
 	var/num_diseases = rand(1,3)
@@ -43,10 +40,10 @@
 	..()
 
 	var/list/candidates = list()	//list of candidate keys
-	for(var/mob/living/carbon/human/G in player_list)
+	for(var/mob/living/carbon/human/G in GLOB.player_list)
 		if(G.mind && G.stat != DEAD && G.is_client_active(5) && !player_is_antag(G.mind))
 			var/turf/T = get_turf(G)
-			if(T.z in GLOB.using_map.station_levels)
+			if(T.z in (LEGACY_MAP_DATUM).station_levels)
 				candidates += G
 	if(!candidates.len)	return
 	candidates = shuffle(candidates)//Incorporating Donkie's list shuffle

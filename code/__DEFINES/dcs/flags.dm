@@ -1,12 +1,10 @@
 /// Return this from `/datum/component/Initialize` or `datum/component/OnTransfer` to have the component be deleted if it's applied to an incorrect type.
 /// `parent` must not be modified if this is to be returned.
 /// This will be noted in the runtime logs
-#define COMPONENT_INCOMPATIBLE 1
-/// Returned in PostTransfer to prevent transfer, similar to `COMPONENT_INCOMPATIBLE`
-#define COMPONENT_NOTRANSFER 2
+#define COMPONENT_INCOMPATIBLE -1
 
 /// Return value to cancel attaching
-#define ELEMENT_INCOMPATIBLE 1
+#define ELEMENT_INCOMPATIBLE -1
 
 // /datum/element flags
 /// Causes the detach proc to be called when the host object is being deleted
@@ -36,9 +34,10 @@
 #define REDIRECT_TRANSFER_WITH_TURF 1
 
 //Arch
-#define ARCH_PROB "probability" //Probability for each item
-#define ARCH_MAXDROP "max_drop_amount" //each item's max drop amount
-
+///Probability for each item
+#define ARCH_PROB "probability"
+///each item's max drop amount
+#define ARCH_MAXDROP "max_drop_amount"
 //Ouch my toes!
 #define CALTROP_BYPASS_SHOES (1 << 0)
 #define CALTROP_IGNORE_WALKERS (1 << 1)
@@ -58,6 +57,7 @@
 #define CUSTOM_INGREDIENT_ICON_LINE 4
 #define CUSTOM_INGREDIENT_ICON_STACKPLUSTOP 5
 
+//! Simple conflict element
 // Conflict element IDs
 #define CONFLICT_ELEMENT_CRUSHER "crusher"
 #define CONFLICT_ELEMENT_KA "kinetic_accelerator"
